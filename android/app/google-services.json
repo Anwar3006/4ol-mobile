@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "543918215765",
+    "project_id": "healthcare-54909",
+    "storage_bucket": "healthcare-54909.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:543918215765:android:bf7ffbbf8cf64a0a4c7adc",
+        "android_client_info": {
+          "package_name": "com.healthcare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "543918215765-lnif6m1mf6bl4gdsf8q8tb4n2vdpj1e1.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyALF3w7Nwms2Wghz92ujryTWXD22X8GCpg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "543918215765-lnif6m1mf6bl4gdsf8q8tb4n2vdpj1e1.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "543918215765-jhq5jot6gl43onvo37rh4pm8qjllortk.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.socius_ai"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

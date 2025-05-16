@@ -2,12 +2,17 @@ import UIKit
 import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
+import Firebase
+import GoogleMaps
 
 @main
 class AppDelegate: RCTAppDelegate {
   override func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
+    GMSServices.provideAPIKey("AIzaSyB2P5-vu0IOv5-XYa1N_Fvqo1RNyhGaoJM") // Add your Google Maps API key here
+
     self.moduleName = "healthcare"
     self.dependencyProvider = RCTAppDependencyProvider()
+    FirebaseApp.configure()
 
     // You can add your custom initial props in the dictionary below.
     // They will be passed down to the ViewController used by React Native.
