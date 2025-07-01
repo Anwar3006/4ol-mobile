@@ -1,4 +1,4 @@
-import {API_KEY, limit} from '../../config/variables';
+import {THIS_IS_MAP_KEY, limit} from '../../config/variables';
 import useLocation from '../hooks/useLocation';
 import {supabase} from '../utils/supabaseClient';
 
@@ -104,7 +104,7 @@ const getRatingsAndDistance = async (placeName: string, location: any) => {
     // Step 1: Search for the place to get its place_id
     const searchUrl = `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(
       placeName,
-    )}&inputtype=textquery&fields=place_id&key=${API_KEY}`;
+    )}&inputtype=textquery&fields=place_id&key=${THIS_IS_MAP_KEY}`;
     const searchResponse = await fetch(searchUrl);
     const searchData = await searchResponse.json();
 
@@ -112,7 +112,7 @@ const getRatingsAndDistance = async (placeName: string, location: any) => {
       const placeId = searchData.candidates[0].place_id;
 
       // Step 2: Use the place_id to get complete details
-      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,geometry,photo&key=${API_KEY}`;
+      const detailsUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=name,geometry,photo&key=${THIS_IS_MAP_KEY}`;
       const detailsResponse = await fetch(detailsUrl);
       const detailsData = await detailsResponse.json();
 
@@ -121,7 +121,7 @@ const getRatingsAndDistance = async (placeName: string, location: any) => {
 
         // Helper function to build photo URL
         const buildPhotoUrl = (photoReference: string) =>
-          `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${API_KEY}`;
+          `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${THIS_IS_MAP_KEY}`;
 
         const distance = await fetchDistanceAndDuration(
           {
@@ -160,7 +160,7 @@ const fetchDistanceAndDuration = async (
 ) => {
   try {
     let distance: any;
-    const distanceMatrixUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origin.lat},${origin.lng}&destinations=${destination.lat},${destination.lng}&key=${API_KEY}`;
+    const distanceMatrixUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origin.lat},${origin.lng}&destinations=${destination.lat},${destination.lng}&key=${THIS_IS_MAP_KEY}`;
     const response = await fetch(distanceMatrixUrl);
     const data = await response.json();
 

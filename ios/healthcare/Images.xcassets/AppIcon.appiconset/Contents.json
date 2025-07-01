@@ -1,31 +1,31 @@
 {
   "images" : [
     {
-      "filename" : "4 Our Life - 40.png",
+      "filename" : "40X40 GREEN.png",
       "idiom" : "iphone",
       "scale" : "2x",
       "size" : "20x20"
     },
     {
-      "filename" : "4 Our Life - 60.png",
+      "filename" : "60X60 GREEN.png",
       "idiom" : "iphone",
       "scale" : "3x",
       "size" : "20x20"
     },
     {
-      "filename" : "4 Our Life - 58.png",
+      "filename" : "58X58 GREEN.png",
       "idiom" : "iphone",
       "scale" : "2x",
       "size" : "29x29"
     },
     {
-      "filename" : "4 Our Life - 87.png",
+      "filename" : "87X87 GREEN.png",
       "idiom" : "iphone",
       "scale" : "3x",
       "size" : "29x29"
     },
     {
-      "filename" : "4 Our Life - 80.png",
+      "filename" : "80X80 GREEN.png",
       "idiom" : "iphone",
       "scale" : "2x",
       "size" : "40x40"
@@ -43,13 +43,13 @@
       "size" : "60x60"
     },
     {
-      "filename" : "4 Our Life - 180.png",
+      "filename" : "180X180 GREEN.png",
       "idiom" : "iphone",
       "scale" : "3x",
       "size" : "60x60"
     },
     {
-      "filename" : "4 Our Life - 1024.png",
+      "filename" : "1024X1024 GREEN.png",
       "idiom" : "ios-marketing",
       "scale" : "1x",
       "size" : "1024x1024"

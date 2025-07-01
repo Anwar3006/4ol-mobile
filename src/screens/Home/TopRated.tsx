@@ -18,7 +18,7 @@ import {
   getRegisteredFacilities,
 } from '../../services/facility';
 import {truncateString} from '../../utils/helpers';
-import {API_KEY, limit} from '../../../config/variables';
+import {limit} from '../../../config/variables';
 import {SCREENS} from '../../constants/screens';
 import useLocation from '../../hooks/useLocation';
 import LocationLayout from '../../components/common/LocationLayout';

@@ -111,68 +111,78 @@ const AuthStackNavigation = () => {
       <Stack.Screen
         name="VerifyPhoneNumber"
         component={PhoneNumberVerification}
+        options={{title: 'Verify Phone'}}
       />
-      <Stack.Screen name="OtpVerification" component={OTPVerificationScreen} />
+      <Stack.Screen
+        name="OtpVerification"
+        component={OTPVerificationScreen}
+        options={{title: 'OTP Verification'}}
+      />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       <Stack.Screen
         name="Login"
         component={LoginScreen}
         options={{
+          headerTitle: '',
           headerTransparent: true,
           headerLeft: () => (
             <TouchableOpacity
               style={{flexDirection: 'row', alignItems: 'center', gap: 10}}
-              onPress={() => navigation.goBack()}>
+              onPress={() => navigation.navigate(SCREENS.GETSTARTED)}>
               <FontAwesome5 name="chevron-left" size={18} color="gray" />
               <Text style={{color: 'gray', fontSize: 18}}>Back</Text>
             </TouchableOpacity>
           ),
-          headerTitle: () => (
-            <Animated.View
-              style={{
-                backgroundColor: themeColors.primary,
-                paddingHorizontal: paddingHorizontal, // Animated paddingHorizontal
-                // paddingVertical:5,
-                paddingVertical: paddingVertical, // Animated paddingVertical
-                borderRadius: 5,
-                justifyContent: 'center',
-                alignItems: 'center',
-                alignSelf: 'center',
-              }}>
-              <View
-                style={{
-                  width: 28, // Fixed width
-                  height: 28, // Fixed height
-                  justifyContent: 'center', // Center the image within the fixed view
-                  alignItems: 'center',
-                }}>
-                <Image
-                  source={require('../../assets/images/logo2.png')}
-                  style={{width: '100%', height: '100%'}} // Keep image dimensions fixed
-                />
-              </View>
-            </Animated.View>
-          ),
-          headerRight: () => (
-            <View>
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 10,
-                  opacity: 0,
-                }}
-                onPress={() => {
-                  Alert.alert('Alert', 'This is a test alert');
-                }}>
-                <Text style={{color: 'red', fontSize: 18}}>Next</Text>
-                <FontAwesome5 name="chevron-right" size={18} color="red" />
-              </TouchableOpacity>
-            </View>
-          ),
+          // headerTitle: () => (
+          //   <Animated.View
+          //     style={{
+          //       backgroundColor: themeColors.primary,
+          //       paddingHorizontal: paddingHorizontal, // Animated paddingHorizontal
+          //       // paddingVertical:5,
+          //       paddingVertical: paddingVertical, // Animated paddingVertical
+          //       borderRadius: 5,
+          //       justifyContent: 'center',
+          //       alignItems: 'center',
+          //       alignSelf: 'center',
+          //     }}>
+          //     <View
+          //       style={{
+          //         width: 28, // Fixed width
+          //         height: 28, // Fixed height
+          //         justifyContent: 'center', // Center the image within the fixed view
+          //         alignItems: 'center',
+          //       }}>
+          //       <Image
+          //         source={require('../../assets/images/logo2.png')}
+          //         style={{width: '100%', height: '100%'}} // Keep image dimensions fixed
+          //       />
+          //     </View>
+          //   </Animated.View>
+          // ),
+          // headerRight: () => (
+          //   <View>
+          //     <TouchableOpacity
+          //       style={{
+          //         flexDirection: 'row',
+          //         alignItems: 'center',
+          //         gap: 10,
+          //         opacity: 0,
+          //       }}
+          //       onPress={() => {
+          //         Alert.alert('Alert', 'This is a test alert');
+          //       }}>
+          //       <Text style={{color: 'red', fontSize: 18}}>Next</Text>
+          //       <FontAwesome5 name="chevron-right" size={18} color="red" />
+          //     </TouchableOpacity>
+          //   </View>
+          // ),
         }}
       />
-      <Stack.Screen name="SignUp" component={SignupScreen} />
+      <Stack.Screen
+        name="SignUp"
+        component={SignupScreen}
+        options={{title: 'Sign Up'}}
+      />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </Stack.Navigator>
   );

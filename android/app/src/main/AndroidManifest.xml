@@ -1,4 +1,4 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.fourthpayltd.fourourlife">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
@@ -18,7 +18,7 @@
       android:supportsRtl="true">
       <meta-data
         android:name="com.google.android.geo.API_KEY"
-        android:value="AIzaSyB2P5-vu0IOv5-XYa1N_Fvqo1RNyhGaoJM" />
+        android:value="" /> // Replace with your actual Google Maps API key
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"

@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import {themeColors} from '../../theme/colors';
 import {size} from '../../theme/fontStyle';
 import CustomInput from '../../components/common/CustomInput';
 import CustomButton from '../../components/common/CustomButton';
-import {SCREENS} from '../../constants/screens';
 import {fonts} from '../../theme/fonts';
 import {signup} from '../../services/auth';
 import {useToast} from 'react-native-toast-notifications';
@@ -26,17 +25,18 @@ import {horizontalScale, verticalScale} from '../../utils/metrics';
 import {validationSignUpSchema} from '../../validation';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import moment from 'moment';
-import {regionNames, displayRegions} from '../../constants/Regions';
-import * as Icons from 'react-native-vector-icons/MaterialCommunityIcons';
+import {regionNames} from '../../constants/Regions';
 import * as MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-const SignupScreen = ({route}) => {
+const SignupScreen = ({route}: {route: any}) => {
   const toast = useToast();
   const dispatch = useDispatch();
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigation = useNavigation<NavigationProp<NavigationStackParams>>();
   const {phone} = route.params;
+  const paddingBottom = useSafeAreaInsets().bottom || 20; // Adjust padding based on safe area insets
 
   const handleSubmit = async (values: SignUpSchema) => {
     const user = {...values, phone_number: phone};
@@ -96,6 +96,8 @@ const SignupScreen = ({route}) => {
             showsHorizontalScrollIndicator={false}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
+              paddingTop: paddingBottom,
+              paddingBottom: paddingBottom,
               justifyContent: 'center',
               alignItems: 'center',
               minHeight: '100%',
@@ -275,22 +277,24 @@ const SignupScreen = ({route}) => {
               placeholder={'Password'}
               value={values.password}
               onChangeText={handleChange('password')}
-              secureTextEntry={false}
+              secureTextEntry={true}
               icon="key"
               editable={true}
               error={errors?.password}
               touched={touched.password}
+              autoCapitalize="none"
             />
 
             <CustomInput
               placeholder={'Confirm Password'}
               value={values.confirm_password}
               onChangeText={handleChange('confirm_password')}
-              secureTextEntry={false}
+              secureTextEntry={true}
               icon="key"
               editable={true}
               error={errors?.confirm_password}
               touched={touched.confirm_password}
+              autoCapitalize="none"
             />
 
             <CustomButton

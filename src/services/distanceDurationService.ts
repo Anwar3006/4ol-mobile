@@ -1,6 +1,5 @@
 import axios from 'axios';
-
-const API_KEY = 'AIzaSyB2P5-vu0IOv5-XYa1N_Fvqo1RNyhGaoJM';
+import {THIS_IS_MAP_KEY} from '../../config/variables';
 
 interface LatLng {
   lat: number;
@@ -60,8 +59,9 @@ export const fetchDistancesAndDurations = async (
         typeof dest === 'string' ? dest : `${dest.lat},${dest.lng}`,
       )
       .join('|');
+    console.log('Check me====>');
 
-    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origin}&destinations=${destinations}&key=${API_KEY}`;
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origin}&destinations=${destinations}&key=${THIS_IS_MAP_KEY}`;
 
     const response = await axios.get<DistanceMatrixResponse>(url);
     const data = response.data;

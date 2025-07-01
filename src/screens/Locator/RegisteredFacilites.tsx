@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useRef, useState, useMemo, useCallback} from 'react';
 import MapService from '../../services/getRegisteredMapMarkers';
 import LocationLayout from '../../components/common/LocationLayout';
 import MapView, {Marker, PROVIDER_DEFAULT} from 'react-native-maps';
@@ -46,95 +46,16 @@ type TopRatedProps = {
 };
 
 const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
+  // =========== STATE HOOKS ============
+  // All useState hooks grouped together at the top level
   const [currentLocation, setCurrentLocation] = useState({
     latitude: null,
     longitude: null,
   });
-  const [loading, setLoading] = useState(true); // Add loading state
+  const [loading, setLoading] = useState(true);
   const [fetchingGPSLocation, setFetchingGPSLocation] = useState(false);
-  const {fetchGhanaPostAddress, addressData} = useGhanaPostGPS();
-
   const [rowWidth, setRowWidth] = useState(0);
   const [isReady, setIsReady] = useState(false);
-
-  const onTabBarLayout = (event: LayoutChangeEvent) => {
-    const width = event.nativeEvent.layout.width;
-    setRowWidth(width);
-    setIsReady(true);
-  };
-
-  const requestLocationPermission = async () => {
-    if (Platform.OS === 'android') {
-      const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-      );
-      return granted === PermissionsAndroid.RESULTS.GRANTED;
-    }
-    return true; // iOS handles permissions automatically
-  };
-
-  const getLocation = async () => {
-    const hasPermission = await requestLocationPermission();
-    if (!hasPermission) {
-      console.log('Permission denied');
-      setLoading(false); // Set loading to false if permission is denied
-      return;
-    }
-
-    Geolocation.getCurrentPosition(
-      position => {
-        setCurrentLocation({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        });
-        setLoading(false); // Set loading to false when location is fetched
-      },
-      error => {
-        console.log('Error:', error.message);
-        setLoading(false); // Set loading to false if there is an error
-      },
-      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
-    );
-  };
-
-  useEffect(() => {
-    getLocation(); // Fetch location on component mount
-  }, []);
-
-  useEffect(() => {
-    if (currentLocation.latitude && currentLocation.longitude) {
-      mapRef.current?.animateToRegion(
-        {
-          latitude: currentLocation.latitude,
-          longitude: currentLocation.longitude,
-          latitudeDelta: 0.009,
-          longitudeDelta: 0.009,
-        },
-        1000,
-      );
-    }
-  }, [currentLocation]);
-
-  const handleFetchAddress = async () => {
-    setFetchingGPSLocation(true);
-    if (currentLocation.latitude && currentLocation.longitude) {
-      await fetchGhanaPostAddress(
-        currentLocation.latitude,
-        currentLocation.longitude,
-      )
-        .then(data => {
-          if (data && data?.data?.Table !== null) {
-            setAddress(
-              data?.data?.Table[0]?.Area +
-                ', ' +
-                data?.data?.Table[0]?.GPSName || '',
-            );
-          }
-        })
-        .finally(() => setFetchingGPSLocation(false));
-    }
-  };
-
   const [markers, setMarkers] = useState<any[]>([]);
   const [filteredMarkers, setFilteredMarkers] = useState<any[]>([]);
   const [selectedFacilityType, setSelectedFacilityType] = useState<
@@ -142,12 +63,18 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   >(null);
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [selectedRadius, setSelectedRadius] = useState<number>(10);
-  const mapRef = useRef<MapView>(null);
-  const slideAnim = useRef(new Animated.Value(-200)).current;
   const [address, setAddress] = useState('');
   const [topRated, setTopRated] = useState<boolean>(false);
   const [baseFilteredMarkers, setBaseFilteredMarkers] = useState<any[]>([]);
 
+  // =========== REF HOOKS ============
+  const mapRef = useRef<MapView>(null);
+  const slideAnim = useRef(new Animated.Value(-200)).current;
+
+  // =========== CUSTOM HOOKS ============
+  const {fetchGhanaPostAddress, addressData} = useGhanaPostGPS();
+
+  // =========== CONSTANTS ============
   const facilityTypeMapping = {
     'Hospital/ Clinic': 'Hospital/ Clinic',
     Pharmacy: 'Pharmacy',
@@ -192,66 +119,299 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     {label: '10 km', value: 10},
   ];
 
-  const parseRating = (marker: any) => {
+  // =========== MEMOIZED VALUES ============
+  // All useMemo hooks grouped together
+  const customMapStyle = useMemo(
+    () => [
+      {
+        featureType: 'poi',
+        stylers: [{visibility: 'off'}],
+      },
+      {
+        featureType: 'poi.business',
+        stylers: [{visibility: 'off'}],
+      },
+    ],
+    [],
+  );
+
+  const initialRegion = useMemo(
+    () => ({
+      latitude: currentLocation.latitude,
+      longitude: currentLocation.longitude,
+      latitudeDelta: 0.009,
+      longitudeDelta: 0.009,
+    }),
+    [currentLocation.latitude, currentLocation.longitude],
+  );
+
+  const facilityTypeButtons = useMemo(() => {
+    return facilityTypes.map(type => (
+      <TouchableOpacity
+        key={type}
+        style={[
+          styles.filterButton,
+          selectedFacilityType === type ? styles.filterButtonSelected : null,
+        ]}
+        onPress={() => {
+          setSelectedFacilityType(selectedFacilityType === type ? null : type);
+        }}>
+        {React.cloneElement(facilityIconMapping[type], {
+          color: selectedFacilityType === type ? '#fff' : '#666',
+        })}
+        <Text
+          style={[
+            styles.filterText,
+            selectedFacilityType === type ? styles.filterTextSelected : null,
+          ]}>
+          {type}
+        </Text>
+      </TouchableOpacity>
+    ));
+  }, [selectedFacilityType]);
+
+  const renderMarkers = useMemo(() => {
+    // Only show a limited number of markers based on distance
+    return filteredMarkers.slice(0, 20).map((marker, index) => {
+      const currentDay = new Date()
+        .toLocaleString('en-us', {weekday: 'long'})
+        .toLowerCase();
+      const currentTime = new Date().toTimeString().slice(0, 5);
+      const isOpen =
+        marker.business_hours[currentDay] &&
+        currentTime >= marker.business_hours[currentDay].opening &&
+        currentTime <= marker.business_hours[currentDay].closing;
+
+      return (
+        <Marker
+          key={index}
+          coordinate={{
+            latitude: marker.latitude,
+            longitude: marker.longitude,
+          }}
+          tracksViewChanges={false}
+          onPress={() => {
+            setSelectedMarker(marker);
+            showCard();
+          }}>
+          <View style={styles.markerContainer}>
+            <View
+              style={[
+                styles.customMarker,
+                {
+                  backgroundColor: isOpen ? themeColors.primary : '#d9534f',
+                },
+              ]}>
+              {React.cloneElement(
+                facilityIconMapping[
+                  Object.keys(facilityTypeMapping).find(
+                    key => facilityTypeMapping[key] === marker.facility_type,
+                  )
+                ] || <Icon name="medical-bag" size={14} color="#fff" />,
+                {color: '#fff', size: 14},
+              )}
+            </View>
+          </View>
+        </Marker>
+      );
+    });
+  }, [filteredMarkers, facilityIconMapping, facilityTypeMapping]);
+
+  // =========== CALLBACK FUNCTIONS ============
+  // All useCallback hooks grouped together
+  const onTabBarLayout = useCallback((event: LayoutChangeEvent) => {
+    const width = event.nativeEvent.layout.width;
+    setRowWidth(width);
+    setIsReady(true);
+  }, []);
+
+  const handleFetchAddress = useCallback(async () => {
+    setFetchingGPSLocation(true);
+    if (currentLocation.latitude && currentLocation.longitude) {
+      await fetchGhanaPostAddress(
+        currentLocation.latitude,
+        currentLocation.longitude,
+      )
+        .then(data => {
+          if (data && data?.data?.Table !== null) {
+            setAddress(
+              data?.data?.Table[0]?.Area +
+                ', ' +
+                data?.data?.Table[0]?.GPSName || '',
+            );
+          }
+        })
+        .finally(() => setFetchingGPSLocation(false));
+    }
+  }, [
+    currentLocation.latitude,
+    currentLocation.longitude,
+    fetchGhanaPostAddress,
+  ]);
+
+  const parseRating = useCallback((marker: any) => {
     return marker.avg_rating
       ? parseFloat(marker.avg_rating)
       : marker.facility_ratings?.[0]?.avg
       ? parseFloat(marker.facility_ratings[0].avg)
       : 0;
-  };
+  }, []);
 
-  const filterMarkersByDistance = async () => {
-    if (!currentLocation || !markers.length) return;
+  const filterMarkersByDistance = useCallback(async () => {
+    if (!currentLocation?.latitude || !markers.length) return;
 
-    // 1. Filter by facility type
+    // 1. First filter by facility type (this is fast)
     let filteredResults = markers.filter(marker =>
       selectedFacilityType
         ? marker.facility_type === facilityTypeMapping[selectedFacilityType]
         : true,
     );
 
-    // 2. Calculate distances all at once
-    const origin = `${currentLocation.latitude},${currentLocation.longitude}`;
-    const destinations = filteredResults.map(
-      marker => `${marker.latitude},${marker.longitude}`,
-    );
+    // 2. Quick distance calculation using Haversine formula (no API calls)
+    const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
+      const R = 6371; // Earth radius in km
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c; // Distance in km
+    };
 
-    // Get all distances in a single API call
-    const distanceResults = await fetchDistancesAndDurations(
-      origin,
-      destinations,
-    );
-
-    // 3. Combine markers with their distance information
-    const markersWithDistance = filteredResults.map((marker, index) => {
-      const result = distanceResults[index] || {
-        distance: '',
-        distanceValue: 0,
-        duration: '',
-        durationValue: 0,
-      };
-
-      // Convert to km for filtering
-      const distanceInKm = result.distanceValue / 1000;
+    // Apply approximate distance calculation
+    const markersWithApproxDistance = filteredResults.map(marker => {
+      const distanceInKm = calculateHaversineDistance(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        marker.latitude,
+        marker.longitude,
+      );
 
       return {
         ...marker,
         distance: distanceInKm,
-        distanceText: result.distance,
-        duration: result.duration,
+        distanceText: `${distanceInKm.toFixed(1)} km`,
+        duration: '~' + Math.ceil(distanceInKm * 4) + ' min', // Rough estimate
       };
     });
 
-    // 4. Apply radius filter
-    const withinRadius = markersWithDistance.filter(
-      m => m.distance <= selectedRadius,
-    );
+    // 3. Filter by radius and sort by distance
+    const withinRadius = markersWithApproxDistance
+      .filter(m => m.distance <= selectedRadius)
+      .sort((a, b) => a.distance - b.distance);
 
-    // Update base filtered markers
+    // 4. Only get precise distances for the top 20 results
+    const topResults = withinRadius.slice(0, 20);
+
+    // Now you can optionally get precise distances for only these top results
+    if (topResults.length > 0) {
+      const origin = `${currentLocation.latitude},${currentLocation.longitude}`;
+      const destinations = topResults.map(
+        marker => `${marker.latitude},${marker.longitude}`,
+      );
+
+      try {
+        const distanceResults = await fetchDistancesAndDurations(
+          origin,
+          destinations,
+        );
+
+        // Update only the top markers with precise distance data
+        topResults.forEach((marker, index) => {
+          if (distanceResults[index]) {
+            marker.distanceText = distanceResults[index].distance;
+            marker.duration = distanceResults[index].duration;
+          }
+        });
+      } catch (error) {
+        console.log('Error fetching precise distances:', error);
+        // Continue with approximate distances
+      }
+    }
+
+    // Update state with all markers that are within radius
     setBaseFilteredMarkers(withinRadius);
+  }, [
+    currentLocation,
+    markers,
+    selectedFacilityType,
+    selectedRadius,
+    facilityTypeMapping,
+  ]);
+
+  const showCard = useCallback(() => {
+    Animated.spring(slideAnim, {
+      toValue: 0,
+      useNativeDriver: true,
+    }).start();
+  }, [slideAnim]);
+
+  const hideCard = useCallback(() => {
+    Animated.spring(slideAnim, {
+      toValue: -200,
+      useNativeDriver: true,
+    }).start();
+  }, [slideAnim]);
+
+  // =========== OTHER FUNCTIONS ============
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+      );
+      return granted === PermissionsAndroid.RESULTS.GRANTED;
+    }
+    return true; // iOS handles permissions automatically
   };
 
-  // New useEffect for applying top-rated filter
+  const getLocation = async () => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      console.log('Permission denied');
+      setLoading(false); // Set loading to false if permission is denied
+      return;
+    }
+
+    Geolocation.getCurrentPosition(
+      position => {
+        setCurrentLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        });
+        setLoading(false); // Set loading to false when location is fetched
+      },
+      error => {
+        console.log('Error:', error.message);
+        setLoading(false); // Set loading to false if there is an error
+      },
+      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+    );
+  };
+
+  // =========== EFFECTS ============
+  // All useEffect hooks grouped together
+  useEffect(() => {
+    getLocation(); // Fetch location on component mount
+  }, []);
+
+  useEffect(() => {
+    if (currentLocation.latitude && currentLocation.longitude) {
+      mapRef.current?.animateToRegion(
+        {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          latitudeDelta: 0.009,
+          longitudeDelta: 0.009,
+        },
+        1000,
+      );
+    }
+  }, [currentLocation]);
+
   useEffect(() => {
     if (topRated) {
       const topRatedMarkers = baseFilteredMarkers.filter(
@@ -261,29 +421,30 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     } else {
       setFilteredMarkers(baseFilteredMarkers);
     }
-  }, [baseFilteredMarkers, topRated]);
+  }, [baseFilteredMarkers, topRated, parseRating]);
 
-  // Update original useEffect
   useEffect(() => {
-    filterMarkersByDistance();
-    handleFetchAddress();
-  }, [currentLocation, markers, selectedFacilityType, selectedRadius]);
+    if (currentLocation.latitude && currentLocation.longitude) {
+      filterMarkersByDistance();
+    }
+  }, [
+    currentLocation.latitude,
+    currentLocation.longitude,
+    selectedFacilityType,
+    selectedRadius,
+    filterMarkersByDistance,
+  ]);
 
-  const updateMarkersByRating = () => {
-    const newMarkers = filteredMarkers.filter(e => e.avg_rating > 4.0);
-    setFilteredMarkers(newMarkers);
-  };
-
-  // useEffect(() => {
-  //   filterMarkersByDistance();
-  //   handleFetchAddress();
-  // }, [
-  //   currentLocation,
-  //   markers,
-  //   selectedFacilityType,
-  //   selectedRadius,
-  //   topRated,
-  // ]);
+  useEffect(() => {
+    if (currentLocation.latitude && currentLocation.longitude && !address) {
+      handleFetchAddress();
+    }
+  }, [
+    currentLocation.latitude,
+    currentLocation.longitude,
+    address,
+    handleFetchAddress,
+  ]);
 
   useEffect(() => {
     (async () => {
@@ -293,20 +454,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     })();
   }, []);
 
-  const showCard = () => {
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-    }).start();
-  };
-
-  const hideCard = () => {
-    Animated.spring(slideAnim, {
-      toValue: -200,
-      useNativeDriver: true,
-    }).start();
-  };
-
+  // Early return for loading state
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -315,6 +463,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     );
   }
 
+  // Component render
   return (
     <LocationLayout>
       <View
@@ -322,7 +471,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
           position: 'absolute',
           top: 0,
           left: 0,
-          right: 0 /* This is to make the filter buttons stretch to the end of the screen */,
+          right: 0,
           zIndex: 1,
           gap: 10,
           paddingTop: 10,
@@ -336,35 +485,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
           }}
           showsHorizontalScrollIndicator={false}
           style={styles.filterContainer}>
-          {facilityTypes.map(type => (
-            <TouchableOpacity
-              key={type}
-              style={[
-                styles.filterButton,
-                selectedFacilityType === type
-                  ? styles.filterButtonSelected
-                  : null,
-              ]}
-              onPress={() => {
-                // Toggle selection: If already selected, deselect it (set to null)
-                setSelectedFacilityType(
-                  selectedFacilityType === type ? null : type,
-                );
-              }}>
-              {React.cloneElement(facilityIconMapping[type], {
-                color: selectedFacilityType === type ? '#fff' : '#666',
-              })}
-              <Text
-                style={[
-                  styles.filterText,
-                  selectedFacilityType === type
-                    ? styles.filterTextSelected
-                    : null,
-                ]}>
-                {type}
-              </Text>
-            </TouchableOpacity>
-          ))}
+          {facilityTypeButtons}
         </ScrollView>
         {/* ADDRESS, RANGE FILTER ROW */}
         <View
@@ -440,89 +561,19 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         />
       </View>
       <MapView
-        customMapStyle={[{featureType: 'poi', stylers: [{visibility: 'on'}]}]}
+        customMapStyle={customMapStyle}
         ref={mapRef}
         style={{width: '100%', height: '100%', zIndex: -1}}
-        initialRegion={{
-          latitude: currentLocation.latitude,
-          longitude: currentLocation.longitude,
-          latitudeDelta: 0.009,
-          longitudeDelta: 0.009,
-        }}
+        initialRegion={initialRegion}
         zoomEnabled
         scrollEnabled
         showsUserLocation
         zoomControlEnabled
         showsMyLocationButton={false}
-        showsCompass={false}>
-        {filteredMarkers.map((marker, index) => {
-          // Log marker data to confirm rating value exists
-          console.log(`Marker ${index} rating:`, marker.avg_rating);
-
-          const currentDay = new Date()
-            .toLocaleString('en-us', {weekday: 'long'})
-            .toLowerCase();
-          const currentTime = new Date().toTimeString().slice(0, 5);
-          const isOpen =
-            marker.business_hours[currentDay] &&
-            currentTime >= marker.business_hours[currentDay].opening &&
-            currentTime <= marker.business_hours[currentDay].closing;
-
-          return (
-            <Marker
-              key={index}
-              coordinate={{
-                latitude: marker.latitude,
-                longitude: marker.longitude,
-              }}
-              onPress={() => {
-                setSelectedMarker(marker);
-                showCard();
-              }}>
-              <View style={styles.markerContainer}>
-                {/* Marker icon */}
-
-                <View
-                  style={[
-                    styles.customMarker,
-                    {
-                      backgroundColor: isOpen ? themeColors.primary : '#d9534f',
-                    },
-                  ]}>
-                  {/* {!topRated &&
-                  marker.avg_rating &&
-                  parseFloat(marker.avg_rating) >= 4.0 ? (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: -1,
-                        right: -10,
-                        backgroundColor: '#ffc107',
-                        borderRadius: 10,
-                        width: 20,
-                        height: 20,
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        borderWidth: 2,
-                        borderColor: 'white',
-                      }}>
-                      <FontAwesome name="trophy" size={10} color="white" />
-                    </View>
-                  ) : null} */}
-                  {React.cloneElement(
-                    facilityIconMapping[
-                      Object.keys(facilityTypeMapping).find(
-                        key =>
-                          facilityTypeMapping[key] === marker.facility_type,
-                      )
-                    ] || <Icon name="medical-bag" size={14} color="#fff" />,
-                    {color: '#fff', size: 14},
-                  )}
-                </View>
-              </View>
-            </Marker>
-          );
-        })}
+        showsCompass={false}
+        maxZoomLevel={16}
+        minZoomLevel={10}>
+        {renderMarkers}
       </MapView>
       <Animated.View
         style={[
@@ -534,7 +585,6 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         {selectedMarker && (
           <View style={styles.card}>
             <View style={styles.cardContent}>
-              {/* {selectedMarker.mediaUrls?.[0] && ( */}
               <Image
                 source={
                   selectedMarker.mediaUrls?.[0]
@@ -543,7 +593,6 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                 }
                 style={styles.facilityImage}
               />
-              {/* // )} */}
               <View style={styles.detailsContainer}>
                 {/* NAME & CLOSE ICON */}
                 <View
@@ -572,10 +621,6 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                     </TouchableOpacity>
                   </View>
                 </View>
-
-                {/* <Text style={styles.facilityType}>
-                  {selectedMarker.facility_type}
-                </Text> */}
 
                 <Text
                   onLayout={onTabBarLayout}
@@ -789,17 +834,6 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                     })()}
                   </View>
                 )}
-                {/* DISTANCE & DURATION */}
-                {/* {selectedMarker.distance && (
-                  <View style={{flexDirection: 'row', alignItems: 'center'}}>
-                    <Text style={styles.distance}>
-                      {selectedMarker.distance.toFixed(1)} km away
-                    </Text>
-                    <Text style={styles.distance}>
-                      {selectedMarker.duration}
-                    </Text>
-                  </View>
-                )} */}
               </View>
             </View>
           </View>

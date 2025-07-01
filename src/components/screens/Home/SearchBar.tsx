@@ -46,7 +46,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
           onBlur={onBlur}
           onFocus={onFocus}
           style={styles.input}
-          placeholderTextColor={themeColors.black}
+          placeholderTextColor={'#333333'}
           placeholder={placeholder}
           value={value}
           onChangeText={onChangeText}
@@ -85,8 +85,8 @@ const styles = StyleSheet.create({
     width: '100%',
     padding: 10,
     paddingLeft: 35,
-    color: themeColors.black,
-    fontSize: size.sl,
+    color: '#333333',
+    fontSize: 14,
     fontFamily: fonts.OpenSansRegular,
   },
   searchBtn: {

@@ -18,6 +18,7 @@ import {NavigationStackParams, PhoneNumberSchema} from '../../interfaces';
 import CustomPhoneNumber from '../../components/reusable_component/CustomPhoneInput';
 import {validationPhoneNumber} from '../../validation';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
+import {sendOtp} from '../../services/otpService';
 
 type OtpAuthVerification = {
   OtpVerification: {
@@ -49,39 +50,73 @@ const PhoneNumberVerification = () => {
     const checkValid = phoneInput.current?.isValidNumber(values.phoneNumber);
     if (!checkValid) return setError('Invalid phone number');
 
-    await signInWithPhoneNumber(
-      values.phoneNumber,
-      false,
-      () => {
-        setLoading(true);
-        console.log('🚀 ~ handleSubmit ~ values:', values);
-      },
+    if (values.phoneNumber)
+      await sendOtp(
+        values.phoneNumber,
+        () => {
+          setLoading(true);
+          console.log('🚀 ~ handleSubmit ~ values:', values);
+        },
 
-      (successData: any) => {
-        setError('');
-        setLoading(false);
+        (successData: any) => {
+          setError('');
+          setLoading(false);
 
-        toast.show('OTP sent successfully', {
-          type: 'success',
-          placement: 'top',
-          duration: 4000,
-          animationType: 'slide-in',
-        });
-        navigation.navigate('OtpVerification', {phone: values.phoneNumber});
-      },
+          toast.show('OTP sent successfully', {
+            type: 'success',
+            placement: 'top',
+            duration: 4000,
+            animationType: 'slide-in',
+          });
+          navigation.navigate('OtpVerification', {phone: values.phoneNumber});
+        },
 
-      (error: any) => {
-        setError(error.message);
-        toast.show(error.message, {
-          type: 'danger',
-          placement: 'top',
-          duration: 4000,
-          animationType: 'slide-in',
-        });
-        setLoading(false);
-        console.log('Error sending OTP:', error);
-      },
-    );
+        (error: any) => {
+          setError(error.message);
+          toast.show(error.message, {
+            type: 'danger',
+            placement: 'top',
+            duration: 4000,
+            animationType: 'slide-in',
+          });
+          setLoading(false);
+          console.log('Error sending OTP:', error);
+        },
+      );
+
+    // await signInWithPhoneNumber(
+    //   values.phoneNumber,
+    //   false,
+    //   () => {
+    //     setLoading(true);
+    //     console.log('🚀 ~ handleSubmit ~ values:', values);
+    //   },
+
+    //   (successData: any) => {
+    //     setError('');
+    //     setLoading(false);
+
+    //     toast.show('OTP sent successfully', {
+    //       type: 'success',
+    //       placement: 'top',
+    //       duration: 4000,
+    //       animationType: 'slide-in',
+    //     });
+    //     navigation.navigate('OtpVerification', {phone: values.phoneNumber});
+    //   },
+
+    //   (error: any) => {
+    //     setError(error.message);
+    //     toast.show(error.message, {
+    //       type: 'danger',
+    //       placement: 'top',
+    //       duration: 4000,
+    //       animationType: 'slide-in',
+    //     });
+    //     setLoading(false);
+    //     console.log('Error sending OTP:', error);
+    //   },
+    // );
   };
 
   return (
@@ -138,6 +173,7 @@ const PhoneNumberVerification = () => {
                     ) : (
                       <>
                         <CustomPhoneNumber
+                          placeHolder="Enter phone"
                           value={values.phoneNumber}
                           onchangeState={handleChange('phoneNumber')}
                           setCountryCode={setCountryCode}

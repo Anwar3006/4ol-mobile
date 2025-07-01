@@ -12,7 +12,8 @@ export const getFavoriteFacilities = async (page: number = 1) => {
 
     const {data, error} = await supabase
       .from('user_facility_favorite')
-      .select('id, facility:healthcare_profiles(*)');
+      .select('id, facility:healthcare_profiles(*)')
+      .eq('user_id', userId);
 
     if (error) throw error;
     return data;
@@ -127,18 +128,20 @@ export const editFacilityRating = async (
 export const getFacilityRatingReview = async (facilityId: string) => {
   try {
     if (!facilityId) {
-      throw new Error("Invalid facilityId: facilityId is undefined or null");
+      throw new Error('Invalid facilityId: facilityId is undefined or null');
     }
-    const { data, error } = await supabase
+    const {data, error} = await supabase
       .from('facility_ratings')
-      .select(`
-        rating, 
+      .select(
+        `
+        rating,
         comment,
         created_at,
         user_profiles (id, first_name, last_name, avatar_url)
-      `)
+      `,
+      )
       .eq('facility_id', facilityId)
-      .order('created_at', { ascending: false }) // Latest records first
+      .order('created_at', {ascending: false}) // Latest records first
       .limit(5); // Get only the latest 5 records
 
     if (error) throw error;

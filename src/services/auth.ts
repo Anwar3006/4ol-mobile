@@ -3,6 +3,7 @@ import {supabase} from '../utils/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {decryptPassword, encryptPassword} from '../utils/helpers';
 import {logActivity} from './activityLogsService';
+import {PhoneNumberSchema} from '../interfaces';
 
 export const signInWithPhoneNumber = async (
   phoneNumber: undefined | string,
@@ -73,6 +74,8 @@ export const signup = async (
 ): Promise<void> => {
   loadCallback();
   try {
+    console.log('🚀 ~ user in signup_auth:', user);
+
     const {data: signupData, error: signupError} = await supabase.auth.signUp({
       email: user.email,
       password: user.password,
@@ -84,6 +87,7 @@ export const signup = async (
     }
 
     const userId = signupData.user?.id;
+
     if (userId) {
       const encryptedPassword = encryptPassword(user.password);
       const updatedUser = {
@@ -123,6 +127,24 @@ export const signup = async (
       }
       await AsyncStorage.setItem('user_id', userId);
       await AsyncStorage.setItem('isLoggedIn', JSON.stringify(true));
+
+      const apiUrl = 'http://10.0.2.2:3000/api/update-phone';
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({userId, phone: user.phone_number}),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        errorCallback(result.error || 'Failed to update phone number');
+        return;
+      }
+
       await logActivity(
         {
           user_id: userId,
@@ -135,10 +157,10 @@ export const signup = async (
         () => {
           console.log('Logging sign-up activity...');
         },
-        data => {
+        (data: any) => {
           console.log('Sign-up activity logged successfully:', data);
         },
-        error => {
+        (error: any) => {
           console.error('Error logging sign-up activity:', error);
         },
       );
@@ -165,6 +187,7 @@ export const login = async (
       const {data: userProfileByPhone, error: phoneFetchError} = await supabase
         .from('user_profiles')
         .select('email')
+        .not('is_deleted', 'eq', true)
         .eq('phone_number', `${emailOrPhone}`)
         .single();
       if (!userProfileByPhone?.email) {
@@ -504,3 +527,45 @@ export const changePassword = async (
     errorCallback(err as Error);
   }
 };
+
+/**
+ * Update User's phone number in both user_profiles and auth tables
+ * @param {string} userId - User ID to update
+ * @param {string} phone - New phone number
+ * @returns {Promise<Object>} - Result of the operation
+ */
+export const updatePhoneNumber = async (
+  userId: string,
+  phone: PhoneNumberSchema,
+) => {
+  try {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+
+    if (!phone) {
+      throw new Error('Phone number is required');
+    }
+
+    const response = await fetch('/api/update-phone', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({userId, phone}),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to update phone number');
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error updating phone number:', error);
+    throw error;
+  }
+};
+
+export default updatePhoneNumber;

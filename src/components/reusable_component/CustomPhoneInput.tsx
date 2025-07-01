@@ -76,16 +76,14 @@ const CustomPhoneNumber = ({
           defaultCode={countrycode}
           layout="first"
           placeholder={placeHolder}
+          codeTextStyle={{fontSize: moderateScale(14), fontWeight: '600'}}
           containerStyle={[
             styles.phoneContainer,
-            {backgroundColor: !editable ? 'lightgrey' : themeColors.white},
+            {
+              backgroundColor: !editable ? 'lightgrey' : themeColors.white,
+            },
           ]}
           textContainerStyle={styles.phoneTextContainer}
-          // textInputProps={{
-          //   onFocus: handleInputFocus,
-          //   onBlur: handleInputBlur,
-          // }}
-
           textInputStyle={styles.phoneTextInput}
           onChangeCountry={val => {
             setCountryCode(val?.cca2);
@@ -93,6 +91,7 @@ const CustomPhoneNumber = ({
           textInputProps={{
             placeholderTextColor: themeColors.black,
             editable: editable,
+            style: {fontSize: moderateScale(14), fontWeight: '600'},
           }}
           //   textStyle={{ color: '#000' }}
         />
@@ -135,11 +134,11 @@ const styles = StyleSheet.create({
     color: themeColors.black,
   },
   phoneTextContainer: {
+    alignItems: 'baseline',
     backgroundColor: 'transparent',
   },
   phoneContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     borderRadius: 50,
     width: horizontalScale(330),
     shadowColor: '#000',

@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StatusBar,
   Image,
+  Dimensions,
 } from 'react-native';
 import AppIntroSlider from 'react-native-app-intro-slider';
 import LinearGradient from 'react-native-linear-gradient';
@@ -16,6 +17,7 @@ import {fonts} from '../../../theme/fonts';
 import CustomButton from '../../../components/common/CustomButton';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {NavigationStackParams} from '../../../interfaces';
+import {verticalScale} from '../../../utils/metrics';
 
 type Slide = {
   key: string;
@@ -28,6 +30,7 @@ type Slide = {
 type SplashScreenProps = {
   navigation: any; // Replace `any` with your specific navigation type if available
 };
+const {width, height} = Dimensions.get('window');
 
 const slides: Slide[] = [
   {
@@ -35,7 +38,7 @@ const slides: Slide[] = [
     title: 'Let’s find Hospitals near you',
     description:
       'Easily locate hospitals around your area with just a few taps. Get detailed information about hospital services, ratings, and contact details to help you make an informed decision.',
-    image: require('../../../../assets/images/HospitalBuilding.jpg'),
+    image: require('../../../../assets/images/plsscrn.png'),
     bg: '#95D6FE',
   },
   {
@@ -43,7 +46,7 @@ const slides: Slide[] = [
     title: 'Let’s find Pharmacies near you',
     description:
       'Quickly find pharmacies close to your location. Check for availability of specific medicines, store hours, and get directions for easy access to the medications you need.',
-    image: require('../../../../assets/images/Pharmacy1.png'),
+    image: require('../../../../assets/images/plsscrn2.png'),
     bg: '#70ACD1',
   },
   {
@@ -51,7 +54,7 @@ const slides: Slide[] = [
     title: 'Learn about conditions/ diseases and their symptoms',
     description:
       'Get information about various conditions and their symptoms. Stay informed with comprehensive details on diagnosis, treatment options, and preventive measures to manage your health better.',
-    image: require('../../../../assets/images/Symptoms.png'),
+    image: require('../../../../assets/images/plsscrn3.png'),
     bg: '#5D86C4',
   },
   {
@@ -59,7 +62,7 @@ const slides: Slide[] = [
     title: 'Know your cycle',
     description:
       'Stay Ahead of Your Period and understand the stages of your pregnancy.',
-    image: require('../../../../assets/images/PeriodTracker.jpg'),
+    image: require('../../../../assets/images/plsscrn4.png'),
     bg: '#F6DCCF',
   },
 ];
@@ -91,26 +94,27 @@ const SplashScreen = () => {
 
   const renderSlide = ({item, index}: {item: Slide; index: number}) => (
     <View style={styles.slide}>
-      {currentIndex !== slides.length - 1 && (
+      {/* {currentIndex !== slides.length - 1 && (
         <View style={styles.skipContainer}>
           <TouchableOpacity onPress={onDone}>
             <Text style={styles.skipButton}>Skip</Text>
           </TouchableOpacity>
         </View>
-      )}
+      )} */}
       <View style={styles.imageContainer}>
         <Image
           source={item.image}
           style={[
             styles.image,
             {backgroundColor: item.bg},
-            (index === 2 || index === 0) && {resizeMode: 'cover'},
-            index === 3 && {resizeMode: 'stretch'},
+            // (index === 2 || index === 0) && {resizeMode: 'cover'},
+            // index === 3 && {resizeMode: 'stretch'},
           ]}
+          resizeMode="cover"
         />
       </View>
-      <Text style={styles.title}>{item.title}</Text>
-      <Text style={styles.description}>{item.description}</Text>
+      {/* <Text style={styles.title}>{item.title}</Text>
+      <Text style={styles.description}>{item.description}</Text> */}
     </View>
   );
 
@@ -123,13 +127,14 @@ const SplashScreen = () => {
   };
 
   return (
-    <LinearGradient
-      colors={[themeColors.primaryLight, themeColors.primary]}
-      start={{x: 0, y: 0}}
-      end={{x: 1, y: 0}}
-      style={{flex: 1}}>
+    // <LinearGradient
+    //   colors={[themeColors.primaryLight, themeColors.primary]}
+    //   start={{x: 0, y: 0}}
+    //   end={{x: 1, y: 0}}
+    //   style={{flex: 1}}>
+    <View style={{flex: 1, backgroundColor: '#fff'}}>
       <StatusBar hidden={true} />
-      <View style={{flex: 1, paddingHorizontal: 20}}>
+      <View style={{flex: 1}}>
         <AppIntroSlider
           ref={sliderRef}
           renderItem={renderSlide}
@@ -144,16 +149,21 @@ const SplashScreen = () => {
         />
       </View>
 
-      <View style={styles.getStartedContainer}>
+      <View
+        style={[
+          styles.getStartedContainer,
+          {paddingBottom: verticalScale(25)},
+        ]}>
         <CustomButton text={'Get Started'} onPress={onDone} isTransparent />
       </View>
-    </LinearGradient>
+    </View>
+    /* </LinearGradient> */
   );
 };
 
 const styles = StyleSheet.create({
   slide: {
-    flex: 1,
+    // // flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -177,16 +187,19 @@ const styles = StyleSheet.create({
     fontFamily: fonts.QuincyCFBold,
   },
   imageContainer: {
-    flexDirection: 'row',
+    width: '100%',
+    height: '100%',
+    // flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 20,
+    // marginBottom: 20,
+    alignItems: 'center',
   },
   image: {
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    resizeMode: 'contain',
-    backgroundColor: '#5D86C4',
+    width: '100%',
+    height: '100%',
+    // borderRadius: 110,
+    // resizeMode: 'contain',
+    // backgroundColor: '#5D86C4',
   },
   description: {
     fontSize: size.sl,
@@ -199,7 +212,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'gray',
   },
   activeDot: {
-    backgroundColor: themeColors.white,
+    backgroundColor: themeColors.primary,
   },
   getStartedContainer: {
     alignSelf: 'center',

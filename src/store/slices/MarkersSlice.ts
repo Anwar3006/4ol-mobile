@@ -15,6 +15,7 @@ export const fetchNearbyPlaces = createAsyncThunk(
     API_KEY: any;
     filters: any;
   }) => {
+    console.log('CALLED====>');
     const allMarkers: any = [];
     const fetchPlacesForFilter = async (
       type: string,

@@ -1,5 +1,12 @@
 import React, {useState} from 'react';
-import {View, Text, StyleSheet, ScrollView, StatusBar} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  Image,
+} from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {themeColors} from '../../theme/colors';
 import {size} from '../../theme/fontStyle';
@@ -8,6 +15,11 @@ import {SCREENS} from '../../constants/screens';
 import {fonts} from '../../theme/fonts';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {NavigationStackParams} from '../../interfaces';
+import {
+  horizontalScale,
+  moderateScale,
+  verticalScale,
+} from '../../utils/metrics';
 
 const GetStarted = () => {
   const navigation = useNavigation<NavigationProp<NavigationStackParams>>();
@@ -22,10 +34,18 @@ const GetStarted = () => {
           justifyContent: 'center',
           alignItems: 'center',
         }}>
-        <Text style={styles.title}>4 Our Life</Text>
-        <Text style={styles.subTitle}>
+        {/* <Text style={styles.title}>4 Our Life</Text> */}
+        {/* <Text style={styles.subTitle}>
           Healthcare Simplified, Longevity Amplified
-        </Text>
+        </Text> */}
+        <View style={styles.logoView}>
+          <Image
+            source={require('../../../assets/images/logo.png')}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          {/* <Text style={styles.title}>4 OUR LIFE</Text> */}
+        </View>
         <Text style={styles.text}>Login to your existing 4OL account</Text>
         <CustomButton
           text={'Login'}
@@ -35,7 +55,10 @@ const GetStarted = () => {
         <Text style={styles.text}>New to 4OL?</Text>
         <CustomButton
           text={'Create new account'}
-          onPress={() => navigation.navigate('VerifyPhoneNumber')}
+          onPress={() => {
+            navigation.navigate('VerifyPhoneNumber');
+            navigation?.navigate(SCREENS.SIGNUP, {phone: '+923323583308'});
+          }}
         />
       </ScrollView>
     </View>
@@ -47,16 +70,30 @@ const styles = StyleSheet.create({
     flex: 1,
     display: 'flex',
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    // justifyContent: 'center',
+    // alignItems: 'center',
     padding: 20,
+    paddingVertical: verticalScale(150),
     backgroundColor: themeColors.white,
   },
   title: {
     fontSize: size.xxxlg,
-    color: themeColors.primary,
+    color: themeColors.white,
     textAlign: 'center',
-    fontFamily: fonts.QuincyCFBold,
+    fontFamily: fonts.OpenSansLight,
+  },
+  logoView: {
+    height: verticalScale(200),
+    width: horizontalScale(270),
+    // backgroundColor: themeColors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    // borderRadius: 2,
+    marginBottom: moderateScale(10),
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
   },
   subTitle: {
     fontSize: size.xlg,

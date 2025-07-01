@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   KeyboardAvoidingView,
+  Dimensions,
 } from 'react-native';
 import React, {useEffect, useRef, useState} from 'react';
 import {themeColors} from '../../theme/colors';
@@ -38,6 +39,8 @@ import {logActivity} from '../../services/activityLogsService';
 import {regionNames} from '../../constants/Regions';
 import * as MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import dayjs from 'dayjs';
+import {Dropdown} from 'react-native-element-dropdown';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Profile = () => {
   const navigation = useNavigation();
@@ -348,54 +351,58 @@ const Profile = () => {
               />
 
               <View style={styles.row}>
-                <View style={{width: '49%'}}>
+                <View style={{flex: 1, marginRight: horizontalScale(5)}}>
                   <View
                     style={[
                       styles.pickerContainer,
                       {
+                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        flexDirection: 'row',
+                        alignItems: 'center',
                         backgroundColor: isDisabledField
                           ? themeColors.white
                           : 'lightgrey',
                       },
                     ]}>
-                    <Picker
-                      // aria-disabled={false}
-                      // enabled={false}
-                      // placeholder={userData.sex}
-
-                      enabled={isDisabledField}
-                      selectedValue={
-                        isDisabledField ? values.sex : userData.sex
-                      }
-                      // itemStyle={{fontSize: 10, backgroundColor: 'orange'}}
-                      onValueChange={itemValue => {
-                        if (itemValue !== 'Sex') {
-                          handleChange('sex')(itemValue);
+                    <MaterialCommunityIcons
+                      name="gender-male-female"
+                      size={24}
+                      color={'gray'}
+                      style={{paddingHorizontal: 10}}
+                    />
+                    <Dropdown
+                      data={[
+                        {label: 'Male', value: 'Male'},
+                        {label: 'Female', value: 'Female'},
+                      ]}
+                      disable={!isDisabledField}
+                      labelField="label"
+                      valueField="value"
+                      placeholder={isDisabledField ? 'Select sex' : ''}
+                      value={isDisabledField ? values.sex : userData.sex}
+                      onChange={item => {
+                        if (item.value !== 'Sex') {
+                          handleChange('sex')(item.value);
                         }
                       }}
-                      style={styles.picker}>
-                      <Picker.Item
-                        style={{color: themeColors.black}}
-                        label={isDisabledField ? 'Sex' : userData.sex}
-                        value={isDisabledField ? 'Sex' : userData.sex}
-                      />
-                      <Picker.Item
-                        style={{color: themeColors.black}}
-                        label={isDisabledField ? 'Male' : userData.sex}
-                        value={isDisabledField ? 'Male' : userData.sex}
-                      />
-                      <Picker.Item
-                        style={{color: themeColors.black}}
-                        label={isDisabledField ? 'Female' : userData.sex}
-                        value={isDisabledField ? 'Female' : userData.sex}
-                      />
-                    </Picker>
+                      style={[
+                        styles.dropdown,
+                        {
+                          backgroundColor: isDisabledField
+                            ? themeColors.white
+                            : 'lightgrey',
+                        },
+                      ]}
+                      placeholderStyle={{color: themeColors.black}}
+                      selectedTextStyle={{color: themeColors.black}}
+                      containerStyle={{borderRadius: 20, overflow: 'hidden'}}
+                    />
                   </View>
 
                   {errors.sex && <Text style={styles.error}>{errors.sex}</Text>}
                 </View>
 
-                <View style={{width: '49%'}}>
+                <View style={{flex: 1, marginLeft: horizontalScale(5)}}>
                   <View style={styles.datePickerContainer}>
                     <TouchableOpacity
                       disabled={!isDisabledField}
@@ -451,6 +458,7 @@ const Profile = () => {
                   alignItems: 'center',
                   borderRadius: 50,
                   padding: 3,
+                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                   shadowColor: '#000',
                   shadowOffset: {width: 0, height: 4},
                   shadowOpacity: 0.3,
@@ -471,28 +479,32 @@ const Profile = () => {
                   color={'gray'}
                   style={{paddingHorizontal: 10}}
                 />
-                <Picker
-                  enabled={isDisabledField}
-                  selectedValue={values.region}
-                  onValueChange={itemValue => {
-                    handleChange('region')(itemValue);
+                <Dropdown
+                  data={regionNames.map(item => ({label: item, value: item}))}
+                  disable={!isDisabledField}
+                  labelField="label"
+                  valueField="value"
+                  placeholder={isDisabledField ? 'Select region' : ''}
+                  value={values.region}
+                  onChange={item => {
+                    handleChange('region')(item.value);
                   }}
-                  selectionColor={themeColors.primary}
-                  style={styles.picker}>
-                  {regionNames.map(item => (
-                    <Picker.Item
-                      color="black"
-                      style={{
-                        backgroundColor: !isDisabledField
-                          ? 'lightgray'
-                          : themeColors.white,
-                        color: themeColors.black,
-                      }}
-                      label={item}
-                      value={item}
-                    />
-                  ))}
-                </Picker>
+                  iconStyle={{marginRight: 15}}
+                  style={[
+                    styles.regionDropdown,
+                    {
+                      backgroundColor: !isDisabledField
+                        ? 'lightgray'
+                        : themeColors.white,
+                    },
+                  ]}
+                  placeholderStyle={{color: themeColors.black}}
+                  selectedTextStyle={{color: themeColors.black}}
+                  containerStyle={{
+                    overflow: 'hidden',
+                    borderRadius: 20,
+                  }}
+                />
               </View>
 
               <CustomInput
@@ -646,20 +658,17 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginBottom: verticalScale(20),
     width: horizontalScale(330),
-    marginBottom: 20,
-    // backgroundColor: 'orange',
   },
   pickerContainer: {
-    width: '100%',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
     borderRadius: 50,
-    // backgroundColor: themeColors.white,
-    marginLeft: 2,
+    overflow: 'hidden',
   },
   picker: {
     height: 50,
@@ -668,7 +677,7 @@ const styles = StyleSheet.create({
     // color: 'red',
   },
   datePickerContainer: {
-    width: '100%',
+    // width: '100%',
   },
   datePickerButton: {
     height: 50,
@@ -680,8 +689,7 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
     borderRadius: 50,
-    // backgroundColor: themeColors.white,
-    marginHorizontal: 2,
+    paddingHorizontal: horizontalScale(10),
   },
   datePickerText: {
     fontSize: size.md,
@@ -704,5 +712,18 @@ const styles = StyleSheet.create({
     fontFamily: fonts.OpenSansRegular,
     paddingHorizontal: 15,
     fontSize: 18,
+  },
+  // Add to the existing styles
+  dropdown: {
+    height: 50,
+    width: '100%',
+    paddingHorizontal: 15,
+    borderRadius: 50,
+  },
+  regionDropdown: {
+    flex: 1,
+    height: 45,
+    paddingLeft: 5,
+    borderRadius: 50,
   },
 });

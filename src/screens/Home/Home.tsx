@@ -24,7 +24,7 @@ import {FiltersProps, NavigationStackParams} from '../../interfaces';
 import useLocation from '../../hooks/useLocation';
 import {RootState} from '../../store';
 import {fetchNearbyPlaces} from '../../store/slices/MarkersSlice';
-import {API_KEY} from '../../../config/variables';
+import {THIS_IS_MAP_KEY} from '../../../config/variables';
 import {searchAllTables} from '../../services/searchAllTables';
 import {
   setSearchData,
@@ -81,7 +81,7 @@ const HomeScreen = () => {
           latitude: location.latitude,
           longitude: location.longitude,
           selectedDistance,
-          API_KEY,
+          API_KEY: THIS_IS_MAP_KEY,
           filters,
         }),
       );

@@ -95,7 +95,11 @@ const AppNavigation = props => {
       <Stack.Screen name={'Categories'} component={Categories} />
       <Stack.Screen name={'Diseases'} component={Diseases} />
       <Stack.Screen name={'DiseasesList'} component={DiseasesList} />
-      <Stack.Screen name={'DiseasesDetails'} component={DiseaseDetails} />
+      <Stack.Screen
+        name={'DiseasesDetails'}
+        component={DiseaseDetails}
+        options={{headerTitle: 'Diseases'}}
+      />
       <Stack.Screen name={'Notifications'} component={Notifications} />
       <Stack.Screen
         options={{
@@ -107,7 +111,11 @@ const AppNavigation = props => {
 
       <Stack.Screen name={'Symptoms'} component={Symptoms} />
       <Stack.Screen name={'SymptomsList'} component={SymptomsList} />
-      <Stack.Screen name={'SymptomsDetails'} component={SymptomDetails} />
+      <Stack.Screen
+        name={'SymptomsDetails'}
+        component={SymptomDetails}
+        options={{headerTitle: 'Symptoms'}}
+      />
       <Stack.Screen name={'SearchResult'} component={SearchResults} />
       <Stack.Screen
         name={'SearchScreen'}

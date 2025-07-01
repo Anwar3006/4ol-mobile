@@ -39,21 +39,21 @@ const PillsReminderScreen = ({navigation, route}) => {
   return (
     <Tab.Navigator
       // Default to Details tab when coming from notification
-      initialRouteName={initialTab === 'Details' ? 'Details' : 'Calendar'}
+      initialRouteName={initialTab === 'Details' ? 'Calendar' : 'Details'}
       screenOptions={{
         tabBarActiveTintColor: themeColors.primary,
         tabBarLabelStyle: {fontWeight: 'bold', fontSize: 15},
         tabBarIndicatorStyle: {backgroundColor: themeColors.primary, height: 5},
       }}>
       <Tab.Screen
-        name="Calendar"
-        component={PillReminderCalendarScreen}
-        options={{tabBarLabel: 'Calendar'}}
-      />
-      <Tab.Screen
         name="Details"
         component={PillReminderDetails}
         options={{tabBarLabel: 'Meds Reminders'}}
+      />
+      <Tab.Screen
+        name="Calendar"
+        component={PillReminderCalendarScreen}
+        options={{tabBarLabel: 'Calendar'}}
       />
     </Tab.Navigator>
   );

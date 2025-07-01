@@ -28,7 +28,7 @@ import {useToast} from 'react-native-toast-notifications';
 import {AirbnbRating} from 'react-native-ratings';
 import {SCREENS} from '../constants/screens';
 import useLocation from '../hooks/useLocation';
-import {API_KEY} from '../../config/variables';
+import {THIS_IS_MAP_KEY} from '../../config/variables';
 import LocationLayout from '../components/common/LocationLayout';
 import {checkFavoriteStatus, toggleFacilityFavorite} from '../services/profile';
 import {useSelector} from 'react-redux';

@@ -24,7 +24,7 @@ import {user, userData} from '../store/selectors';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {BottomTabSchema, StackParams} from '../interfaces';
 import RegisteredFacilites from '../screens/Locator/RegisteredFacilites';
-import {verticalScale} from '../utils/metrics';
+import {moderateScale, verticalScale} from '../utils/metrics';
 
 const Tab = createBottomTabNavigator<any>();
 
@@ -229,18 +229,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: themeColors.primary,
     borderRadius: 25,
+    height: moderateScale(40),
+    width: moderateScale(40),
     padding: 8,
   },
   headerSide: {
     marginBottom: verticalScale(15),
-
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 10,
   },
   headerTitleContainer: {
     marginBottom: verticalScale(15),
-
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',

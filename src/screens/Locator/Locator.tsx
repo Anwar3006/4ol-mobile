@@ -18,7 +18,7 @@ import {themeColors} from '../../theme/colors';
 import {size} from '../../theme/fontStyle';
 import {fonts} from '../../theme/fonts';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {API_KEY} from '../../../config/variables';
+import {THIS_IS_MAP_KEY} from '../../../config/variables';
 import useLocation from '../../hooks/useLocation';
 import LocationLayout from '../../components/common/LocationLayout';
 import MapView, {Marker} from 'react-native-maps';
@@ -97,7 +97,7 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
     }
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&key=${API_KEY}`,
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&key=${THIS_IS_MAP_KEY}`,
       );
       const data = await response.json();
       if (response.ok) {
@@ -113,7 +113,7 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
   const fetchLocationName = async (latitude: any, longitude: any) => {
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${API_KEY}`,
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${THIS_IS_MAP_KEY}`,
       );
       const data = await response.json();
 
@@ -142,7 +142,7 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
           latitude: location.latitude,
           longitude: location.longitude,
           selectedDistance,
-          API_KEY,
+          API_KEY: THIS_IS_MAP_KEY,
           filters,
         }),
       );
@@ -158,7 +158,7 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
           latitude: location.latitude,
           longitude: location.longitude,
           selectedDistance,
-          API_KEY,
+          API_KEY: THIS_IS_MAP_KEY,
           filters,
         }),
       ).then(() => {
@@ -246,7 +246,7 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
   const fetchPlaceDetails = async (placeId: any) => {
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${API_KEY}`,
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${THIS_IS_MAP_KEY}`,
       );
       const data = await response.json();
       if (response.ok) {
@@ -314,12 +314,12 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
 
   const fetchImage = async (placeId: string) => {
     try {
-      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${API_KEY}`;
+      const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${THIS_IS_MAP_KEY}`;
       const response = await fetch(url);
       const data = await response.json();
       if (data?.result?.photos && data?.result?.photos?.length > 0) {
         const reference = data?.result?.photos[0]?.photo_reference;
-        return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${reference}&key=${API_KEY}`;
+        return `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${reference}&key=${THIS_IS_MAP_KEY}`;
       } else {
         console.log('error fetching image');
         return null;
@@ -362,7 +362,7 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
     try {
       let distance = '';
       let duration = '';
-      const distanceMatrixUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origin}&destinations=${destination}&key=${API_KEY}`;
+      const distanceMatrixUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origin}&destinations=${destination}&key=${THIS_IS_MAP_KEY}`;
       const response = await fetch(distanceMatrixUrl);
       const data = await response.json();
 
@@ -402,7 +402,11 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
             customMapStyle={[
               {
                 featureType: 'poi',
-                stylers: [{visibility: isEnabled ? 'on' : 'off'}],
+                stylers: [{visibility: 'off'}], // Always hide POIs
+              },
+              {
+                featureType: 'poi.business',
+                stylers: [{visibility: 'off'}], // Explicitly hide business POIs
               },
             ]}
             ref={mapRef}
@@ -417,7 +421,7 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
             }}
             zoomEnabled={true}
             scrollEnabled={true}
-            // showsUserLocation={true}
+            showsUserLocation={true}
             zoomControlEnabled={true}
             showsCompass={false}>
             {/* <Marker coordinate={location} title={'Your Location'} /> */}
@@ -556,54 +560,7 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
             </View>
           </View>
         </View>
-        {/* <View style={styles.categoryContainer}>
-          {[
-            'Display All',
-            'Hospital',
-            'Herbal',
-            'Labs',
-            'Ambulance',
-            'Pharmacy',
-            'Wholesale',
-          ].map((filter, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.categoryButton,
-                {
-                  backgroundColor:
-                    selectedFilter != filter
-                      ? 'rgba(255, 165, 0, 0.7)'
-                      : 'rgba(71, 190, 125, 0.6)',
-                },
-              ]}
-              onPress={() => onFilterPress(filter)}>
-              <Text
-                style={{
-                  fontFamily: fonts.OpenSansBold,
-                  color: themeColors.white,
-                  fontSize: size.s,
-                }}>
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
-          <View>
-            <TouchableOpacity
-              style={styles.filterContainer}
-              onPress={() => {
-                setModalVisible(true);
-              }}>
-              <Icon
-                name={'filter'}
-                size={12}
-                color={themeColors.darkPink}
-                style={styles.icon}
-              />
-              <Text style={styles.filter}>Filter</Text>
-            </TouchableOpacity>
-          </View>
-        </View> */}
+
         <TouchableOpacity
           style={styles.compassButton}
           onPress={handleCurrentLocationPress}>

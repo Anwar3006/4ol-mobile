@@ -26,6 +26,7 @@ import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {NavigationStackParams} from '../../interfaces';
 import {logActivity} from '../../services/activityLogsService';
 import {user} from '../../store/selectors';
+import {supabase} from '../../utils/supabaseClient';
 
 const SettingsScreen = () => {
   const userData: any = useSelector(user);
@@ -220,21 +221,52 @@ const SettingsScreen = () => {
     Linking.openURL('mailto:support@example.com?subject=App Support'); // replace with your support email
   };
 
-  const handleDeleteData = () => {
+  const handleDeleteData = async () => {
     Alert.alert(
-      'Delete Data',
-      'Are you sure you want to delete all your data?',
+      'Delete Account',
+      'Are you sure you want to delete your account? This action cannot be undone.',
       [
         {text: 'Cancel', style: 'cancel'},
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            toast.show('Your data has been deleted', {
-              type: 'success',
-              placement: 'top',
-              duration: 4000,
-            });
+          onPress: async () => {
+            try {
+              // 2. Sign out from Supabase
+              await supabase.auth.signOut();
+
+              // 3. Clear local storage/state
+              dispatch(setUserData({}));
+              await AsyncStorage.clear();
+
+              // 4. Show success toast
+              toast.show('Signed out successfully', {
+                type: 'success',
+                placement: 'top',
+                duration: 3000,
+                animationType: 'slide-in',
+              });
+
+              // 5. Navigate to login screen
+              navigation.reset({
+                index: 0,
+                routes: [{name: 'GetStarted'}],
+              });
+
+              // 6. Open deletion URL after a short delay to ensure navigation completes
+              setTimeout(() => {
+                Linking.openURL(
+                  'https://healthcare-admin-lilac.vercel.app/delete-account',
+                );
+              }, 500);
+            } catch (error) {
+              console.error('Error during account deletion process:', error);
+              toast.show('An error occurred. Please try again.', {
+                type: 'danger',
+                placement: 'top',
+                duration: 4000,
+              });
+            }
           },
         },
       ],

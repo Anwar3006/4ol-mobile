@@ -10,7 +10,7 @@ import {
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import MapView, {Marker} from 'react-native-maps';
 import MapViewDirections from 'react-native-maps-directions';
-import {API_KEY} from '../../config/variables';
+import {THIS_IS_MAP_KEY} from '../../config/variables';
 import useLocation from '../hooks/useLocation';
 import Icon from 'react-native-vector-icons/FontAwesome5'; // Or any other icon library you prefer
 import {size} from '../theme/fontStyle';
@@ -77,7 +77,7 @@ const DirectionScreen: React.FC<DirectionScreenProps> = ({
           <MapViewDirections
             origin={currentLocation}
             destination={destination}
-            apikey={API_KEY}
+            apikey={THIS_IS_MAP_KEY}
             strokeWidth={5}
             strokeColor="blue"
             mode={mode}

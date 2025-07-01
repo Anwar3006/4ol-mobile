@@ -6,6 +6,12 @@ import {
   StatusBar,
   TextInput,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  SafeAreaView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
@@ -17,13 +23,13 @@ import {SCREENS} from '../../../constants/screens';
 import {
   sendOtpToEmail,
   signInWithPhoneNumber,
-  verifyOtp,
   verifyOtpSentToEmail,
 } from '../../../services/auth';
 import {useToast} from 'react-native-toast-notifications';
+import {verifyOtp} from '../../../services/otpService';
 
 type OTPVerificationScreenProps = {
-  navigation?: NativeStackNavigationProp<any>; // Replace `any` with your specific stack params type if available
+  navigation?: NativeStackNavigationProp<any>;
   route?: {
     params: {
       phone?: string;
@@ -112,13 +118,17 @@ const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
     }
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     setError('');
     if (otp.join('').length < otpLength) {
       return;
     }
+
+    // Dismiss keyboard when verifying
+    Keyboard.dismiss();
+
     if (phone?.trim()) {
-      verifyOtp(
+      await verifyOtp(
         phone?.trim(),
         otp.join(''),
         () => {
@@ -145,9 +155,46 @@ const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
           setLoading(false);
           console.log('Error verifying OTP:', error);
           setError(error.message);
+          toast.show(error.message, {
+            type: 'danger',
+            placement: 'top',
+            duration: 4000,
+            animationType: 'slide-in',
+          });
         },
       );
+
+      // verifyOtp(
+      //   phone?.trim(),
+      //   otp.join(''),
+      //   () => {
+      //     setLoading(true);
+      //   },
+      //   (successData: any) => {
+      //     setError('');
+      //     setLoading(false);
+      //     setOtp(Array(otpLength).fill(''));
+      //     toast.show('OTP verified successfully', {
+      //       type: 'success',
+      //       placement: 'top',
+      //       duration: 4000,
+      //       animationType: 'slide-in',
+      //     });
+      //     if (forgot) {
+      //       return navigation?.navigate(SCREENS.RESETPASSWORD, {
+      //         phoneOrEmail: phone?.trim(),
+      //       });
+      //     }
+      //     return navigation?.navigate(SCREENS.SIGNUP, {phone: phone?.trim()});
+      //   },
+      //   (error: any) => {
+      //     setLoading(false);
+      //     console.log('Error verifying OTP:', error);
+      //     setError(error.message);
+      //   },
+      // );
     }
+
     if (email?.trim()) {
       verifyOtpSentToEmail(
         email?.trim(),
@@ -180,53 +227,80 @@ const OTPVerificationScreen: React.FC<OTPVerificationScreenProps> = ({
             animationType: 'slide-in',
           });
           console.log('Error verifying OTP:', error);
-          // setError(error.message);
         },
       );
     }
   };
 
   return (
-    <View style={styles.container}>
-      {/* <StatusBar hidden /> */}
-      <Icon
-        name="email-receive-outline"
-        size={70}
-        color={themeColors.primary}
-        style={styles.icon}
-      />
-      <Text style={styles.title}>OTP Verification</Text>
-      <Text style={styles.description}>Enter OTP sent to {phone || email}</Text>
-      <View style={styles.otpContainer}>
-        {otp.map((digit, index) => (
-          <TextInput
-            key={index}
-            value={digit}
-            onChangeText={text => handleChangeText(text, index)}
-            style={styles.otpInput}
-            keyboardType="numeric"
-            maxLength={1}
-            ref={ref => (inputRefs.current[index] = ref as TextInput)}
-          />
-        ))}
-      </View>
-      <View style={{marginBottom: 40}}>
-        <TouchableOpacity
-          onPress={handleResendOTP}
-          style={styles.resendContainer}>
-          <Text style={styles.resendText}>
-            Don’t receive the OTP?{' '}
-            <Text style={styles.resendButton}>Resend OTP</Text>
-          </Text>
-        </TouchableOpacity>
-        {error && <Text style={styles.error}>{error}</Text>}
-      </View>
-      <CustomButton text={'Verify'} onPress={handleVerify} loading={loading} />
-    </View>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardAvoidingView}>
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled">
+            <View style={styles.container}>
+              <Icon
+                name="email-receive-outline"
+                size={70}
+                color={themeColors.primary}
+                style={styles.icon}
+              />
+              <Text style={styles.title}>OTP Verification</Text>
+              <Text style={styles.description}>
+                Enter OTP sent to {phone || email}
+              </Text>
+              <View style={styles.otpContainer}>
+                {otp.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    value={digit}
+                    onChangeText={text => handleChangeText(text, index)}
+                    style={styles.otpInput}
+                    keyboardType="numeric"
+                    maxLength={1}
+                    ref={ref => (inputRefs.current[index] = ref as TextInput)}
+                  />
+                ))}
+              </View>
+              <View style={styles.resendSection}>
+                <TouchableOpacity
+                  onPress={handleResendOTP}
+                  style={styles.resendContainer}>
+                  <Text style={styles.resendText}>
+                    Don't receive the OTP?{' '}
+                    <Text style={styles.resendButton}>Resend OTP</Text>
+                  </Text>
+                </TouchableOpacity>
+                {error && <Text style={styles.error}>{error}</Text>}
+              </View>
+              <CustomButton
+                text={'Verify'}
+                onPress={handleVerify}
+                loading={loading}
+              />
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: 'white',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: 'white',
@@ -263,8 +337,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: 5,
     color: themeColors.black,
+    width: 40, // Set fixed width for better appearance
   },
-  resendContainer: {},
+  resendSection: {
+    marginBottom: 40,
+    width: '100%',
+    alignItems: 'center',
+  },
+  resendContainer: {
+    padding: 10, // Increase touch target size
+  },
   resendText: {
     fontSize: size.md,
     color: themeColors.black,
@@ -273,18 +355,6 @@ const styles = StyleSheet.create({
   resendButton: {
     color: themeColors.primary,
     fontWeight: 'bold',
-  },
-  verifyButton: {
-    width: '100%',
-    backgroundColor: themeColors.primary,
-    paddingVertical: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  verifyButtonText: {
-    color: 'white',
-    fontSize: size.md,
-    fontFamily: fonts.QuincyCFBold,
   },
   error: {
     fontSize: size.s,

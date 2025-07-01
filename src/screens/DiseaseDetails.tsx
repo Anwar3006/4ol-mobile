@@ -1,4 +1,4 @@
-import {ActivityIndicator, StyleSheet, Text, View} from 'react-native';
+import {ActivityIndicator, Image, StyleSheet, Text, View} from 'react-native';
 import React, {useEffect, useState} from 'react';
 import {themeColors} from '../theme/colors';
 import {ScrollView} from 'react-native-gesture-handler';
@@ -32,6 +32,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
         () => setLoading(true),
         (successData: any) => {
           setDiseaseDetails(successData);
+          console.log('Disease details fetched successfully:', successData);
           setLoading(false);
           logActivity(
             {
@@ -84,6 +85,17 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
           <ScrollView
             showsHorizontalScrollIndicator={false}
             showsVerticalScrollIndicator={false}>
+            <View style={styles.imageContainer}>
+              {diseaseDetails?.image_url ? (
+                <Image
+                  source={{uri: diseaseDetails?.image_url}}
+                  style={styles.image}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View style={styles.placeholder} />
+              )}
+            </View>
             <Text style={styles.diseaseName}>
               {diseaseDetails?.condition_name}
             </Text>
@@ -92,14 +104,16 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
                 <Text style={styles.title}>
                   About {diseaseDetails?.condition_name}
                 </Text>
+                <View style={styles.separator} />
                 <Text style={styles.description}>{diseaseDetails?.about}</Text>
               </View>
             )}
             {diseaseDetails?.types?.length > 0 ? (
               <View>
-                <Text style={[styles.title, {marginBottom: 0}]}>
+                <Text style={[styles.title]}>
                   Types of {diseaseDetails?.condition_name}
                 </Text>
+                <View style={styles.separator} />
                 {diseaseDetails?.types?.map((d: any, i: any) => {
                   return (
                     <View key={i.toString()}>
@@ -117,6 +131,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
                 <Text style={[styles.title, {marginBottom: 0}]}>
                   Causes of {diseaseDetails?.condition_name}
                 </Text>
+                <View style={styles.separator} />
                 {diseaseDetails?.causes?.map((d: any, i: any) => {
                   return (
                     <View key={i.toString()}>
@@ -136,6 +151,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
                 <Text style={styles.title}>
                   Diagnosing {diseaseDetails?.condition_name}
                 </Text>
+                <View style={styles.separator} />
                 <Text style={styles.description}>
                   {diseaseDetails?.diagnosis}
                 </Text>
@@ -146,6 +162,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
                 <Text style={styles.title}>
                   Treating {diseaseDetails?.condition_name}
                 </Text>
+                <View style={styles.separator} />
                 <Text style={styles.description}>
                   {diseaseDetails?.treating}
                 </Text>
@@ -156,6 +173,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
                 <Text style={styles.title}>
                   Complications of {diseaseDetails?.condition_name}
                 </Text>
+                <View style={styles.separator} />
                 <Text style={styles.description}>
                   {diseaseDetails?.complications}
                 </Text>
@@ -166,6 +184,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
                 <Text style={styles.title}>
                   Symptoms of {diseaseDetails?.condition_name}
                 </Text>
+                <View style={styles.separator} />
                 <Text style={styles.description}>
                   {diseaseDetails?.symptoms}
                 </Text>
@@ -176,6 +195,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
                 <Text style={styles.title}>
                   Preventing {diseaseDetails?.condition_name}
                 </Text>
+                <View style={styles.separator} />
                 <Text style={styles.description}>
                   {diseaseDetails?.prevention}
                 </Text>
@@ -184,6 +204,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
             {diseaseDetails?.specialist_to_contact && (
               <View>
                 <Text style={styles.title}>Specialist to contact</Text>
+                <View style={styles.separator} />
                 <Text style={styles.description}>
                   {diseaseDetails?.specialist_to_contact}
                 </Text>
@@ -192,6 +213,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
             {diseaseDetails?.contact_your_doctor && (
               <View>
                 <Text style={styles.title}>Contact your doctor</Text>
+                <View style={styles.separator} />
                 <Text style={styles.description}>
                   {diseaseDetails?.contact_your_doctor}
                 </Text>
@@ -200,6 +222,7 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
             {diseaseDetails?.more_information && (
               <View>
                 <Text style={styles.title}>More information</Text>
+                <View style={styles.separator} />
                 <Text style={styles.description}>
                   {diseaseDetails?.more_information}
                 </Text>
@@ -261,16 +284,43 @@ const styles = StyleSheet.create({
     color: themeColors.darkGray,
     fontSize: size.xlg,
     marginBottom: 10,
+    alignSelf: 'center',
+    marginTop: 5,
   },
   title: {
     fontFamily: fonts.OpenSansBold,
     color: themeColors.darkGray,
     fontSize: size.lg,
-    marginVertical: 20,
+    marginTop: 20,
   },
   description: {
     fontFamily: fonts.OpenSansRegular,
     color: themeColors.darkGray,
     fontSize: size.md,
+  },
+  imageContainer: {
+    width: '100%',
+    height: 200, // Adjust height as needed
+    backgroundColor: '#f0f0f0', // Fallback background color
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 8, // Optional: rounded corners
+    overflow: 'hidden', // Ensures image respects border radius
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#e0e0e0', // Placeholder color
+  },
+  separator: {
+    height: 2,
+    width: '100%',
+    backgroundColor: '#ccc', // Grey line color
+    marginVertical: 8,
+    fontWeight: 'bold',
   },
 });

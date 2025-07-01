@@ -7,7 +7,7 @@ import {categories} from '../../../constants/home';
 import {fonts} from '../../../theme/fonts';
 import {SCREENS} from '../../../constants/screens';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {horizontalScale} from '../../../utils/metrics';
+import {horizontalScale, verticalScale} from '../../../utils/metrics';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 
 const Category = () => {
@@ -34,7 +34,10 @@ const Category = () => {
             console.log('item-----', item),
             (
               <TouchableOpacity
-                style={{width: horizontalScale(77)}}
+                style={{
+                  width: horizontalScale(77),
+                  // height: verticalScale(5),
+                }}
                 key={item.id}
                 onPress={() => {
                   navigation.navigate(item?.screen, {category: item?.title});
@@ -89,13 +92,14 @@ const styles = StyleSheet.create({
     padding: 5,
     borderRadius: 10,
     width: '100%',
-    height: 95,
+    height: verticalScale(95),
   },
   title: {
     marginTop: 5,
     color: themeColors.black,
-    fontSize: size.s,
+    fontSize: size.md,
     fontFamily: fonts.OpenSansMedium,
+    fontWeight: '600',
     textAlign: 'center',
     // height:30
   },
