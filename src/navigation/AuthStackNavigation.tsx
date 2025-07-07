@@ -1,16 +1,6 @@
-import {
-  ActivityIndicator,
-  Animated,
-  Image,
-  SafeAreaView,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {ActivityIndicator, Animated, View} from 'react-native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {SCREENS} from '../constants/screens';
 import SplashScreen from '../screens/authStack/splashScreeen/Splash';
-import {NavigationStackParams} from '../interfaces/index';
 import GetStarted from '../screens/authStack/GetStarted';
 import PhoneNumberVerification from '../screens/authStack/PhoneNumberVerification';
 import OTPVerificationScreen from '../screens/authStack/forgetScreens/OTPVerification';
@@ -18,16 +8,9 @@ import ResetPasswordScreen from '../screens/authStack/forgetScreens/ResetPasswor
 import SignupScreen from '../screens/authStack/Signup';
 import LoginScreen from '../screens/authStack/Login';
 import ForgotPasswordScreen from '../screens/authStack/forgetScreens/ForgotPassword';
-import {NavigationContainer, useNavigation} from '@react-navigation/native';
-import {useSelector} from 'react-redux';
-import {user} from '../store/selectors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useEffect, useRef, useState} from 'react';
 import {themeColors} from '../theme/colors';
-import {Alert} from 'react-native';
-import {moderateScale} from '../utils/metrics';
-import {Icon} from 'react-native-vector-icons/Icon';
-import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 
 const AuthStackNavigation = () => {
   const Stack = createNativeStackNavigator();
@@ -89,8 +72,6 @@ const AuthStackNavigation = () => {
   // const userData = useSelector(user);
   const initialRoute = !isLoggedIn ? 'Splash' : 'Login';
 
-  const navigation = useNavigation<any>();
-
   return (
     <Stack.Navigator
       initialRouteName={initialRoute}
@@ -125,14 +106,8 @@ const AuthStackNavigation = () => {
         options={{
           headerTitle: '',
           headerTransparent: true,
-          headerLeft: () => (
-            <TouchableOpacity
-              style={{flexDirection: 'row', alignItems: 'center', gap: 10}}
-              onPress={() => navigation.navigate(SCREENS.GETSTARTED)}>
-              <FontAwesome5 name="chevron-left" size={18} color="gray" />
-              <Text style={{color: 'gray', fontSize: 18}}>Back</Text>
-            </TouchableOpacity>
-          ),
+          headerShown: true,
+          // headerLeft: () => <BackButton />,
           // headerTitle: () => (
           //   <Animated.View
           //     style={{

@@ -35,7 +35,10 @@ const Category = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{alignItems: 'center'}}>
         <View style={styles.itemsContainer}>
           {categories.slice(0, 4).map(
             (item: CategoryItem) => (
@@ -88,7 +91,7 @@ const styles = StyleSheet.create({
   },
   itemsContainer: {
     marginVertical: 10,
-    gap: 7,
+    gap: horizontalScale(11),
     marginBottom: 0,
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -101,7 +104,8 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     padding: 5,
     borderRadius: 10,
-    width: '100%',
+    // width: '100%',
+    aspectRatio: 1,
     height: verticalScale(95),
   },
   title: {
