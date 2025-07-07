@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   View,
   TextInputProps,
-  Platform,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import {themeColors} from '../../theme/colors';
@@ -55,9 +54,6 @@ const CustomInput: React.FC<CustomInputProps> = ({
     setIsFocused(false);
   };
 
-  const androidTextAlign = Platform.OS === 'android' ? 'center' : 'center';
-  const androidPaddingLeft = Platform.OS === 'android' ? 0 : 0;
-
   return (
     <>
       <View style={styles.container}>
@@ -71,10 +67,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
           ]}>
           <Icon name={icon} size={20} color={'gray'} style={styles.startIcon} />
           <TextInput
-            style={[
-              styles.input,
-              {textAlign: androidTextAlign, paddingLeft: androidPaddingLeft},
-            ]}
+            style={styles.input}
             value={value}
             placeholder={placeholder}
             onChangeText={onChangeText}
@@ -85,7 +78,6 @@ const CustomInput: React.FC<CustomInputProps> = ({
             onFocus={handleInputFocus}
             editable={editable}
             autoCapitalize={autoCapitalize}
-            textContentType={secureTextEntry ? 'password' : 'none'}
           />
 
           {secureTextEntry && (

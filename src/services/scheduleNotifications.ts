@@ -117,6 +117,22 @@ export const scheduleNotification = async (
           : 'Time for your medication',
         data,
         android: {
+          sound: 'default',
+          // smallIcon: 'logo.png',
+          actions: [
+            {
+              title: 'Complete',
+              pressAction: {id: 'complete'},
+            },
+            {
+              title: 'Skip',
+              pressAction: {id: 'skip'},
+            },
+            {
+              title: 'Snooze (5m)',
+              pressAction: {id: 'snooze'},
+            },
+          ],
           channelId,
           color: color || '#9c27b0',
           importance: AndroidImportance.HIGH,
@@ -139,6 +155,7 @@ export const scheduleNotification = async (
         },
         ios: {
           sound: 'default',
+          categoryId: 'user_actions',
           attachments: imageUrl
             ? [
                 {

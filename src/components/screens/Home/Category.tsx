@@ -1,5 +1,12 @@
 import React from 'react';
-import {Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
+import {
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import {themeColors} from '../../../theme/colors';
 import {size} from '../../../theme/fontStyle';
 import {CategoryItem, NavigationStackParams} from '../../../interfaces';
@@ -28,29 +35,31 @@ const Category = () => {
         </TouchableOpacity>
       </View>
 
-      <View style={styles.itemsContainer}>
-        {categories.slice(0, 4).map(
-          (item: CategoryItem) => (
-            console.log('item-----', item),
-            (
-              <TouchableOpacity
-                style={{
-                  width: horizontalScale(77),
-                  // height: verticalScale(5),
-                }}
-                key={item.id}
-                onPress={() => {
-                  navigation.navigate(item?.screen, {category: item?.title});
-                }}>
-                <View style={styles.item}>
-                  {item?.icon}
-                  <Text style={styles.title}>{item.title}</Text>
-                </View>
-              </TouchableOpacity>
-            )
-          ),
-        )}
-      </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <View style={styles.itemsContainer}>
+          {categories.slice(0, 4).map(
+            (item: CategoryItem) => (
+              console.log('item-----', item),
+              (
+                <TouchableOpacity
+                  style={{
+                    width: horizontalScale(85),
+                    // height: verticalScale(5),
+                  }}
+                  key={item.id}
+                  onPress={() => {
+                    navigation.navigate(item?.screen, {category: item?.title});
+                  }}>
+                  <View style={styles.item}>
+                    {item?.icon}
+                    <Text style={styles.title}>{item.title}</Text>
+                  </View>
+                </TouchableOpacity>
+              )
+            ),
+          )}
+        </View>
+      </ScrollView>
     </View>
   );
 };
@@ -79,6 +88,7 @@ const styles = StyleSheet.create({
   },
   itemsContainer: {
     marginVertical: 10,
+    gap: 7,
     marginBottom: 0,
     flexDirection: 'row',
     flexWrap: 'wrap',

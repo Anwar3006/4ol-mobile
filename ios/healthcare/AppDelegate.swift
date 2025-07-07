@@ -4,6 +4,7 @@ import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import Firebase
 import GoogleMaps
+// import notifee
 
 @main
 class AppDelegate: RCTAppDelegate {
@@ -12,6 +13,7 @@ class AppDelegate: RCTAppDelegate {
 
     self.moduleName = "healthcare"
     self.dependencyProvider = RCTAppDependencyProvider()
+    //  Notifee.onBackgroundEvent()
     FirebaseApp.configure()
 
     // You can add your custom initial props in the dictionary below.

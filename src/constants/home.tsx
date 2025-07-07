@@ -7,11 +7,18 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import FontistoIcon from 'react-native-vector-icons/Fontisto';
 import {themeColors} from '../theme/colors';
 import {SCREENS} from './screens';
+import {horizontalScale, verticalScale} from '../utils/metrics';
 
 export const categories: CategoryItem[] = [
   {
     id: '1',
-    icon: <Icon name="hospital" size={30} color={themeColors.lightPink} />,
+    icon: (
+      <Icon
+        name="hospital"
+        size={verticalScale(30)}
+        color={themeColors.lightPink}
+      />
+    ),
     title: 'Hospital/ Clinic',
     screen: 'TopRated',
   },
@@ -20,7 +27,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <Image
         source={require('../../assets/images/pharmacyIcon.png')}
-        style={{width: 30, height: 30}}
+        style={{width: horizontalScale(28), height: verticalScale(30)}}
       />
     ),
     title: 'Pharmacy',
@@ -31,7 +38,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <Image
         source={require('../../assets/images/diseaseIcon.png')}
-        style={{width: 30, height: 30}}
+        style={{width: horizontalScale(30), height: verticalScale(32)}}
       />
     ),
     title: 'Diseases',
@@ -42,7 +49,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <Image
         source={require('../../assets/images/bloodIcon.png')}
-        style={{width: 22, height: 30}}
+        style={{width: horizontalScale(22), height: horizontalScale(30)}}
       />
     ),
     title: 'Plasence',
@@ -50,7 +57,13 @@ export const categories: CategoryItem[] = [
   },
   {
     id: '5',
-    icon: <Icon name="flask" size={30} color={themeColors.lightPink} />,
+    icon: (
+      <Icon
+        name="flask"
+        size={verticalScale(30)}
+        color={themeColors.lightPink}
+      />
+    ),
     title: 'Diagnostic Lab',
     screen: 'TopRated',
   },
@@ -59,7 +72,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <MaterialIcon
         name="warning-amber"
-        size={30}
+        size={verticalScale(30)}
         color={themeColors.lightPink}
       />
     ),
@@ -71,7 +84,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <IoniIcon
         name="fitness-outline"
-        size={30}
+        size={verticalScale(30)}
         color={themeColors.lightPink}
       />
     ),
@@ -83,7 +96,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <Image
         source={require('../../assets/images/herbalIcon.png')}
-        style={{width: 30, height: 30}}
+        style={{width: horizontalScale(30), height: verticalScale(30)}}
       />
     ),
     title: 'Herbal Hospital',
@@ -94,7 +107,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <MaterialCommunityIcon
         name="ambulance"
-        size={30}
+        size={verticalScale(30)}
         color={themeColors.lightPink}
       />
     ),
@@ -106,7 +119,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <MaterialCommunityIcon
         name="shield-home-outline"
-        size={30}
+        size={verticalScale(30)}
         color={themeColors.lightPink}
       />
     ),

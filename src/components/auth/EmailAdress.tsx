@@ -15,6 +15,7 @@ import {validationLoginSchema} from '../../validation';
 import {useToast} from 'react-native-toast-notifications';
 import {NavigationStackParams} from '../../interfaces';
 import messaging from '@react-native-firebase/messaging';
+import PasswordInput from '../common/PasswordInput';
 // import ErrorIcon from 'react-native-vector-icons/MaterialIcons';
 
 interface Props {
@@ -110,7 +111,7 @@ const EmailAddressComponent = ({
               editable={true}
             />
 
-            <CustomInput
+            {/* <CustomInput
               value={values.passcode}
               onChangeText={handleChange('passcode')}
               error={errors?.passcode}
@@ -119,6 +120,16 @@ const EmailAddressComponent = ({
               touched={touched.passcode}
               isError={isError}
               editable={true}
+              icon="lock"
+            /> */}
+            <PasswordInput
+              value={values.passcode}
+              onChangeText={handleChange('passcode')}
+              placeholder="Password"
+              editable={true}
+              error={errors?.passcode}
+              touched={touched.passcode}
+              isError={isError}
               icon="lock"
             />
 

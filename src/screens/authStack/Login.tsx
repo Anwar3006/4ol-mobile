@@ -180,8 +180,9 @@ const LoginScreen = () => {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{flex: 1}}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+      style={{flexGrow: 1}}
+      // keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 9}
+    >
       <View style={styles.container}>
         <ScrollView
           showsHorizontalScrollIndicator={false}
@@ -344,7 +345,8 @@ const LoginScreen = () => {
           </View>
 
           <TouchableOpacity
-            onPress={() => navigation.navigate('ForgotPassword')}>
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={{marginBottom: verticalScale(50)}}>
             <Text style={styles.forgot}>Forgot Password?</Text>
           </TouchableOpacity>
         </ScrollView>
@@ -1145,6 +1147,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.OpenSansMedium,
     color: themeColors.red,
     fontSize: size.sl,
+    // marginTop: verticalScale(-10),
   },
   other: {
     width: '100%',

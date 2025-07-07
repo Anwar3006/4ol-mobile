@@ -54,7 +54,6 @@ const PillReminderDetails = ({navigation}) => {
   const [selectedTime, setSelectedTime] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-
   // Add state for note modal visibility
   const [noteModalVisible, setNoteModalVisible] = useState(false);
 
@@ -127,6 +126,7 @@ const PillReminderDetails = ({navigation}) => {
       }
 
       const fetchedData = await fetchMedicationDetails(userId);
+      console.log('FETCHED DATA==>', fetchedData);
       // console.log(
       //   'Fetched MEDICATION REMINDER data:',
       //   JSON.stringify(fetchedData, null, 2),

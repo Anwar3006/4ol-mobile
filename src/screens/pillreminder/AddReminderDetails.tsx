@@ -409,6 +409,7 @@ export default function AddReminderDetails({route}) {
         reminder_timestamps: formattedTimestamps,
         imageUrl: uploadImageUrl,
         intake_amount: numberOfIntakes,
+        status: 'pending',
         color: color || '#32a852', // Default to green if no color specified
       };
 

@@ -21,6 +21,7 @@ target 'healthcare' do
   # React Native Maps dependencies
   rn_maps_path = '../node_modules/react-native-maps'
   pod 'react-native-maps/Google', :path => rn_maps_path
+  # pod 'RNNotifeeCore', :path => File.join(__dir__, '../node_modules/@notifee/react-native')
   config = use_native_modules!
 
   use_react_native!(

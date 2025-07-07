@@ -38,6 +38,8 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = healthcare/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = healthcare/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		84B343BD2DD4A9F500D3D88A /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
+		84CF3B032E17CEAA00501AAD /* RNNotifeeCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = RNNotifeeCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		84CF3B052E17D5BA00501AAD /* RNNotifeeCore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = RNNotifeeCore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		84E038992DD363A60039CEB8 /* Feather.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Feather.ttf; path = "../node_modules/react-native-vector-icons/Fonts/Feather.ttf"; sourceTree = "<group>"; };
 		84E0389A2DD363A60039CEB8 /* FontAwesome5_Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = FontAwesome5_Regular.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Regular.ttf"; sourceTree = "<group>"; };
 		84E0389B2DD363A60039CEB8 /* FontAwesome5_Brands.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = FontAwesome5_Brands.ttf; path = "../node_modules/react-native-vector-icons/Fonts/FontAwesome5_Brands.ttf"; sourceTree = "<group>"; };
@@ -92,6 +94,8 @@
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				84CF3B052E17D5BA00501AAD /* RNNotifeeCore.framework */,
+				84CF3B032E17CEAA00501AAD /* RNNotifeeCore.framework */,
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				63ABBD8ED390687D235A08D9 /* Pods_healthcare.framework */,
 			);
