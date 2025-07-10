@@ -139,6 +139,7 @@ const EmailAddressComponent = ({
               loading={loading}
               extraStyle={{
                 marginTop: verticalScale(20),
+                marginBottom: verticalScale(20),
               }}
             />
           </>

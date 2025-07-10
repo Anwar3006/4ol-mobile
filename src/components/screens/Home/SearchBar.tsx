@@ -75,23 +75,28 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: themeColors.white,
     borderRadius: 10,
+    justifyContent: 'center',
+    height: 48,
   },
   icon: {
     position: 'absolute',
     top: 16,
     left: 10,
+    zIndex: 1,
   },
   input: {
     width: '100%',
-    padding: 10,
-    paddingLeft: 35,
+    paddingVertical: 12, // Adjusted vertical padding
+    paddingLeft: 40, // Increased from 35 to account for icon spacing
     color: '#333333',
     fontSize: 14,
     fontFamily: fonts.OpenSansRegular,
+    height: '100%', // Make input fill container
   },
   searchBtn: {
     backgroundColor: themeColors.primary,
-    padding: 14,
+    paddingVertical: 12, // Match input padding
+    paddingHorizontal: 16,
     borderRadius: 10,
     color: themeColors.white,
     fontSize: size.sl,

@@ -40,7 +40,7 @@ const CustomInput: React.FC<CustomInputProps> = ({
   keyboardType = 'default',
   icon = 'user',
   editable,
-  autoCapitalize = 'words',
+  autoCapitalize = 'none',
 }) => {
   const [show, setShow] = useState<boolean>(false);
   const [isFocused, setIsFocused] = useState<boolean>(false);
@@ -150,6 +150,7 @@ const styles = StyleSheet.create({
     paddingLeft: 10,
     paddingRight: 10,
     textAlign: 'center',
+    // backgroundColor: '#000',
   },
   startIcon: {
     paddingLeft: 10,

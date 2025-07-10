@@ -72,8 +72,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     // justifyContent: 'center',
     // alignItems: 'center',
-    padding: 20,
-    paddingVertical: verticalScale(150),
+    padding: 15,
+    paddingVertical: verticalScale(130),
     backgroundColor: themeColors.white,
   },
   title: {
@@ -83,13 +83,13 @@ const styles = StyleSheet.create({
     fontFamily: fonts.OpenSansLight,
   },
   logoView: {
-    height: verticalScale(200),
-    width: horizontalScale(270),
+    height: verticalScale(180),
+    width: horizontalScale(250),
     // backgroundColor: themeColors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     // borderRadius: 2,
-    marginBottom: moderateScale(10),
+    marginBottom: moderateScale(33),
   },
   logo: {
     width: '100%',

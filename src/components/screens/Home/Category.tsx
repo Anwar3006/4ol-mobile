@@ -46,7 +46,7 @@ const Category = () => {
               (
                 <TouchableOpacity
                   style={{
-                    width: horizontalScale(85),
+                    width: horizontalScale(95),
                     // height: verticalScale(5),
                   }}
                   key={item.id}
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   },
   itemsContainer: {
     marginVertical: 10,
-    gap: horizontalScale(11),
+    gap: horizontalScale(8),
     marginBottom: 0,
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -104,9 +104,9 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     padding: 5,
     borderRadius: 10,
-    // width: '100%',
+    width: '100%',
     aspectRatio: 1,
-    height: verticalScale(95),
+    height: verticalScale(102),
   },
   title: {
     marginTop: 5,
