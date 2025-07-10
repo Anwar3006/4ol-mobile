@@ -34,7 +34,7 @@ const notificationOptions = [
 ];
 
 const notificationTypeOptions = [
-  {label: 'Scheduled', value: 'Scheduled'},
+  {label: 'Scheduled', value: 'Schedule'},
   {label: 'Interval', value: 'Interval'},
 ];
 
@@ -169,7 +169,7 @@ export default function AddReminderDetails({route}) {
   const [weekDay, setWeekDay] = useState('');
   const [specificDays, setSpecificDays] = useState<any[]>([]);
   const [numberOfIntakes, setNumberOfIntakes] = useState(1);
-  const [notificationType, setNotificationType] = useState('Scheduled');
+  const [notificationType, setNotificationType] = useState('Schedule');
   // For Scheduled: array of times (one per intake)
   const [scheduledTimes, setScheduledTimes] = useState<Date[]>(
     Array(1).fill(new Date()),
@@ -338,7 +338,7 @@ export default function AddReminderDetails({route}) {
 
       // For each scheduled date, add time slots
       datesToSchedule.forEach(date => {
-        if (notificationType === 'Scheduled') {
+        if (notificationType === 'Schedule') {
           scheduledTimes.forEach(time => {
             const dt = combineDateTime(date, time);
             if (dt >= now) triggers.push(dt);
@@ -879,7 +879,7 @@ export default function AddReminderDetails({route}) {
             borderColor: 'lightgray',
           }}
         />
-        {notificationType === 'Scheduled' && (
+        {notificationType === 'Schedule' && (
           <View
             style={{flexDirection: 'row', gap: 10, flex: 1, flexWrap: 'wrap'}}>
             {scheduledTimes.map((time, index) => (
