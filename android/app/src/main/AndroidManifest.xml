@@ -24,6 +24,9 @@
       <meta-data
         android:name="com.google.android.geo.API_KEY"
         android:value="" /> // Replace with your actual Google Maps API key
+        <meta-data
+    android:name="com.notifee.notification_icon"
+    android:resource="@drawable/ic_notification" />
         <service
           android:name="io.invertase.notifee.NotifeeBackgroundService"
           android:exported="false"

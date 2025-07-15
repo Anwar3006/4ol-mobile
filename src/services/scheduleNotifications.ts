@@ -82,9 +82,9 @@ export const scheduleNotification = async (
     const now = new Date();
 
     if (date < now) {
-      // console.log(
-      //   `Skipping past timestamp for ${medicationName}: ${timestamp}`,
-      // );
+      console.log(
+        `Skipping past timestamp for ${medicationName}: ${timestamp}`,
+      );
       return null;
     }
 
@@ -107,79 +107,86 @@ export const scheduleNotification = async (
       medicationId,
     };
 
-    // Create the notification with simple launch configuration
-    const notificationId = await notifee.createTriggerNotification(
-      {
-        id: `${medicationId}_${date.getTime()}`,
-        title: `Time to take ${medicationName}`,
-        body: medicineInfo
-          ? `Take ${medicineInfo}`
-          : 'Time for your medication',
-        data,
-        android: {
-          sound: 'default',
-          // smallIcon: 'logo.png',
-          actions: [
-            {
-              title: 'Complete',
-              pressAction: {id: 'complete'},
+    try {
+      // Create the notification with simple launch configuration
+      const notificationId = await notifee.createTriggerNotification(
+        {
+          id: `${medicationId}_${date.getTime()}`,
+          title: `Time to take ${medicationName}`,
+          body: medicineInfo
+            ? `Take ${medicineInfo}`
+            : 'Time for your medication',
+          data,
+          android: {
+            sound: 'default',
+            smallIcon: 'ic_notification',
+            actions: [
+              {
+                title: 'Complete',
+                pressAction: {id: 'complete'},
+              },
+              {
+                title: 'Skip',
+                pressAction: {id: 'skip'},
+              },
+              {
+                title: 'Snooze (5m)',
+                pressAction: {id: 'snooze'},
+              },
+            ],
+            channelId,
+            color: color || '#9c27b0',
+            importance: AndroidImportance.HIGH,
+            pressAction: {
+              id: 'default',
+              launchActivity: 'default', // Launch the main activity when pressed
             },
-            {
-              title: 'Skip',
-              pressAction: {id: 'skip'},
+            fullScreenAction: {
+              id: 'default',
+              launchActivity: 'default',
             },
-            {
-              title: 'Snooze (5m)',
-              pressAction: {id: 'snooze'},
-            },
-          ],
-          channelId,
-          color: color || '#9c27b0',
-          importance: AndroidImportance.HIGH,
-          pressAction: {
-            id: 'default',
-            launchActivity: 'default', // Launch the main activity when pressed
+            ...(imageUrl && {largeIcon: imageUrl}),
+            style: imageUrl
+              ? {
+                  type: AndroidStyle.BIGPICTURE,
+                  picture: imageUrl,
+                  largeIcon: null,
+                }
+              : undefined,
           },
-          fullScreenAction: {
-            id: 'default',
-            launchActivity: 'default',
+          ios: {
+            sound: 'default',
+            categoryId: 'user_actions',
+            attachments: imageUrl
+              ? [
+                  {
+                    url: imageUrl,
+                    thumbnailHidden: false,
+                  },
+                ]
+              : [],
+            foregroundPresentationOptions: {
+              badge: true,
+              sound: true,
+              banner: true,
+            },
           },
-          ...(imageUrl && {largeIcon: imageUrl}),
-          style: imageUrl
-            ? {
-                type: AndroidStyle.BIGPICTURE,
-                picture: imageUrl,
-                largeIcon: null,
-              }
-            : undefined,
         },
-        ios: {
-          sound: 'default',
-          categoryId: 'user_actions',
-          attachments: imageUrl
-            ? [
-                {
-                  url: imageUrl,
-                  thumbnailHidden: false,
-                },
-              ]
-            : [],
-          foregroundPresentationOptions: {
-            badge: true,
-            sound: true,
-            banner: true,
-          },
-        },
-      },
-      trigger,
-    );
+        trigger,
+      );
 
-    // console.log(
-    //   `Scheduled notification for ${medicationName} at ${date.toLocaleString()}`,
-    // );
-    return notificationId;
-  } catch (error) {
+      // console.log(
+      //   `Scheduled notification for ${medicationName} at ${date.toLocaleString()}`,
+      // );
+      console.log('I AM RUNNING===>>from trigger notification');
+      return notificationId;
+    } catch (error) {
+      console.log('Trigger notification Error;', error);
+      console.log('Trigger notification not runed;');
+    }
+  } catch (error: any) {
     console.error('Error scheduling notification:', error);
+    console.error('Error scheduling notification:', error.message, error.stack);
     return null;
   }
 };

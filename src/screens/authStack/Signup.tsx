@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   ScrollView,
   KeyboardAvoidingView,
+  Image,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import {Picker} from '@react-native-picker/picker';
@@ -21,7 +22,11 @@ import {useDispatch} from 'react-redux';
 import {setUserData} from '../../store/slices/User';
 import {Formik} from 'formik';
 import {NavigationStackParams, SignUpSchema} from '../../interfaces';
-import {horizontalScale, verticalScale} from '../../utils/metrics';
+import {
+  horizontalScale,
+  moderateScale,
+  verticalScale,
+} from '../../utils/metrics';
 import {validationSignUpSchema} from '../../validation';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import moment from 'moment';
@@ -102,6 +107,14 @@ const SignupScreen = ({route}: {route: any}) => {
               alignItems: 'center',
               minHeight: '100%',
             }}>
+            <View style={styles.logoView}>
+              <Image
+                source={require('../../../assets/images/logo.png')}
+                style={styles.logo}
+                resizeMode="contain"
+              />
+              {/* <Text style={styles.title}>4 OUR LIFE</Text> */}
+            </View>
             <Text style={styles.title}>Create New Account</Text>
             <Text style={styles.subTitle}>
               Enter Your details to create account
@@ -323,6 +336,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 15,
     backgroundColor: themeColors.white,
+  },
+  logoView: {
+    height: verticalScale(100),
+    width: horizontalScale(100),
+    // backgroundColor: themeColors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    // borderRadius: 2,
+    marginBottom: moderateScale(15),
+    // marginTop: verticalScale(15),
+  },
+  logo: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: size.xxlg,

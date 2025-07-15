@@ -38,6 +38,7 @@ import {
 } from '../../utils/metrics';
 import {notificationListeners} from '../../utils/notificationServiceHelper';
 import {size} from '../../theme/fontStyle';
+import {useKeyboard} from '../../hooks/keyboard';
 
 const LoginScreen = () => {
   const dispatch = useDispatch<Dispatch<UnknownAction>>();
@@ -45,6 +46,7 @@ const LoginScreen = () => {
 
   const toast = useToast();
   const phoneInput = useRef<any>(null);
+  const keyboardHeight = useKeyboard();
   const [option, setOption] = useState('email');
   const [loading, setLoading] = useState(false);
   // const [error, setError] = useState<string | undefined>();
@@ -180,182 +182,187 @@ const LoginScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{flexGrow: 1}}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 30 : 0}>
-      <View style={styles.container}>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          showsHorizontalScrollIndicator={false}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            flexGrow: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}>
-          {/* <Text style={styles.title}>4 Our Life</Text>
+    <View style={styles.mainContainer}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{flex: 1}}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? verticalScale(0) : 0}>
+        {/* <View style={styles.container}> */}
+        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+          <ScrollView
+            bounces={false}
+            keyboardShouldPersistTaps="handled"
+            showsHorizontalScrollIndicator={false}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[
+              styles.scrollViewContent,
+              {paddingBottom: keyboardHeight > 0 ? keyboardHeight + 20 : 20},
+            ]}>
+            <View style={styles.container}>
+              {/* <Text style={styles.title}>4 Our Life</Text>
         <Text style={styles.subTitle}>
           Healthcare Simplified, Longevity Amplified
         </Text> */}
-          <View style={styles.logoView}>
-            <Image
-              source={require('../../../assets/images/logo.png')}
-              style={styles.logo}
-              resizeMode="contain"
-            />
-            {/* <Text style={styles.title}>4 OUR LIFE</Text> */}
-          </View>
-          <Text style={styles.description}>Login with:</Text>
-          <View style={styles.optionContainer}>
-            <TouchableOpacity
-              style={[
-                styles.optionButton,
-                option === 'email' && styles.optionButtonSelected,
-              ]}
-              onPress={() => {
-                setOption('email');
-              }}>
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  option === 'email' && styles.optionButtonTextSelected,
-                ]}>
-                Email Address
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.optionButton,
-                option === 'phone' && styles.optionButtonSelected,
-              ]}
-              onPress={() => {
-                setOption('phone');
-              }}>
-              <Text
-                style={[
-                  styles.optionButtonText,
-                  option === 'phone' && styles.optionButtonTextSelected,
-                ]}>
-                Phone Number
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          {option === 'email' ? (
-            <EmailAddressComponent
-              option={option}
-              countryCode={countryCode}
-              setLoading={setLoading}
-              loading={loading}
-              setCountryCode={setCountryCode}
-            />
-          ) : (
-            <PhoneNumberComponent
-              countryCode={countryCode}
-              setCountryCode={setCountryCode}
-              setLoading={setLoading}
-              phoneInput={phoneInput}
-              loading={loading}
-            />
-          )}
-
-          {!isBiometricEnabled && (
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexWrap: 'wrap',
-                paddingHorizontal: 20,
-                width: '100%',
-              }}>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: '#000',
-                  fontFamily: 'OpenSans-Regular',
-                }}>
-                By proceeding, you are agreeing with our{' '}
-              </Text>
-              <TouchableOpacity onPress={() => setShowTerms(true)}>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: '#000',
-                    fontFamily: 'OpenSans-Bold',
-                    textDecorationLine: 'underline',
+              <View style={styles.logoView}>
+                <Image
+                  source={require('../../../assets/images/logo.png')}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+                {/* <Text style={styles.title}>4 OUR LIFE</Text> */}
+              </View>
+              <Text style={styles.description}>Login with:</Text>
+              <View style={styles.optionContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.optionButton,
+                    option === 'email' && styles.optionButtonSelected,
+                  ]}
+                  onPress={() => {
+                    setOption('email');
                   }}>
-                  Terms & Conditions
-                </Text>
-              </TouchableOpacity>
-              <Text
-                style={{
-                  fontSize: 14,
-                  color: '#000',
-                  fontFamily: 'OpenSans-Regular',
-                }}>
-                {' and '}
-              </Text>
-              <TouchableOpacity onPress={() => setShowPrivacyPolicy(true)}>
-                <Text
-                  style={{
-                    fontSize: 14,
-                    color: '#000',
-                    fontFamily: 'OpenSans-Bold',
-                    textDecorationLine: 'underline',
-                  }}>
-                  Privacy Policy
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={{width: '100%', margin: 20}}>
-            {isBiometricEnabled && (
-              <View
-                style={{
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginTop: 10,
-                }}>
-                <TouchableOpacity onPress={handleLoginWithTouchId}>
-                  <Icon
-                    disabled={loading}
-                    name={'fingerprint'}
-                    size={42}
-                    color={themeColors.primary}
-                    style={{
-                      borderWidth: 1,
-                      padding: 5,
-                      borderRadius: 10,
-                      borderColor: themeColors.darkGray,
-                    }}
-                  />
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      option === 'email' && styles.optionButtonTextSelected,
+                    ]}>
+                    Email Address
+                  </Text>
                 </TouchableOpacity>
 
-                <Text
-                  style={{
-                    fontSize: size.s,
-                    marginTop: 10,
-                    color: themeColors.darkGray,
+                <TouchableOpacity
+                  style={[
+                    styles.optionButton,
+                    option === 'phone' && styles.optionButtonSelected,
+                  ]}
+                  onPress={() => {
+                    setOption('phone');
                   }}>
-                  Login with biometrics
-                </Text>
+                  <Text
+                    style={[
+                      styles.optionButtonText,
+                      option === 'phone' && styles.optionButtonTextSelected,
+                    ]}>
+                    Phone Number
+                  </Text>
+                </TouchableOpacity>
               </View>
-            )}
-          </View>
 
-          <TouchableOpacity
-            onPress={() => navigation.navigate('ForgotPassword')}
-            style={{
-              marginBottom: verticalScale(25),
-              // marginTop: verticalScale(-20),
-            }}>
-            <Text style={styles.forgot}>Forgot Password?</Text>
-          </TouchableOpacity>
-        </ScrollView>
+              {option === 'email' ? (
+                <EmailAddressComponent
+                  option={option}
+                  countryCode={countryCode}
+                  setLoading={setLoading}
+                  loading={loading}
+                  setCountryCode={setCountryCode}
+                />
+              ) : (
+                <PhoneNumberComponent
+                  countryCode={countryCode}
+                  setCountryCode={setCountryCode}
+                  setLoading={setLoading}
+                  phoneInput={phoneInput}
+                  loading={loading}
+                />
+              )}
+
+              {!isBiometricEnabled && (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexWrap: 'wrap',
+                    paddingHorizontal: 20,
+                    width: '100%',
+                  }}>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: '#000',
+                      fontFamily: 'OpenSans-Regular',
+                    }}>
+                    By proceeding, you are agreeing with our{' '}
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowTerms(true)}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: '#000',
+                        fontFamily: 'OpenSans-Bold',
+                        textDecorationLine: 'underline',
+                      }}>
+                      Terms & Conditions
+                    </Text>
+                  </TouchableOpacity>
+                  <Text
+                    style={{
+                      fontSize: 14,
+                      color: '#000',
+                      fontFamily: 'OpenSans-Regular',
+                    }}>
+                    {' and '}
+                  </Text>
+                  <TouchableOpacity onPress={() => setShowPrivacyPolicy(true)}>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: '#000',
+                        fontFamily: 'OpenSans-Bold',
+                        textDecorationLine: 'underline',
+                      }}>
+                      Privacy Policy
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              <View style={{width: '100%', margin: 20}}>
+                {isBiometricEnabled && (
+                  <View
+                    style={{
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginTop: 10,
+                    }}>
+                    <TouchableOpacity onPress={handleLoginWithTouchId}>
+                      <Icon
+                        disabled={loading}
+                        name={'fingerprint'}
+                        size={42}
+                        color={themeColors.primary}
+                        style={{
+                          borderWidth: 1,
+                          padding: 5,
+                          borderRadius: 10,
+                          borderColor: themeColors.darkGray,
+                        }}
+                      />
+                    </TouchableOpacity>
+
+                    <Text
+                      style={{
+                        fontSize: size.s,
+                        marginTop: 10,
+                        color: themeColors.darkGray,
+                      }}>
+                      Login with biometrics
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('ForgotPassword')}
+                style={{
+                  marginBottom: verticalScale(25),
+                  // marginTop: verticalScale(-20),
+                }}>
+                <Text style={styles.forgot}>Forgot Password?</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </TouchableWithoutFeedback>
 
         {/* Terms and Conditions Modal */}
         <ReusableModal
@@ -1057,20 +1064,35 @@ const LoginScreen = () => {
 
           <View style={{height: 30}} />
         </ReusableModal>
-      </View>
-    </KeyboardAvoidingView>
+        {/* </View> */}
+      </KeyboardAvoidingView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+    backgroundColor: 'white',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scrollViewContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingHorizontal: horizontalScale(20),
+    paddingTop: verticalScale(20),
+  },
   container: {
     flex: 1,
-    display: 'flex',
-    flexDirection: 'row',
+    // display: 'flex',
+    // flexDirection: 'row',
     justifyContent: 'center',
+    // alignItems: 'center',
+    paddingHorizontal: 15,
+    // backgroundColor: themeColors.white,
+    // width: '100%',
     alignItems: 'center',
-    padding: 15,
-    backgroundColor: themeColors.white,
   },
   title: {
     fontSize: size.xxxlg,

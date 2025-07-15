@@ -80,7 +80,7 @@ const PasswordInput: React.FC<CustomInputProps> = ({
         <TouchableOpacity
           style={styles.icon}
           onPress={() => setIsSecure(prev => !prev)}>
-          <Icon name={isSecure ? 'eye' : 'eye-slash'} size={20} color="gray" />
+          <Icon name={isSecure ? 'eye-slash' : 'eye'} size={17} color="gray" />
         </TouchableOpacity>
       </View>
       {error && ((touched && !value) || (error && value) || isFocused) ? (

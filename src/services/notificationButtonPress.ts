@@ -121,7 +121,7 @@ export const markasSkip = async (medicationId: any) => {
 //   }
 // };
 
-export const markasSnooze = async (medicationId: any, delayMs = 60000) => {
+export const markasSnooze = async (medicationId: any, delayMs = 900000) => {
   try {
     // 1. Fetch the current medication data
     const {data: medicationData, error: medicationError} = await supabase
