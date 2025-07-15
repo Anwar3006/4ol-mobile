@@ -1,21 +1,23 @@
 import React from 'react';
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import {Image, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {themeColors} from '../../../theme/colors';
 import {size} from '../../../theme/fontStyle';
-import {CategoryItem} from '../../../interfaces';
+import {CategoryItem, NavigationStackParams} from '../../../interfaces';
 import {categories} from '../../../constants/home';
 import {fonts} from '../../../theme/fonts';
+import {SCREENS} from '../../../constants/screens';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {horizontalScale, verticalScale} from '../../../utils/metrics';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 
 const Category = () => {
-  const navigation = useNavigation<NavigationProp<any>>();
+  const navigation = useNavigation<NavigationProp<CategoryParams>>();
+
+  interface CategoryParams {
+    Categories: string | undefined; // Agar 'Categories' screen koi param nahi le rahi
+    // TopRated: { category: string };
+    // Diseases: { category: string };
+  }
 
   return (
     <View style={styles.container}>
@@ -26,22 +28,29 @@ const Category = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
-        {categories.slice(0, 4).map((item: CategoryItem) => (
-          <TouchableOpacity
-            key={item.id}
-            style={styles.item}
-            onPress={() => {
-              navigation.navigate(item?.screen, {category: item?.title});
-            }}>
-            <View style={styles.iconContainer}>{item?.icon}</View>
-            <Text style={styles.title}>{item.title}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.itemsContainer}>
+        {categories.slice(0, 4).map(
+          (item: CategoryItem) => (
+            console.log('item-----', item),
+            (
+              <TouchableOpacity
+                style={{
+                  width: horizontalScale(77),
+                  // height: verticalScale(5),
+                }}
+                key={item.id}
+                onPress={() => {
+                  navigation.navigate(item?.screen, {category: item?.title});
+                }}>
+                <View style={styles.item}>
+                  {item?.icon}
+                  <Text style={styles.title}>{item.title}</Text>
+                </View>
+              </TouchableOpacity>
+            )
+          ),
+        )}
+      </View>
     </View>
   );
 };
@@ -49,15 +58,12 @@ const Category = () => {
 export default Category;
 
 const styles = StyleSheet.create({
-  container: {
-    // paddingHorizontal: horizontalScale(10),
-    marginBottom: verticalScale(16),
-  },
+  container: {},
   header: {
+    display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: verticalScale(12),
   },
   headingLabel: {
     fontSize: size.md,
@@ -71,29 +77,30 @@ const styles = StyleSheet.create({
     fontFamily: fonts.OpenSansBold,
     textTransform: 'uppercase',
   },
-  scrollContent: {
-    paddingRight: horizontalScale(7),
+  itemsContainer: {
+    marginVertical: 10,
+    marginBottom: 0,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
   item: {
-    width: horizontalScale(95),
-    height: verticalScale(102),
-    backgroundColor: themeColors.white,
-    borderRadius: 10,
-    marginRight: horizontalScale(8),
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: verticalScale(12),
-  },
-  iconContainer: {
-    marginBottom: verticalScale(8),
+    alignItems: 'center',
+    backgroundColor: themeColors.white,
+    marginBottom: 15,
+    padding: 5,
+    borderRadius: 10,
+    width: '100%',
+    height: verticalScale(95),
   },
   title: {
+    marginTop: 5,
     color: themeColors.black,
-    fontSize: size.md,
+    fontSize: size.s,
     fontFamily: fonts.OpenSansMedium,
-    fontWeight: '600',
+    // fontWeight: '600',
     textAlign: 'center',
-    maxWidth: '100%', // Ensure text doesn't overflow
-    paddingHorizontal: horizontalScale(4), // Small padding to prevent edge touching
+    // height:30
   },
 });

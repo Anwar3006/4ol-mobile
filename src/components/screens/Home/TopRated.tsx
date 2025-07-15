@@ -186,9 +186,9 @@ const styles = StyleSheet.create({
   title: {
     marginTop: 5,
     color: themeColors.black,
-    fontSize: size.md,
+    fontSize: size.sl,
     fontFamily: fonts.OpenSansMedium,
-    fontWeight: '600',
+    // fontWeight: '600',
   },
   metaInfo: {
     width: '100%',

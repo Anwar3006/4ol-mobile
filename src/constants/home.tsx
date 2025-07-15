@@ -19,7 +19,7 @@ export const categories: CategoryItem[] = [
         color={themeColors.lightPink}
       />
     ),
-    title: 'Hospital/ Clinic',
+    title: 'Hospital',
     screen: 'TopRated',
   },
   {
