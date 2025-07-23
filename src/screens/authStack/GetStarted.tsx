@@ -57,7 +57,7 @@ const GetStarted = () => {
           text={'Create new account'}
           onPress={() => {
             navigation.navigate('VerifyPhoneNumber');
-            navigation?.navigate(SCREENS.SIGNUP, {phone: '+923323583308'});
+            // navigation?.navigate(SCREENS.SIGNUP, {phone: '+923323583308'});
           }}
         />
       </ScrollView>

@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useCallback} from 'react';
+import React, {useEffect, useState, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -33,10 +34,16 @@ import {refreshAllNotifications} from '../../services/scheduleNotifications';
 import {useFocusEffect} from '@react-navigation/native';
 import RNDateTimePicker from '@react-native-community/datetimepicker';
 import {Toast} from 'react-native-toast-notifications';
+import Modals from 'react-native-modal';
+import {horizontalScale} from '../../utils/metrics';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-const PillReminderDetails = ({navigation}) => {
+const PillReminderDetails = ({navigation, route}) => {
+  const {notificationData} = route.params || {};
+  console.log('Notification Data:', notificationData);
+  const flatlistRef = useRef<FlatList>(null);
+  const [highlightedId, setHighlightedId] = useState(null);
   const [isOpen, setIsOpen] = useState(false);
   const rotation = useSharedValue(0);
   const firstItemOffset = useSharedValue(0);
@@ -49,6 +56,7 @@ const PillReminderDetails = ({navigation}) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isSelected, setIsSelected] = useState('');
   const [notes, setNotes] = useState('');
+  const [showOptionsModal, setShowOptionsModal] = useState(false);
 
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState(new Date());
@@ -56,6 +64,25 @@ const PillReminderDetails = ({navigation}) => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   // Add state for note modal visibility
   const [noteModalVisible, setNoteModalVisible] = useState(false);
+
+  useEffect(() => {
+    if (notificationData?.medicationId) {
+      const targetId = notificationData.medicationId;
+      const index = reminderData.findIndex((r: any) => r.id === targetId);
+      console.log('FROM USEEFFECT==>', index, targetId);
+      if (index >= 0) {
+        // 2. Scroll to the item
+        flatlistRef.current?.scrollToIndex({index, animated: true});
+        setHighlightedId(targetId);
+
+        const timer = setTimeout(() => {
+          setHighlightedId(null);
+        }, 3000);
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [notificationData]);
 
   // Add handlers for date and time pickers
   const onDateChange = (event, selectedDate) => {
@@ -451,6 +478,7 @@ const PillReminderDetails = ({navigation}) => {
         style={[
           styles.medicationCard,
           {borderLeftColor: item.color || themeColors.primary},
+          highlightedId === item.id && styles.highlightedCard,
         ]}>
         <View
           style={[
@@ -511,6 +539,11 @@ const PillReminderDetails = ({navigation}) => {
             <Icon name="info" size={14} color="#fff" />
           </TouchableOpacity>
         )}
+        {/* <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => setShowOptionsModal(true)}>
+          <Icon name="more-vert" size={20} color="#666" />
+        </TouchableOpacity> */}
       </View>
     );
   };
@@ -616,6 +649,11 @@ const PillReminderDetails = ({navigation}) => {
         ListEmptyComponent={renderEmptyComponent}
         ListHeaderComponent={<>{renderListHeader()}</>}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
+        onScrollToIndexFailed={({index}) => {
+          setTimeout(() => {
+            flatlistRef.current?.scrollToIndex({index, animated: true});
+          }, 500);
+        }}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -713,6 +751,78 @@ const PillReminderDetails = ({navigation}) => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* <Modal
+        visible={showOptionsModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowOptionsModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowOptionsModal(false)}>
+          <View style={styles.modalOverlay} />
+        </TouchableWithoutFeedback>
+
+        <View style={[styles.optionsModal, {}]}>
+          <TouchableOpacity
+            style={styles.optionButton}
+            onPress={() => {
+              setShowOptionsModal(false);
+              // Handle view action
+              // navigation.navigate('ViewReminder', { id: item.id });
+            }}>
+            <Text style={styles.optionText}>View Details</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.optionButton}
+            onPress={() => {
+              setShowOptionsModal(false);
+              // Handle edit action
+              // navigation.navigate('EditReminder', { id: item.id });
+            }}>
+            <Text style={styles.optionText}>Edit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.optionButton, styles.deleteOption]}
+            onPress={() => {
+              setShowOptionsModal(false);
+              // Handle delete action
+              Alert.alert(
+                'Delete Reminder',
+                'Are you sure you want to delete this reminder?',
+                [
+                  {text: 'Cancel', style: 'cancel'},
+                  // { text: 'Delete', onPress: () => deleteReminder(item.id) }
+                ],
+              );
+            }}>
+            <Text style={[styles.optionText, styles.deleteText]}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal> */}
+
+      {/* <Modal
+        visible={showOptionsModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowOptionsModal(false)}>
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+          }}>
+          <View
+            style={{
+              height: 300,
+              width: 400,
+              backgroundColor: '#fff',
+            }}>
+            <Text>MODAL OPENS</Text>
+          </View>
+        </View>
+      </Modal> */}
 
       {/* Note Entry Modal - Update to use noteModalVisible state */}
       <Modal
@@ -991,6 +1101,11 @@ const styles = StyleSheet.create({
     borderLeftWidth: 6,
     alignItems: 'center',
   },
+  highlightedCard: {
+    backgroundColor: '#FFF9C4',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFA000',
+  },
   iconContainer: {
     width: 46,
     height: 46,
@@ -998,6 +1113,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+  },
+  menuButton: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    padding: 5,
   },
   medicationInfo: {
     flex: 1,
@@ -1140,11 +1261,42 @@ const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    // justifyContent: 'center',
+    // alignItems: 'center',
+  },
+  optionsModal: {
+    position: 'absolute',
+    backgroundColor: 'white',
+    borderRadius: 8,
+    paddingVertical: 5,
+    width: horizontalScale(170),
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
+  optionButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+
+  optionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+
+  deleteOption: {
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+
+  deleteText: {
+    color: 'red',
   },
   modalContent: {
-    width: '85%',
+    width: 400,
     backgroundColor: 'white',
     borderRadius: 12,
     overflow: 'hidden',
@@ -1153,7 +1305,7 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
-    maxHeight: '70%',
+    height: 400,
   },
   modalHeader: {
     flexDirection: 'row',

@@ -6,6 +6,7 @@ import notifee, {
 } from '@notifee/react-native';
 import moment from 'moment';
 import {themeColors} from '../../src/theme/colors';
+import {SCREENS} from '../constants/screens';
 
 export const clearAllNotifications = async () => {
   try {
@@ -105,6 +106,7 @@ export const scheduleNotification = async (
     const data = {
       type: 'medication-reminder',
       medicationId,
+      screen: 'Details',
     };
 
     try {
@@ -130,7 +132,7 @@ export const scheduleNotification = async (
                 pressAction: {id: 'skip'},
               },
               {
-                title: 'Snooze (5m)',
+                title: 'Snooze (15m)',
                 pressAction: {id: 'snooze'},
               },
             ],

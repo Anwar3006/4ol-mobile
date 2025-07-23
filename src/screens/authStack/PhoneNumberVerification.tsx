@@ -158,7 +158,7 @@ const PhoneNumberVerification = () => {
                     this phone number
                   </Text>
 
-                  <View style={{margin: 20, marginBottom: 40, width: '100%'}}>
+                  <View style={{margin: 20, marginBottom: 20, width: '100%'}}>
                     {!countryCode ? (
                       <Text
                         style={{
@@ -208,6 +208,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: themeColors.white,
     padding: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   contentContainer: {
     flexGrow: 1,

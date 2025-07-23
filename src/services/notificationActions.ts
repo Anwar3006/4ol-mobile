@@ -4,6 +4,8 @@ import {
   markasSkip,
   markasSnooze,
 } from './notificationButtonPress';
+import {SCREENS} from '../constants/screens';
+import {navigationRef} from './NavigationRef';
 
 export const handleNotificationAction = async ({
   notification,
@@ -16,6 +18,8 @@ export const handleNotificationAction = async ({
     if (!notification || !pressAction) {
       throw new Error('Invalid notification action data');
     }
+    console.log('I AM RUNNING FROM NOTIFICATIONACTIONS==>');
+    console.log('NOTIFICATION EVENT==>', notification, pressAction);
 
     const medicationId = notification?.data?.medicationId;
 
@@ -54,35 +58,52 @@ export const handleNotificationAction = async ({
   }
 };
 
+export const handleNotificationPress = (notification: any) => {
+  console.log('I AM PRESSED FROM NOTIFICATIONACTIONS==>');
+  const data = notification?.data;
+  console.log('Notification data on press:', data);
+  navigationRef?.current?.navigate(SCREENS.PILLSREMINDER);
+  console.log(
+    'Current navigation state:',
+    navigationRef.current?.getRootState(),
+  );
+  setTimeout(() => {
+    navigationRef.current?.navigate('Details', {
+      notificationData: data,
+    });
+  }, 100);
+};
+
 export const setupNotificationHandlers = () => {
   // Foreground event handler
   notifee.onForegroundEvent(async (event: any) => {
     try {
       if (event.type === EventType.ACTION_PRESS) {
         await handleNotificationAction(event.detail);
+      } else if (event.type === EventType.PRESS) {
+        handleNotificationPress(event.detail.notification);
       }
     } catch (error: any) {
       console.error('Foreground notification handler failed:', error.message);
     }
   });
-
-  // Background event handler
-  // notifee.onBackgroundEvent(async (event: any) => {
-  //   try {
-  //     if (event.type === EventType.ACTION_PRESS) {
-  //       await handleNotificationAction(event.detail);
-  //     }
-  //   } catch (error: any) {
-  //     console.error('Background notification handler failed:', error.message);
-
-  //     // For background events, we might want to log this more persistently
-  //     // since the app might terminate immediately after
-  //     // Consider writing to AsyncStorage or sending to your error tracking service
-  //   } finally {
-  //     return Promise.resolve(); // Important for iOS background execution
-  //   }
-  // });
 };
+// Background event handler
+// notifee.onBackgroundEvent(async (event: any) => {
+//   try {
+//     if (event.type === EventType.ACTION_PRESS) {
+//       await handleNotificationAction(event.detail);
+//     }
+//   } catch (error: any) {
+//     console.error('Background notification handler failed:', error.message);
+
+//     // For background events, we might want to log this more persistently
+//     // since the app might terminate immediately after
+//     // Consider writing to AsyncStorage or sending to your error tracking service
+//   } finally {
+//     return Promise.resolve(); // Important for iOS background execution
+//   }
+// });
 
 //This function is for ios
 export const setupNotificationCategories = async () => {
@@ -100,7 +121,7 @@ export const setupNotificationCategories = async () => {
         },
         {
           id: 'snooze',
-          title: 'Snooze (5m)',
+          title: 'Snooze (15m)',
         },
       ],
     },

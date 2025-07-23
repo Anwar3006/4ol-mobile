@@ -20,7 +20,7 @@ import {setPeriodTracker} from '../store/slices/periodTracker';
 import {supabase} from '../utils/supabaseClient';
 import {logDAU, logDownloads, logMAU} from '../services/appPerformanceService';
 import React from 'react';
-import {navigationRef} from '../services/notificationNavigationService';
+import {navigationRef} from '../services/NavigationRef';
 const Route = () => {
   const optionalConfigObject = {
     title: 'Please Authenticate', // Android
