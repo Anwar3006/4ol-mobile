@@ -168,6 +168,7 @@ export default function AddReminderDetails({route}) {
   const [gapDays, setGapDays] = useState(1);
   const [weekDay, setWeekDay] = useState('');
   const [specificDays, setSpecificDays] = useState<any[]>([]);
+
   const [numberOfIntakes, setNumberOfIntakes] = useState(1);
   const [notificationType, setNotificationType] = useState('Schedule');
   // For Scheduled: array of times (one per intake)
@@ -411,6 +412,9 @@ export default function AddReminderDetails({route}) {
         intake_amount: numberOfIntakes,
         status: 'pending',
         color: color || '#32a852', // Default to green if no color specified
+        gap_days: notificationSchedule === 'every_n_days' ? gapDays : null,
+        specific_days: specificDays.length ? specificDays : null,
+        week_day: notificationSchedule === 'weekly' ? weekDay : null,
       };
 
       console.log('Saving medication reminder data:', medicationReminderData);

@@ -26,7 +26,11 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {themeColors} from '../../theme/colors';
-import {createNotes, fetchMedicationDetails} from '../../services/medication';
+import {
+  createNotes,
+  deleteMedicationReminder,
+  fetchMedicationDetails,
+} from '../../services/medication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee from '@notifee/react-native';
 import moment from 'moment';
@@ -34,6 +38,12 @@ import {refreshAllNotifications} from '../../services/scheduleNotifications';
 import {useFocusEffect} from '@react-navigation/native';
 import RNDateTimePicker from '@react-native-community/datetimepicker';
 import {Toast} from 'react-native-toast-notifications';
+import {
+  Menu,
+  MenuOptions,
+  MenuOption,
+  MenuTrigger,
+} from 'react-native-popup-menu';
 import Modals from 'react-native-modal';
 import {horizontalScale} from '../../utils/metrics';
 
@@ -64,6 +74,16 @@ const PillReminderDetails = ({navigation, route}) => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   // Add state for note modal visibility
   const [noteModalVisible, setNoteModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [selectedReminder, setSelectedReminder] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // const handleAddNote = () => {
+  //   setIsMenuOpen(false);
+  //   console.log('Add note pressed');
+  // };
 
   useEffect(() => {
     if (notificationData?.medicationId) {
@@ -250,13 +270,13 @@ const PillReminderDetails = ({navigation, route}) => {
   const handleAddMedication = () => {
     console.log('Add Medication pressed');
     navigation.navigate('AddMedication');
-    toggleMenu();
+    setIsMenuOpen(false);
   };
 
   const handleAddNote = () => {
     console.log('Add Note pressed');
-    setNoteModalVisible(true); // Show the modal when Add Note is pressed
-    toggleMenu();
+    setNoteModalVisible(true);
+    setIsMenuOpen(false);
   };
 
   // Add a function to close the modal and reset input fields
@@ -411,7 +431,7 @@ const PillReminderDetails = ({navigation, route}) => {
     }
   };
 
-  const formatReminderType = type => {
+  const formatReminderType = (type, gap_days = null) => {
     if (!type) return 'Not specified';
 
     switch (type.toUpperCase()) {
@@ -420,7 +440,7 @@ const PillReminderDetails = ({navigation, route}) => {
       case 'DAILY':
         return 'Daily';
       case 'WITH_DAYS_GAP':
-        return 'Every few days';
+        return `Every ${gap_days || 1} days`;
       case 'WEEKLY':
         return 'Weekly';
       case 'SPECIFIC_DAYS':
@@ -510,7 +530,7 @@ const PillReminderDetails = ({navigation, route}) => {
                 style={styles.infoIcon}
               />
               <Text style={styles.reminderInfoText}>
-                {formatReminderType(item.reminder_type)}
+                {formatReminderType(item.reminder_type, item.gap_days)}
               </Text>
             </View>
 
@@ -531,13 +551,65 @@ const PillReminderDetails = ({navigation, route}) => {
           <Icon name="chevron-right" size={24} color="#AAA" />
         </View>*/}
         {hasTimestamps && (
-          <TouchableOpacity
-            style={styles.infoButton}
-            onPress={() =>
-              showTimestamps(item.medication_name, item.reminder_timestamps)
-            }>
-            <Icon name="info" size={14} color="#fff" />
-          </TouchableOpacity>
+          <View style={styles.menuTopRight}>
+            <Menu>
+              <MenuTrigger>
+                <View style={styles.infoButtonPopup}>
+                  <Icon name="more-vert" size={20} color="#000" />
+                </View>
+              </MenuTrigger>
+
+              <MenuOptions
+                customStyles={{optionsContainer: styles.menuOptions}}>
+                <MenuOption
+                  onSelect={() =>
+                    navigation.navigate('MedicationDetailsView', {
+                      medication: item,
+                    })
+                  }>
+                  <View style={styles.menuOptionRow}>
+                    <Icon
+                      name="visibility"
+                      size={18}
+                      color="#333"
+                      style={styles.menuOptionIcon}
+                    />
+                    <Text style={styles.menuOptionText}>View</Text>
+                  </View>
+                </MenuOption>
+
+                <MenuOption onSelect={() => console.log('Edit pressed')}>
+                  <View style={styles.menuOptionRow}>
+                    <Icon
+                      name="edit"
+                      size={18}
+                      color="#333"
+                      style={styles.menuOptionIcon}
+                    />
+                    <Text style={styles.menuOptionText}>Edit</Text>
+                  </View>
+                </MenuOption>
+
+                <MenuOption
+                  onSelect={() => {
+                    setSelectedReminder(item); // store selected medication/reminder
+                    setDeleteModalVisible(true); // open modal
+                  }}>
+                  <View style={styles.menuOptionRow}>
+                    <Icon
+                      name="delete"
+                      size={18}
+                      color="red"
+                      style={styles.menuOptionIcon}
+                    />
+                    <Text style={[styles.menuOptionText, {color: 'red'}]}>
+                      Delete
+                    </Text>
+                  </View>
+                </MenuOption>
+              </MenuOptions>
+            </Menu>
+          </View>
         )}
         {/* <TouchableOpacity
           style={styles.menuButton}
@@ -638,6 +710,36 @@ const PillReminderDetails = ({navigation, route}) => {
     );
   };
 
+  const handleDeleteReminder = async () => {
+    deleteMedicationReminder(
+      selectedReminder?.id,
+      () => setDeleteLoading(true),
+      () => {
+        setDeleteLoading(false);
+        setDeleteModalVisible(false);
+        Toast.show('Medication reminder deleted successfully!', {
+          type: 'success',
+          placement: 'top',
+          duration: 4000,
+          animationType: 'slide-in',
+        });
+        loadMedicationData();
+      },
+      (error: any) => {
+        setDeleteLoading(false);
+        setDeleteModalVisible(false);
+        Toast.show(`Failed to delete reminder: ${error.message}`, {
+          type: 'danger',
+          placement: 'top',
+          duration: 4000,
+          animationType: 'slide-in',
+        });
+      },
+    );
+  };
+
+  console.log('Reminder Data:', reminderData);
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -665,35 +767,35 @@ const PillReminderDetails = ({navigation, route}) => {
       />
 
       <View style={styles.fabContainer}>
-        <AnimatedPressable
-          style={[styles.fabItem, firstItemStyle]}
-          onPress={handleAddNote}>
-          <View style={[styles.fabItemInner, {backgroundColor: '#4CAF50'}]}>
-            <Icon name="note-add" size={20} color="white" />
-          </View>
-          <View style={styles.fabLabel}>
-            <Text style={styles.fabLabelText}>Add Note</Text>
-          </View>
-        </AnimatedPressable>
+        {isMenuOpen && (
+          <>
+            <TouchableOpacity
+              style={styles.fabItem}
+              onPress={handleAddMedication}>
+              <View style={[styles.fabItemInner, {backgroundColor: '#2196F3'}]}>
+                <Icon name="medical-services" size={20} color="white" />
+              </View>
+              <View style={styles.fabLabel}>
+                <Text style={styles.fabLabelText}>Add Medication</Text>
+              </View>
+            </TouchableOpacity>
 
-        <AnimatedPressable
-          style={[styles.fabItem, secondItemStyle]}
-          onPress={handleAddMedication}>
-          <View style={[styles.fabItemInner, {backgroundColor: '#2196F3'}]}>
-            <Icon name="medical-services" size={20} color="white" />
-          </View>
-          <View style={styles.fabLabel}>
-            <Text style={styles.fabLabelText}>Add Medication</Text>
-          </View>
-        </AnimatedPressable>
+            <TouchableOpacity style={styles.fabItem} onPress={handleAddNote}>
+              <View style={[styles.fabItemInner, {backgroundColor: '#4CAF50'}]}>
+                <Icon name="note-add" size={20} color="white" />
+              </View>
+              <View style={styles.fabLabel}>
+                <Text style={styles.fabLabelText}>Add Note</Text>
+              </View>
+            </TouchableOpacity>
+          </>
+        )}
 
         <TouchableOpacity
           style={styles.fab}
-          onPress={toggleMenu}
+          onPress={() => setIsMenuOpen(!isMenuOpen)}
           activeOpacity={0.8}>
-          <Animated.View style={fabStyle}>
-            <Icon name="add" size={24} color="white" />
-          </Animated.View>
+          <Icon name={isMenuOpen ? 'close' : 'add'} size={24} color="white" />
         </TouchableOpacity>
       </View>
 
@@ -1064,6 +1166,48 @@ const PillReminderDetails = ({navigation, route}) => {
           </TouchableOpacity>
         </KeyboardAvoidingView>
       </Modal>
+      {/* Delete Confirmation Modal */}
+      <Modal
+        visible={deleteModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDeleteModalVisible(false)}>
+        <View style={styles.deleteModalOverlay}>
+          <View style={styles.deleteModalContainer}>
+            <Text style={styles.deleteModalTitle}>Delete Reminder?</Text>
+            <Text style={styles.deleteModalMessage}>
+              Are you sure you want to delete this reminder?
+            </Text>
+
+            <View style={styles.deleteModalActions}>
+              <TouchableOpacity
+                disabled={deleteLoading}
+                style={[styles.deleteButton, {backgroundColor: '#f0f0f0'}]}
+                onPress={() => {
+                  setDeleteModalVisible(false);
+                  setSelectedReminder(null);
+                }}>
+                <Text style={[styles.deleteButtonText, {color: '#333'}]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={deleteLoading}
+                style={[styles.deleteButton, {backgroundColor: 'red'}]}
+                onPress={() => {
+                  handleDeleteReminder();
+                }}>
+                {deleteLoading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1203,7 +1347,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   fab: {
-    backgroundColor: themeColors.primary,
+    backgroundColor: themeColors.primary, // or your themeColors.primary
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -1211,19 +1355,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 5,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.29,
-    shadowRadius: 4.65,
-    zIndex: 1,
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
   },
   fabItem: {
-    position: 'absolute',
+    // position: 'absolute',
     width: 48,
-    height: 48,
+    height: 68,
     right: 6,
+    bottom: 30, // Position above the main FAB
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
@@ -1235,27 +1376,24 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 5,
+    backgroundColor: 'white', // Default color, overridden inline
+    elevation: 3,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
   },
   fabLabel: {
     position: 'absolute',
-    right: 60,
+    right: 50,
     backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 5,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 4,
   },
   fabLabelText: {
     color: 'white',
     fontSize: 12,
-    fontWeight: 'bold',
   },
   // Modal styles
   modalOverlay: {
@@ -1382,6 +1520,76 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
     elevation: 2,
+  },
+  menuTopRight: {
+    position: 'absolute',
+    top: 10, // distance from the top edge of the card
+    right: 10, // distance from the right edge of the card
+    zIndex: 10, // ensure it's above other content
+  },
+  infoButtonPopup: {
+    // backgroundColor: '#4CAF50',
+    // borderRadius: 20,
+    // padding: 6,
+  },
+  menuOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  menuOptionIcon: {
+    marginRight: 10,
+  },
+  menuOptionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  menuOptions: {
+    borderRadius: 6,
+    padding: 5,
+  },
+  deleteModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteModalContainer: {
+    width: 300,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+  },
+  deleteModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    color: '#333',
+  },
+  deleteModalMessage: {
+    fontSize: 15,
+    color: '#555',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  deleteButton: {
+    flex: 1,
+    paddingVertical: 10,
+    marginHorizontal: 5,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });
 

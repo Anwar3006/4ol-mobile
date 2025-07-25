@@ -49,6 +49,7 @@ import CategoryResultsScreen from '../screens/CategoryResultsScreen';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import {Image} from 'react-native';
 import AddReminderDetails from '../screens/pillreminder/AddReminderDetails';
+import MedicationDetailsView from '../screens/pillreminder/MedicationDetailsView';
 
 const Stack = createNativeStackNavigator<any>();
 
@@ -72,6 +73,14 @@ const AppNavigation = props => {
         }}
         name={'AddMedication'}
         component={AddMedication}
+      />
+      <Stack.Screen
+        options={{
+          // headerShown: false,
+          title: 'Medication Details',
+        }}
+        name={'MedicationDetailsView'}
+        component={MedicationDetailsView}
       />
       <Stack.Screen
         options={{

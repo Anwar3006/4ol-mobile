@@ -119,6 +119,30 @@ export const fetchMedicationDetails = async (user_id: string) => {
   return data;
 };
 
+export const deleteMedicationReminder = async (
+  medicationId: any,
+  loadCallback: CallableFunction,
+  successCallback: CallableFunction,
+  errorCallback: CallableFunction,
+): Promise<void> => {
+  try {
+    loadCallback();
+    const {data, error} = await supabase
+      .from('medication_reminders')
+      .delete()
+      .eq('id', medicationId);
+
+    console.log('error server', error);
+    if (error) {
+      errorCallback(new Error('Failed to delete medication reminder'));
+      return;
+    }
+    successCallback(data);
+  } catch (err) {
+    errorCallback(err as Error);
+  }
+};
+
 export const createNotes = async (user_id: string, medicationData: any) => {
   const {error} = await supabase
     .from('notes')
