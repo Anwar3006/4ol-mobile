@@ -397,7 +397,12 @@ const MedicationDetailsView = ({route, navigation}) => {
       <View style={styles.actionsContainer}>
         <TouchableOpacity
           style={[styles.actionButton, {backgroundColor: '#f0f0f0'}]}
-          onPress={() => navigation.navigate('EditReminder', {medication})}>
+          onPress={() =>
+            navigation.navigate('AddMedication', {
+              title: 'Edit Medication Reminder',
+              medication,
+            })
+          }>
           <MaterialIcons name="edit" size={20} color="#333" />
           <Text style={[styles.actionButtonText, {color: '#333'}]}>Edit</Text>
         </TouchableOpacity>

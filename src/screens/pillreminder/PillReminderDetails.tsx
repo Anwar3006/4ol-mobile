@@ -269,7 +269,7 @@ const PillReminderDetails = ({navigation, route}) => {
 
   const handleAddMedication = () => {
     console.log('Add Medication pressed');
-    navigation.navigate('AddMedication');
+    navigation.navigate('AddMedication', {title: 'Create Medication Reminder'});
     setIsMenuOpen(false);
   };
 
@@ -578,7 +578,13 @@ const PillReminderDetails = ({navigation, route}) => {
                   </View>
                 </MenuOption>
 
-                <MenuOption onSelect={() => console.log('Edit pressed')}>
+                <MenuOption
+                  onSelect={() => {
+                    navigation.navigate('AddMedication', {
+                      title: 'Edit Medication Reminder',
+                      medication: item,
+                    });
+                  }}>
                   <View style={styles.menuOptionRow}>
                     <Icon
                       name="edit"

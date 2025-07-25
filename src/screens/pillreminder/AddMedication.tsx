@@ -1,11 +1,10 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   Modal,
-  Button,
   StyleSheet,
   Image,
   ScrollView,
@@ -20,7 +19,11 @@ import ColorPicker, {
   OpacitySlider,
 } from 'reanimated-color-picker';
 import {runOnJS} from 'react-native-reanimated';
-import {useNavigation, NavigationProp} from '@react-navigation/native';
+import {
+  useNavigation,
+  NavigationProp,
+  RouteProp,
+} from '@react-navigation/native';
 import {themeColors} from '../../theme/colors';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import FontAwesome6 from 'react-native-vector-icons/FontAwesome6';
@@ -30,44 +33,157 @@ import EntypoIcon from 'react-native-vector-icons/Entypo';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
 
-type RootStackParamList = {
-  AddReminderDetails: {
-    medicationName: string;
-    conditionName: string;
-    medicationType: string;
-    color: string;
-    imageUrl?: string;
-  };
-  // add other routes with their params as needed
-};
+export default function AddMedication({route}: any) {
+  const router: any = useNavigation();
+  const {title = 'Create Medication Reminder', medication} = route.params || {};
 
-const medicationKeyValues = [
-  {label: 'Tablet', value: 'Tablet'},
-  {label: 'Injection', value: 'Injection'},
-  {label: 'Spray', value: 'Spray'},
-  {label: 'Drops', value: 'Drops'},
-  {label: 'Solution', value: 'Solution'},
-  {label: 'Herbs', value: 'Herbs'},
-];
+  // Set initial values from medication if it exists
+  const [medicationName, setMedicationName] = useState(
+    medication?.medication_name || '',
+  );
+  const [conditionName, setConditionName] = useState(
+    medication?.condition || '',
+  );
+  const [medicationType, setMedicationType] = useState(
+    medication?.medication_type
+      ? medication.medication_type.charAt(0).toUpperCase() +
+          medication.medication_type.slice(1).toLowerCase()
+      : '',
+  );
+  console.log('medicationType:', medicationType);
 
-export default function AddMedication() {
-  const router = useNavigation<NavigationProp<RootStackParamList>>();
+  const [color, setColor] = useState(medication?.color || '#ffffff');
+  const [imageUri, setImageUri] = useState<string | null>(
+    medication?.imageUrl || null,
+  );
 
-  const [medicationName, setMedicationName] = useState('');
-  const [conditionName, setConditionName] = useState('');
-  const [medicationType, setMedicationType] = useState('');
-  const [color, setColor] = useState('#ffffff');
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [imageUri, setImageUri] = useState<string | null>(null);
   const [showImageOptions, setShowImageOptions] = useState(false);
-
-  // Add validation state variables
   const [errors, setErrors] = useState({
     medicationName: '',
     conditionName: '',
     medicationType: '',
   });
   const [formSubmitted, setFormSubmitted] = useState(false);
+
+  // Set the title dynamically
+  useEffect(() => {
+    router.setOptions({title});
+  }, [title, router]);
+
+  const medicationTypes = [
+    {
+      id: '1',
+      icon: (
+        <Icon
+          name="tablets"
+          size={25}
+          color={
+            medicationType === 'Tablet'
+              ? themeColors.white
+              : themeColors.lightPink
+          }
+        />
+      ),
+      label: 'Tablet',
+      value: 'TABLET',
+    },
+    {
+      id: '2',
+      icon: (
+        <Icon
+          name="capsules"
+          size={25}
+          color={
+            medicationType === 'Capsule'
+              ? themeColors.white
+              : themeColors.lightPink
+          }
+        />
+      ),
+      label: 'Capsule',
+      value: 'CAPSULE',
+    },
+    {
+      id: '3',
+      icon: (
+        <FontisoIcon
+          name="injection-syringe"
+          size={25}
+          color={
+            medicationType === 'Injection'
+              ? themeColors.white
+              : themeColors.lightPink
+          }
+        />
+      ),
+      label: 'Injection',
+      value: 'INJECTION',
+    },
+    {
+      id: '4',
+      icon: (
+        <MaterialCommunityIcon
+          name="spray"
+          size={25}
+          color={
+            medicationType === 'Spray'
+              ? themeColors.white
+              : themeColors.lightPink
+          }
+        />
+      ),
+      label: 'Spray',
+      value: 'SPRAY',
+    },
+    {
+      id: '5',
+      icon: (
+        <EntypoIcon
+          name="drop"
+          size={25}
+          color={
+            medicationType === 'Drops'
+              ? themeColors.white
+              : themeColors.lightPink
+          }
+        />
+      ),
+      label: 'Drops',
+      value: 'DROPS',
+    },
+    {
+      id: '6',
+      icon: (
+        <FontAwesome6
+          name="glass-water"
+          size={25}
+          color={
+            medicationType === 'Solution'
+              ? themeColors.white
+              : themeColors.lightPink
+          }
+        />
+      ),
+      label: 'Solution',
+      value: 'SOLUTION',
+    },
+    {
+      id: '7',
+      icon: (
+        <Image
+          source={
+            medicationType === 'Herbs'
+              ? require('../../../assets/images/herbalIcon2.png')
+              : require('../../../assets/images/herbalIcon.png')
+          }
+          style={{width: 30, height: 30}}
+        />
+      ),
+      label: 'Herbs',
+      value: 'HERBS',
+    },
+  ];
 
   // Update existing setter functions to clear errors when user enters data
   const updateMedicationName = (text: string) => {
@@ -88,113 +204,6 @@ export default function AddMedication() {
     setMedicationType(item.label);
     setErrors(prev => ({...prev, medicationType: ''}));
   };
-
-  const medicationTypes = [
-    {
-      id: '1',
-      icon: (
-        <Icon
-          name="tablets"
-          size={25}
-          color={
-            medicationType === 'Tablet'
-              ? themeColors.white
-              : themeColors.lightPink
-          }
-        />
-      ),
-      label: 'Tablet',
-    },
-    {
-      id: '2',
-      icon: (
-        <Icon
-          name="capsules"
-          size={25}
-          color={
-            medicationType === 'Capsule'
-              ? themeColors.white
-              : themeColors.lightPink
-          }
-        />
-      ),
-      label: 'Capsule',
-    },
-    {
-      id: '3',
-      icon: (
-        <FontisoIcon
-          name="injection-syringe"
-          size={25}
-          color={
-            medicationType === 'Injection'
-              ? themeColors.white
-              : themeColors.lightPink
-          }
-        />
-      ),
-      label: 'Injection',
-    },
-    {
-      id: '4',
-      icon: (
-        <MaterialCommunityIcon
-          name="spray"
-          size={25}
-          color={
-            medicationType === 'Spray'
-              ? themeColors.white
-              : themeColors.lightPink
-          }
-        />
-      ),
-      label: 'Spray',
-    },
-    {
-      id: '5',
-      icon: (
-        <EntypoIcon
-          name="drop"
-          size={25}
-          color={
-            medicationType === 'Drops'
-              ? themeColors.white
-              : themeColors.lightPink
-          }
-        />
-      ),
-      label: 'Drops',
-    },
-    {
-      id: '6',
-      icon: (
-        <FontAwesome6
-          name="glass-water"
-          size={25}
-          color={
-            medicationType === 'Solution'
-              ? themeColors.white
-              : themeColors.lightPink
-          }
-        />
-      ),
-      label: 'Solution',
-    },
-    {
-      id: '7',
-      icon: (
-        <Image
-          source={
-            medicationType === 'Herbs'
-              ? require('../../../assets/images/herbalIcon2.png')
-              : require('../../../assets/images/herbalIcon.png')
-          }
-          style={{width: 30, height: 30}}
-        />
-      ),
-      label: 'Herbs',
-    },
-  ];
 
   // Image selection options
   const selectImage = () => {
@@ -240,15 +249,11 @@ export default function AddMedication() {
     );
   };
 
-  // This handler will be called when the user completes the color selection
-  const onSelectColor = ({hex}) => {
+  const onSelectColor = ({hex}: {hex: string}) => {
     'worklet';
-    // do something with the selected color.
-    console.log(hex);
     runOnJS(setColor)(hex);
   };
 
-  // Update the submit function to validate fields first
   const onSubmit = () => {
     setFormSubmitted(true);
 
@@ -263,13 +268,11 @@ export default function AddMedication() {
 
     setErrors(newErrors);
 
-    // Check if there are any errors
     if (
       newErrors.medicationName ||
       newErrors.conditionName ||
       newErrors.medicationType
     ) {
-      // If there are errors, don't navigate
       return;
     }
 
@@ -279,11 +282,11 @@ export default function AddMedication() {
       medicationType,
       color,
       imageUrl: imageUri || undefined,
+      medication,
     });
   };
 
-  // Helper function to get input border color based on validation state
-  const getBorderColor = (fieldName: string) => {
+  const getBorderColor = (fieldName: keyof typeof errors) => {
     return formSubmitted && errors[fieldName] ? 'red' : 'lightgray';
   };
 
@@ -465,7 +468,6 @@ export default function AddMedication() {
   );
 }
 
-// Update your StyleSheet to add errorText style
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -473,7 +475,7 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     padding: 16,
-    paddingBottom: 100, // Extra padding at bottom to ensure content is visible
+    paddingBottom: 100,
   },
   label: {
     fontSize: 16,
@@ -649,7 +651,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
   },
-  // Add this new style for error messages
   errorText: {
     color: 'red',
     fontSize: 12,

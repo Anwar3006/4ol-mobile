@@ -21,7 +21,10 @@ import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import {themeColors} from '../../theme/colors';
 import moment from 'moment';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import {addMedicationReminder} from '../../services/medication';
+import {
+  addMedicationReminder,
+  updateMedicationReminder,
+} from '../../services/medication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {uploadMedicationImage} from '../../services/uploadMedicationImage';
 
@@ -128,62 +131,136 @@ const InfoModal = ({visible, onClose, title, content}) => (
 );
 
 export default function AddReminderDetails({route}) {
-  const {medicationName, conditionName, medicationType, color, imageUrl} =
-    route.params;
-
-  useEffect(() => {
-    console.log({
-      medicationName,
-      conditionName,
-      medicationType,
-      color,
-      imageUrl,
-    });
-  }, []);
+  const {
+    medicationName,
+    conditionName,
+    medicationType,
+    color,
+    imageUrl,
+    medication, // This will contain existing medication data when editing
+  } = route.params;
 
   const navigation = useNavigation();
   const [submitButtonHeight, setSubmitButtonHeight] = useState(0);
-
   const [infoModal, setInfoModal] = useState({
     visible: false,
     title: '',
     content: '',
   });
 
-  useEffect(() => {
-    navigation.setOptions({
-      headerTitle: `${medicationName} Reminder Details`,
-    });
-  }, [navigation, medicationName, color]);
-
-  const [startDate, setStartDate] = useState(new Date());
-  const [endDate, setEndDate] = useState(new Date());
-  const [showStart, setShowStart] = useState(false);
-  const [showEnd, setShowEnd] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [dose, setDose] = useState('');
-
-  // New state for scheduling options
-  const [notificationSchedule, setNotificationSchedule] = useState('');
-  const [gapDays, setGapDays] = useState(1);
-  const [weekDay, setWeekDay] = useState('');
-  const [specificDays, setSpecificDays] = useState<any[]>([]);
-
-  const [numberOfIntakes, setNumberOfIntakes] = useState(1);
-  const [notificationType, setNotificationType] = useState('Schedule');
-  // For Scheduled: array of times (one per intake)
-  const [scheduledTimes, setScheduledTimes] = useState<Date[]>(
-    Array(1).fill(new Date()),
+  // Initialize all state values from medication data if it exists
+  const [startDate, setStartDate] = useState(
+    medication?.start_date ? new Date(medication.start_date) : new Date(),
   );
-  // For Interval: first intake time and interval hours (1-6)
-  const [firstIntakeTime, setFirstIntakeTime] = useState(new Date());
+  const [endDate, setEndDate] = useState(
+    medication?.end_date ? new Date(medication.end_date) : new Date(),
+  );
+  const [amount, setAmount] = useState(
+    medication?.medication_amount ? String(medication.medication_amount) : '',
+  );
+  const [dose, setDose] = useState(
+    medication?.medication_dose ? String(medication.medication_dose) : '',
+  );
+
+  // Initialize notification schedule from medication data
+  const [notificationSchedule, setNotificationSchedule] = useState(() => {
+    if (!medication?.reminder_type) return '';
+    switch (medication.reminder_type) {
+      case 'ONCE':
+        return 'one_day';
+      case 'DAILY':
+        return 'daily';
+      case 'WITH_DAYS_GAP':
+        return 'every_n_days';
+      case 'WEEKLY':
+        return 'weekly';
+      case 'SPECIFIC_DAYS':
+        return 'specific_days';
+      default:
+        return '';
+    }
+  });
+
+  console.log('medication:', medication);
+
+  const [gapDays, setGapDays] = useState(Number(medication?.gap_days) || 1);
+  const [weekDay, setWeekDay] = useState(medication?.week_day || '');
+  const [specificDays, setSpecificDays] = useState(
+    medication?.specific_days || [],
+  );
+  const [numberOfIntakes, setNumberOfIntakes] = useState(
+    medication?.intake_amount || 1,
+  );
+  const [notificationType, setNotificationType] = useState(
+    medication?.notification_type === 'INTERVAL' ? 'Interval' : 'Schedule',
+  );
+
+  // Initialize times from medication data
+  const [scheduledTimes, setScheduledTimes] = useState<Date[]>(() => {
+    if (
+      !medication?.reminder_timestamps ||
+      medication.reminder_timestamps.length === 0
+    ) {
+      return Array(numberOfIntakes).fill(new Date());
+    }
+
+    // Get unique times from timestamps
+    const uniqueTimes = Array.from(
+      new Set(
+        medication.reminder_timestamps.map(t =>
+          new Date(t).toLocaleTimeString(),
+        ),
+      ),
+    );
+
+    return uniqueTimes
+      .map(timeStr => {
+        const [hours, minutes] = timeStr.split(':').map(Number);
+        const date = new Date();
+        date.setHours(hours, minutes, 0, 0);
+        return date;
+      })
+      .slice(0, numberOfIntakes);
+  });
+
+  const [firstIntakeTime, setFirstIntakeTime] = useState(() => {
+    if (
+      !medication?.reminder_timestamps ||
+      medication.reminder_timestamps.length === 0
+    ) {
+      return new Date();
+    }
+    return new Date(medication.reminder_timestamps[0]);
+  });
+
   const [intervalHours, setIntervalHours] = useState(1);
-  const [intervalMinutes, setIntervalMinutes] = useState(1);
-  const [showTimePicker, setShowTimePicker] = useState<{
-    index: number;
-  } | null>(null);
+  const [intervalMinutes, setIntervalMinutes] = useState(0);
+  const [showTimePicker, setShowTimePicker] = useState<{index: number} | null>(
+    null,
+  );
   const [showIntervalPicker, setShowIntervalPicker] = useState(false);
   const [showFirstTimePicker, setShowFirstTimePicker] = useState(false);
+  const [showStart, setShowStart] = useState(false);
+  const [showEnd, setShowEnd] = useState(false);
+
+  // Calculate interval if notification type is Interval
+  useEffect(() => {
+    if (
+      medication?.notification_type === 'INTERVAL' &&
+      medication?.reminder_timestamps &&
+      medication.reminder_timestamps.length > 1
+    ) {
+      const first = new Date(medication.reminder_timestamps[0]);
+      const second = new Date(medication.reminder_timestamps[1]);
+
+      const diffMs = second.getTime() - first.getTime();
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffMinutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+
+      setIntervalHours(diffHours);
+      setIntervalMinutes(diffMinutes);
+    }
+  }, [medication]);
 
   // Update scheduledTimes array when numberOfIntakes changes
   useEffect(() => {
@@ -195,26 +272,10 @@ export default function AddReminderDetails({route}) {
   }, [numberOfIntakes]);
 
   useEffect(() => {
-    (async () => {
-      const settings = await notifee.getNotificationSettings();
-
-      if (settings.authorizationStatus == AuthorizationStatus.AUTHORIZED) {
-        console.log('Notification permissions has been authorized');
-      } else if (settings.authorizationStatus == AuthorizationStatus.DENIED) {
-        console.log('Notification permissions has been denied');
-      }
-      if (Platform.OS === 'android') {
-        await notifee.createChannel({
-          id: 'medication-reminders',
-          name: 'Medication Reminders',
-          lights: true,
-          vibration: true,
-          importance: AndroidImportance.HIGH, // Make sure notifications appear as proper alerts
-          sound: 'default',
-        });
-      }
-    })();
-  }, []);
+    navigation.setOptions({
+      headerTitle: `${medicationName} Reminder Details`,
+    });
+  }, [navigation, medicationName, color]);
   const onChangeStart = (event: any, selectedDate?: Date) => {
     setShowStart(Platform.OS === 'ios');
     if (selectedDate) {
@@ -418,12 +479,15 @@ export default function AddReminderDetails({route}) {
       };
 
       console.log('Saving medication reminder data:', medicationReminderData);
-
-      // Call the service to add the medication reminder to the database
-      const result = await addMedicationReminder(
-        userId,
-        medicationReminderData,
-      );
+      let result: any = '';
+      if (medication) {
+        result = await updateMedicationReminder(
+          medication?.id,
+          medicationReminderData,
+        );
+      } else {
+        result = await addMedicationReminder(medicationReminderData);
+      }
 
       console.log('Medication reminder saved successfully:', result);
 
@@ -1079,7 +1143,9 @@ export default function AddReminderDetails({route}) {
           borderRadius: 4,
           marginTop: 16,
         }}>
-        <Text style={{color: '#fff', fontWeight: '700'}}>Set Reminder</Text>
+        <Text style={{color: '#fff', fontWeight: '700'}}>
+          {medication ? 'Update Reminder' : 'Set Reminder'}
+        </Text>
       </TouchableOpacity>
       <InfoModal
         visible={infoModal.visible}

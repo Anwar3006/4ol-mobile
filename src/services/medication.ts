@@ -79,14 +79,38 @@ export const fetchMedicationReminders = async (user_id: string) => {
   return data;
 };
 
-export const addMedicationReminder = async (
-  user_id: string,
+export const addMedicationReminder = async (medicationData: any) => {
+  try {
+    const {data, error} = await supabase
+      .from('medication_reminders')
+      .insert(medicationData);
+
+    if (error) {
+      console.error('Supabase error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      });
+      throw new Error(`Supabase error: ${error.message}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Full error stack:', error);
+    throw error;
+  }
+};
+
+export const updateMedicationReminder = async (
+  medicationId: string,
   medicationData: any,
 ) => {
   try {
     const {data, error} = await supabase
       .from('medication_reminders')
-      .insert(medicationData);
+      .update(medicationData)
+      .eq('id', medicationId);
 
     if (error) {
       console.error('Supabase error details:', {
