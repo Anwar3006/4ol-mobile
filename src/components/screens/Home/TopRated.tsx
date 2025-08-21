@@ -19,7 +19,7 @@ import {getTopRatedFacility} from '../../../services/facility';
 import {truncateString} from '../../../utils/helpers';
 import useLocation from '../../../hooks/useLocation';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
-
+import {useWindowDimensions} from 'react-native';
 interface TopRatednavigationParams {
   FacilityDetails: {
     id: number;
@@ -30,10 +30,24 @@ interface TopRatednavigationParams {
 }
 
 const TopRated = () => {
+  const {width, height} = useWindowDimensions();
   const [loading, setLoading] = useState(false);
   const [facilities, setFacilities] = useState<any>([]);
   const {location, locationError, retryLocation} = useLocation();
+  const [itemWidth, setItemWidth] = useState(177);
   const navigation = useNavigation<NavigationProp<TopRatednavigationParams>>();
+  const itemHeight = width >= 600 ? 200 : 200;
+  useEffect(() => {
+    if (width > 1200) {
+      setItemWidth(300);
+    } else if (width > 800) {
+      setItemWidth(255);
+    } else if (width > 600) {
+      setItemWidth(300);
+    } else {
+      setItemWidth(177);
+    }
+  }, [width]);
 
   useEffect(() => {
     if (location) {
@@ -59,7 +73,7 @@ const TopRated = () => {
       onPress={() => {
         navigation.navigate('FacilityDetails', {id: item?.id});
       }}>
-      <View style={styles.item}>
+      <View style={[styles.item, {width: itemWidth, height: itemHeight}]}>
         <Image
           style={styles.image}
           source={
@@ -175,12 +189,13 @@ const styles = StyleSheet.create({
     marginRight: 15,
     padding: 10,
     borderRadius: 10,
-    width: 180,
+    // width: 280,
+    // height: 200,
     // height: 200,
   },
   image: {
     width: '100%',
-    height: 110,
+    height: '70%',
     borderRadius: 10,
   },
   title: {

@@ -20,7 +20,11 @@ import {setPeriodTracker} from '../store/slices/periodTracker';
 import {supabase} from '../utils/supabaseClient';
 import {logDAU, logDownloads, logMAU} from '../services/appPerformanceService';
 import React from 'react';
-import {navigationRef} from '../services/NavigationRef';
+import {
+  navigationRef,
+  handlePendingNavigation,
+} from '../services/NavigationRef';
+import {checkRedirect} from '../services/checkRedirect';
 const Route = () => {
   const optionalConfigObject = {
     title: 'Please Authenticate', // Android
@@ -48,6 +52,7 @@ const Route = () => {
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
+    // checkRedirect();
     const handleAppStateChange = async (nextAppState: any) => {
       if (
         appState.current.match(/inactive|background/) &&

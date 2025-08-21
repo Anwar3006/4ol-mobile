@@ -2,6 +2,44 @@ import axios from 'axios';
 import {notification_api_url} from '../constants';
 import {supabase} from '../utils/supabaseClient';
 import {limit} from '../../config/variables';
+import notifee, {EventType} from '@notifee/react-native';
+import {AndroidImportance, TriggerType} from '@notifee/react-native';
+import {Linking, Platform} from 'react-native';
+import messaging from '@react-native-firebase/messaging';
+
+export function registerNotificationHandlers(navigationRef: any) {
+  // 🔹 Foreground & background click handling
+  notifee.onForegroundEvent(({type, detail}) => {
+    if (type === EventType.PRESS && detail.notification?.data?.screen) {
+      navigationRef.current?.navigate(detail.notification.data.screen);
+    }
+  });
+
+  notifee.onBackgroundEvent(async ({type, detail}) => {
+    if (type === EventType.PRESS && detail.notification?.data?.screen) {
+      // Will run when app was killed and opened by tapping notification
+      navigationRef.current?.navigate(detail.notification.data.screen);
+    }
+  });
+
+  // 🔹 App opened from quit state (cold start)
+  messaging()
+    .getInitialNotification()
+    .then(remoteMessage => {
+      if (remoteMessage?.data?.screen) {
+        navigationRef.current?.navigate(remoteMessage.data.screen);
+      }
+    });
+}
+
+export const requestExactAlarmPermission = () => {
+  if (Platform.OS === 'android' && Platform.Version >= 31) {
+    // This opens the specific settings page for exact alarms
+    Linking.openSettings();
+    // Or if you want the exact alarm settings directly:
+    // Linking.openURL('package:' + Application.applicationId + '/exact_alarm_permission');
+  }
+};
 
 export const notification_firebase_api = async () => {
   try {
@@ -12,6 +50,63 @@ export const notification_firebase_api = async () => {
     console.log('error sending notifications', error);
   }
 };
+
+export const scheduleMedicationNotification = async (
+  triggerTime: Date,
+  medicationName: string,
+) => {
+  const channelId = await notifee.createChannel({
+    id: 'medication-reminders',
+    name: 'Medication Reminders',
+    importance: AndroidImportance.HIGH,
+  });
+  +3;
+
+  await notifee.createTriggerNotification(
+    {
+      title: `Time to take ${medicationName}`,
+      body: 'Your medication reminder',
+      android: {
+        channelId,
+        importance: AndroidImportance.HIGH,
+        pressAction: {
+          id: 'default',
+        },
+      },
+    },
+    {
+      type: TriggerType.TIMESTAMP,
+      timestamp: triggerTime.getTime(), // Exact trigger time
+    },
+  );
+};
+
+async function scheduleNotification(triggerTime: Date, medicationName: string) {
+  // Required for Android
+  const channelId = await notifee.createChannel({
+    id: 'medication-reminders',
+    name: 'Medication Reminders',
+    importance: AndroidImportance.HIGH,
+  });
+
+  await notifee.createTriggerNotification(
+    {
+      title: `Time to take ${medicationName}`,
+      body: 'Your medication reminder',
+      android: {
+        channelId,
+        importance: AndroidImportance.HIGH,
+        pressAction: {
+          id: 'default',
+        },
+      },
+    },
+    {
+      type: TriggerType.TIMESTAMP,
+      timestamp: triggerTime.getTime(), // Exact trigger time
+    },
+  );
+}
 
 export const getNotifications = async (
   userId: string,

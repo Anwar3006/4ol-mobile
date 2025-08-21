@@ -7,7 +7,7 @@ import {
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createStackNavigator, TransitionPresets} from '@react-navigation/stack';
 import BottomTabNavigation from './BottomTabNavigation';
-
+import {Linking} from 'react-native';
 import Categories from '../screens/Home/Categories';
 import TopRated from '../screens/Home/TopRated';
 import FacilityDetails from '../../src/screens/FacilityDetails';
@@ -50,10 +50,320 @@ import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import {Image} from 'react-native';
 import AddReminderDetails from '../screens/pillreminder/AddReminderDetails';
 import MedicationDetailsView from '../screens/pillreminder/MedicationDetailsView';
-
+import {AppRegistry} from 'react-native';
+import {navigationRef} from '../services/NavigationRef';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {requestExactAlarmPermission} from '../services/notificationService';
+import notifee, {AndroidImportance} from '@notifee/react-native';
+import messaging from '@react-native-firebase/messaging';
+import {handlePendingNotification} from '../services/notificationActions';
+import {checkRedirect} from '../services/checkRedirect';
+import {handleNotificationPress} from '../services/notificationActions';
+import {handleNotificationAction} from '../services/notificationActions';
 const Stack = createNativeStackNavigator<any>();
 
+// const handlePendingNotification = async () => {
+//   try {
+//     const pendingNotification = await AsyncStorage.getItem(
+//       'pendingNotification',
+//     );
+//     if (!pendingNotification) return;
+
+//     const data = JSON.parse(pendingNotification);
+//     if (!data?.medicationId) {
+//       await AsyncStorage.removeItem('pendingNotification');
+//       return;
+//     }
+
+//     // Navigate to MedicationDetailsView with medicationId
+//     if (navigationRef.current?.isReady()) {
+//       navigationRef.current.navigate('MedicationDetailsView', {
+//         medicationId: data.medicationId, // Pass ID instead of dummy data
+//         fromNotification: true,
+//       });
+//     }
+
+//     await AsyncStorage.removeItem('pendingNotification');
+//   } catch (error) {
+//     console.error('Notification handling failed:', error);
+//     await AsyncStorage.removeItem('pendingNotification');
+//   }
+// };
+
 const AppNavigation = props => {
+  useEffect(() => {
+    // Create notification channel on app start
+
+    const createChannel = async () => {
+      await messaging().requestPermission();
+      await messaging().registerDeviceForRemoteMessages();
+
+      await notifee.createChannel({
+        id: 'default',
+        name: 'Default Channel',
+        importance: AndroidImportance.HIGH,
+      });
+    };
+    createChannel();
+
+    // Setup foreground event handler
+    const unsubscribeForeground = notifee.onForegroundEvent(async event => {
+      if (event.type === EventType.ACTION_PRESS) {
+        await handleNotificationAction(event.detail);
+      } else if (event.type === EventType.PRESS) {
+        await handleNotificationPress(event.detail.notification);
+      }
+    });
+
+    // Handle navigation on notification open from background
+    const unsubscribeNotificationOpened = messaging().onNotificationOpenedApp(
+      remoteMessage => {
+        if (remoteMessage?.data) {
+          AsyncStorage.setItem(
+            'pendingNotification',
+            JSON.stringify(remoteMessage.data),
+          );
+          // DO NOT call handlePendingNotification() here
+          // We'll handle it via checkPendingNotification polling
+        }
+      },
+    );
+
+    // Handle notification that opened the app from killed state
+    messaging()
+      .getInitialNotification()
+      .then(remoteMessage => {
+        if (remoteMessage?.data) {
+          AsyncStorage.setItem(
+            'pendingNotification',
+            JSON.stringify(remoteMessage.data),
+          );
+          // DO NOT call handlePendingNotification() here
+        }
+      });
+
+    // Check if there is a pending notification stored when app starts
+    const checkPendingNotification = async () => {
+      const pendingNotification = await AsyncStorage.getItem(
+        'pendingNotification',
+      );
+      if (pendingNotification) {
+        let interval: NodeJS.Timeout;
+        let timeout: NodeJS.Timeout;
+
+        interval = setInterval(() => {
+          if (navigationRef.current?.isReady()) {
+            clearInterval(interval);
+            clearTimeout(timeout);
+
+            // Now call the handler which does the navigation
+            handlePendingNotification();
+          }
+        }, 200);
+
+        timeout = setTimeout(() => {
+          clearInterval(interval);
+          console.warn('Navigation timeout');
+        }, 5000);
+      }
+    };
+    checkPendingNotification();
+
+    return () => {
+      unsubscribeForeground();
+      unsubscribeNotificationOpened();
+    };
+  }, []);
+
+  // useEffect(() => {
+  //   // Create notification channel on app start
+  //   const createChannel = async () => {
+  //     await notifee.createChannel({
+  //       id: 'default',
+  //       name: 'Default Channel',
+  //       importance: AndroidImportance.HIGH,
+  //     });
+  //   };
+  //   createChannel();
+
+  //   // Setup foreground event handler
+  //   const unsubscribeForeground = notifee.onForegroundEvent(async event => {
+  //     if (event.type === EventType.ACTION_PRESS) {
+  //       await handleNotificationAction(event.detail);
+  //     } else if (event.type === EventType.PRESS) {
+  //       await handleNotificationPress(event.detail.notification);
+  //     }
+  //   });
+
+  //   // Handle navigation on notification open from background
+  //   const unsubscribeNotificationOpened = messaging().onNotificationOpenedApp(
+  //     remoteMessage => {
+  //       if (remoteMessage?.data) {
+  //         AsyncStorage.setItem(
+  //           'pendingNotification',
+  //           JSON.stringify(remoteMessage.data),
+  //         );
+  //         handlePendingNotification();
+  //       }
+  //     },
+  //   );
+
+  //   // Handle notification that opened the app from killed state
+  //   messaging()
+  //     .getInitialNotification()
+  //     .then(remoteMessage => {
+  //       if (remoteMessage?.data) {
+  //         AsyncStorage.setItem(
+  //           'pendingNotification',
+  //           JSON.stringify(remoteMessage.data),
+  //         );
+  //         handlePendingNotification();
+  //       }
+  //     });
+
+  //   // Check if there is a pending notification stored when app starts
+  //   const checkPendingNotification = async () => {
+  //     const pendingNotification = await AsyncStorage.getItem(
+  //       'pendingNotification',
+  //     );
+  //     if (pendingNotification) {
+  //       let interval: NodeJS.Timeout;
+  //       let timeout: NodeJS.Timeout;
+
+  //       interval = setInterval(() => {
+  //         if (navigationRef.current?.isReady()) {
+  //           clearInterval(interval);
+  //           clearTimeout(timeout);
+  //           handlePendingNotification();
+  //         }
+  //       }, 200);
+
+  //       timeout = setTimeout(() => {
+  //         clearInterval(interval);
+  //         console.warn('Navigation timeout');
+  //       }, 5000);
+  //     }
+  //   };
+  //   checkPendingNotification();
+
+  //   return () => {
+  //     unsubscribeForeground();
+  //     unsubscribeNotificationOpened();
+  //   };
+  // }, []);
+  //
+  ///
+  //
+  //
+  //
+  // useEffect(() => {
+  //   let interval: NodeJS.Timeout;
+  //   let timeout: NodeJS.Timeout;
+
+  //   const initApp = async () => {
+  //     const pendingNotification = await AsyncStorage.getItem(
+  //       'pendingNotification',
+  //     );
+  //     if (pendingNotification) {
+  //       interval = setInterval(() => {
+  //         if (navigationRef.current?.isReady()) {
+  //           clearInterval(interval);
+  //           clearTimeout(timeout);
+  //           handlePendingNotification();
+  //         }
+  //       }, 200);
+
+  //       timeout = setTimeout(() => {
+  //         clearInterval(interval);
+  //         console.warn('Navigation timeout');
+  //       }, 5000);
+  //     }
+  //   };
+
+  //   initApp();
+
+  //   return () => {
+  //     clearInterval(interval);
+  //     clearTimeout(timeout);
+  //   };
+  // }, []);
+  //
+  //
+  //
+  //
+  //
+  // useEffect(() => {
+  //   let interval: NodeJS.Timeout;
+  //   let timeout: NodeJS.Timeout;
+
+  //   const initApp = async () => {
+  //     // Create notification channel (Android)
+  //     await notifee.createChannel({
+  //       id: 'default',
+  //       name: 'Default Channel',
+  //       importance: AndroidImportance.HIGH,
+  //     });
+
+  //     // Check for pending notification when app starts
+  //     const pendingNotification = await AsyncStorage.getItem(
+  //       'pendingNotification',
+  //     );
+  //     if (pendingNotification) {
+  //       interval = setInterval(() => {
+  //         if (navigationRef.current?.isReady()) {
+  //           clearInterval(interval);
+  //           clearTimeout(timeout);
+  //           handlePendingNotification();
+  //         }
+  //       }, 200);
+
+  //       timeout = setTimeout(() => {
+  //         clearInterval(interval);
+  //         console.warn('Navigation timeout');
+  //       }, 5000);
+  //     }
+  //   };
+  //   checkRedirect();
+  //   initApp();
+
+  //   // Handle background -> foreground notification open
+  //   messaging().onNotificationOpenedApp(remoteMessage => {
+  //     console.log(
+  //       'Notification caused app to open from background:',
+  //       remoteMessage,
+  //     );
+  //     if (remoteMessage?.data) {
+  //       AsyncStorage.setItem(
+  //         'pendingNotification',
+  //         JSON.stringify(remoteMessage.data),
+  //       );
+  //       handlePendingNotification();
+  //     }
+  //   });
+
+  //   // Handle killed state notification open
+  //   messaging()
+  //     .getInitialNotification()
+  //     .then(remoteMessage => {
+  //       if (remoteMessage?.data) {
+  //         console.log(
+  //           'Notification caused app to open from quit state:',
+  //           remoteMessage,
+  //         );
+  //         AsyncStorage.setItem(
+  //           'pendingNotification',
+  //           JSON.stringify(remoteMessage.data),
+  //         );
+  //         handlePendingNotification();
+  //       }
+  //     });
+
+  //   return () => {
+  //     if (interval) clearInterval(interval);
+  //     if (timeout) clearTimeout(timeout);
+  //   };
+  // }, []);
+
   return (
     <Stack.Navigator
       screenOptions={{

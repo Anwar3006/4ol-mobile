@@ -21,6 +21,7 @@ import {limit} from '../../config/variables';
 import {useSelector} from 'react-redux';
 import {user} from '../store/selectors';
 import {ActivityIndicator} from 'react-native-paper';
+import {useWindowDimensions} from 'react-native';
 import moment from 'moment';
 import {horizontalScale, moderateScale, verticalScale} from '../utils/metrics';
 import {ChatModal} from '../components/shared-components/ChatSupportModal';
@@ -30,6 +31,7 @@ const Notifications = () => {
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState<any>([]);
   const [page, setPage] = useState(0);
+  const {width} = useWindowDimensions();
   const [hasMore, setHasMore] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
 
@@ -148,7 +150,10 @@ const Notifications = () => {
       />
       <View style={styles.supportButtonView}>
         <TouchableOpacity
-          style={[styles.supportButton, {backgroundColor: themeColors.primary}]}
+          style={[
+            styles.supportButton,
+            {backgroundColor: themeColors.primary, width: width - 60},
+          ]}
           onPress={toggleModal}>
           <Text style={[styles.supportButtonText, {color: themeColors.white}]}>
             Contact Support
@@ -232,19 +237,19 @@ const styles = StyleSheet.create({
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: horizontalScale(15),
   },
   supportButton: {
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: 10,
-    // width:'100%',
+    // width: '100%',
     height: verticalScale(50),
-    width: horizontalScale(250),
+    // width: horizontalScale(250),
     marginHorizontal: horizontalScale(30),
   },
   supportButtonText: {
     fontSize: moderateScale(15),
     fontWeight: 'bold',
+    // width: 400,
   },
 });

@@ -11,9 +11,12 @@ import {
   setupNotificationCategories,
   setupNotificationHandlers,
 } from './src/services/notificationActions';
+import {checkRedirect} from './src/services/checkRedirect';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
   useEffect(() => {
+    checkRedirect();
     setupNotificationHandlers();
     setupNotificationCategories();
   }, []);

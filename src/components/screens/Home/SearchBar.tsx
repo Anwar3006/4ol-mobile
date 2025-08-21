@@ -12,7 +12,9 @@ import {themeColors} from '../../../theme/colors';
 import {size} from '../../../theme/fontStyle';
 import {fonts} from '../../../theme/fonts';
 import {searchAllTables} from '../../../services/searchAllTables';
-
+// import {useResponsive} from '../../../hooks/useIconResposive';
+import {useWindowDimensions} from 'react-native';
+import {fontSize} from '../../../responsive';
 type SearchBarProps = {
   showBtn?: boolean;
   placeholder?: string;
@@ -32,12 +34,15 @@ const SearchBar: React.FC<SearchBarProps> = ({
   onBlur,
   onFocus,
 }) => {
+  const {width, height} = useWindowDimensions();
+  const isTablet = width >= 600; // Typical tablet breakpoint
+  const searchHeight = isTablet ? 48 : 43; // Adjust height for tablets
   return (
-    <View style={styles.container}>
-      <View style={styles.inputWrapper}>
+    <View style={[styles.container]}>
+      <View style={[styles.inputWrapper, {height: searchHeight}]}>
         <Icon
           name="search"
-          size={15}
+          size={isTablet ? 25 : 15} // Adjust icon size for tablets
           color={themeColors.black}
           style={styles.icon}
         />
@@ -45,7 +50,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <TextInput
           onBlur={onBlur}
           onFocus={onFocus}
-          style={styles.input}
+          style={[
+            styles.input,
+            {paddingLeft: isTablet ? 55 : 30, fontSize: isTablet ? 25 : 15},
+          ]}
           placeholderTextColor={themeColors.black}
           placeholder={placeholder}
           value={value}
@@ -54,7 +62,13 @@ const SearchBar: React.FC<SearchBarProps> = ({
       </View>
       {showBtn && (
         <TouchableOpacity onPress={handleSearch}>
-          <Text style={styles.searchBtn}>Search</Text>
+          <Text
+            style={[
+              styles.searchBtn,
+              {height: searchHeight, fontSize: isTablet ? 25 : 15},
+            ]}>
+            Search
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -69,29 +83,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginVertical: 10,
+    // height: 42, // Fixed height for the search bar
   },
   inputWrapper: {
     position: 'relative',
     flex: 1,
     backgroundColor: themeColors.white,
     borderRadius: 10,
+    flexDirection: 'column',
     justifyContent: 'center',
-    height: 48,
+    alignItems: 'center',
+    // height: 88,
   },
   icon: {
     position: 'absolute',
-    top: 16,
+    // top: 16,
     left: 10,
     // zIndex: 1,
   },
   input: {
     width: '100%',
     padding: 10,
-    paddingLeft: 35,
+    // paddingLeft: 55,
     // paddingVertical: 12, // Adjusted vertical padding
     // paddingLeft: 40, // Increased from 35 to account for icon spacing
     color: themeColors.black,
-    fontSize: size.sl,
+    // fontSize: 30,
     fontFamily: fonts.OpenSansRegular,
     // height: '100%', // Make input fill container
   },
@@ -101,8 +118,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
     color: themeColors.white,
-    fontSize: size.sl,
     fontFamily: fonts.QuincyCFBold,
     marginLeft: 10,
+    textAlign: 'center',
+    textAlignVertical: 'center',
   },
 });

@@ -17,6 +17,13 @@ export function navigate(name: string, params?: object) {
     return;
   }
 
+  // if (navigationRef.current && navigationRef.current.isReady()) {
+  //   navigationRef.current.navigate(name, params);
+  // } else {
+  //   console.warn('Navigation not ready, storing pending navigation');
+  //   pendingNotificationRoute = {name, params};
+  // }
+
   try {
     navigationRef.current.navigate(name, params);
     console.log('Navigation successful');

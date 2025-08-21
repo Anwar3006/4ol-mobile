@@ -47,6 +47,7 @@ export const sendOtp = async (
         },
       },
     );
+    console.log(response);
 
     onSuccess(response.data);
   } catch (error: any) {

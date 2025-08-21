@@ -1,4 +1,4 @@
-import {Image} from 'react-native';
+import {Image, useWindowDimensions} from 'react-native';
 import {CategoryItem, TopRatedItem} from '../interfaces';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
@@ -9,16 +9,24 @@ import {themeColors} from '../theme/colors';
 import {SCREENS} from './screens';
 import {horizontalScale, verticalScale} from '../utils/metrics';
 
+// import {width} from '../theme/fontStyle'
+
+// Inside your component where you use categories
+// const {getScaledValue} = useResponsive();
+
+export const topRatedItems: TopRatedItem[] = [
+  {id: '1', name: 'Apollo Hospital', ratings: 4.6, distance: '5.0 km'},
+  {id: '2', name: 'Narayana Hospital', ratings: 4.0, distance: '2.2 km'},
+  {id: '3', name: 'Zydus Hospital', ratings: 3.2, distance: '5.6 km'},
+  {id: '4', name: 'Aarna Hospital', ratings: 2.5, distance: '8 km'},
+  {id: '5', name: 'Narayana Hospital', ratings: 4.0, distance: '2.2 km'},
+  {id: '6', name: 'Apollo Hospital', ratings: 4.6, distance: '5.0 km'},
+];
+
 export const categories: CategoryItem[] = [
   {
     id: '1',
-    icon: (
-      <Icon
-        name="hospital"
-        size={verticalScale(30)}
-        color={themeColors.lightPink}
-      />
-    ),
+    icon: <Icon name="hospital" size={30} color={themeColors.lightPink} />,
     title: 'Hospital',
     screen: 'TopRated',
   },
@@ -27,7 +35,8 @@ export const categories: CategoryItem[] = [
     icon: (
       <Image
         source={require('../../assets/images/pharmacyIcon.png')}
-        style={{width: horizontalScale(28), height: verticalScale(30)}}
+        resizeMode="contain"
+        style={{width: 30, height: 42}}
       />
     ),
     title: 'Pharmacy',
@@ -38,7 +47,8 @@ export const categories: CategoryItem[] = [
     icon: (
       <Image
         source={require('../../assets/images/diseaseIcon.png')}
-        style={{width: horizontalScale(30), height: verticalScale(32)}}
+        resizeMode="contain"
+        style={{width: 35, height: 42}}
       />
     ),
     title: 'Diseases',
@@ -49,7 +59,8 @@ export const categories: CategoryItem[] = [
     icon: (
       <Image
         source={require('../../assets/images/bloodIcon.png')}
-        style={{width: horizontalScale(22), height: horizontalScale(30)}}
+        resizeMode="contain"
+        style={{width: 40, height: 38, marginLeft: -10}}
       />
     ),
     title: 'Plasence',
@@ -57,13 +68,7 @@ export const categories: CategoryItem[] = [
   },
   {
     id: '5',
-    icon: (
-      <Icon
-        name="flask"
-        size={verticalScale(30)}
-        color={themeColors.lightPink}
-      />
-    ),
+    icon: <Icon name="flask" size={30} color={themeColors.lightPink} />,
     title: 'Diagnostic Lab',
     screen: 'TopRated',
   },
@@ -72,7 +77,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <MaterialIcon
         name="warning-amber"
-        size={verticalScale(30)}
+        size={35}
         color={themeColors.lightPink}
       />
     ),
@@ -84,7 +89,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <IoniIcon
         name="fitness-outline"
-        size={verticalScale(30)}
+        size={35}
         color={themeColors.lightPink}
       />
     ),
@@ -96,7 +101,8 @@ export const categories: CategoryItem[] = [
     icon: (
       <Image
         source={require('../../assets/images/herbalIcon.png')}
-        style={{width: horizontalScale(30), height: verticalScale(30)}}
+        resizeMode="contain"
+        style={{width: 50, height: 42, marginLeft: -10}}
       />
     ),
     title: 'Herbal Hospital',
@@ -107,7 +113,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <MaterialCommunityIcon
         name="ambulance"
-        size={verticalScale(30)}
+        size={35}
         color={themeColors.lightPink}
       />
     ),
@@ -119,7 +125,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <MaterialCommunityIcon
         name="shield-home-outline"
-        size={verticalScale(30)}
+        size={35}
         color={themeColors.lightPink}
       />
     ),
@@ -150,13 +156,15 @@ export const categories: CategoryItem[] = [
   },
   {
     id: '13',
-    icon: <Icon name="teeth" size={20} color={themeColors.lightPink} />,
+    icon: <Icon name="teeth" size={25} color={themeColors.lightPink} />,
     title: 'Dental',
     screen: 'TopRated',
   },
   {
     id: '14',
-    icon: <Icon name="joint" size={20} color={themeColors.lightPink} />,
+    icon: (
+      <Icon name="joint" size={30} color={themeColors.lightPink} style={{}} />
+    ),
     title: 'Osteopathy (Joints/ Muscles)',
     screen: 'TopRated',
   },
@@ -165,7 +173,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <Image
         source={require('../../assets/images/artificialIcon.png')}
-        style={{width: 40, height: 30}}
+        style={{width: 50, height: 35, marginLeft: -11}}
       />
     ),
     title: 'Prosthetics',
@@ -176,7 +184,7 @@ export const categories: CategoryItem[] = [
     icon: (
       <FontistoIcon
         name="paralysis-disability"
-        size={20}
+        size={30}
         color={themeColors.lightPink}
       />
     ),
@@ -194,13 +202,4 @@ export const categories: CategoryItem[] = [
     title: 'Psychiatric',
     screen: 'TopRated',
   },
-];
-
-export const topRatedItems: TopRatedItem[] = [
-  {id: '1', name: 'Apollo Hospital', ratings: 4.6, distance: '5.0 km'},
-  {id: '2', name: 'Narayana Hospital', ratings: 4.0, distance: '2.2 km'},
-  {id: '3', name: 'Zydus Hospital', ratings: 3.2, distance: '5.6 km'},
-  {id: '4', name: 'Aarna Hospital', ratings: 2.5, distance: '8 km'},
-  {id: '5', name: 'Narayana Hospital', ratings: 4.0, distance: '2.2 km'},
-  {id: '6', name: 'Apollo Hospital', ratings: 4.6, distance: '5.0 km'},
 ];

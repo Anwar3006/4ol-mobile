@@ -26,6 +26,7 @@ import {RootState} from '../../store';
 import {fetchNearbyPlaces} from '../../store/slices/MarkersSlice';
 import {THIS_IS_MAP_KEY} from '../../../config/variables';
 import {searchAllTables} from '../../services/searchAllTables';
+import {useWindowDimensions} from 'react-native';
 import {
   setSearchData,
   setError,
@@ -46,6 +47,9 @@ const HomeScreen = () => {
   const userData: any = useSelector(user);
   const {location} = useLocation();
   const dispatch = useDispatch();
+  const {width, height} = useWindowDimensions();
+  const isTablet = width >= 600; // Typical tablet breakpoint
+  const searchHeight = isTablet ? 20 : 10;
   const {markers, loading, selectedDistance, selectedFilter} = useSelector(
     (state: RootState) => state.markers,
   );
@@ -181,6 +185,7 @@ const HomeScreen = () => {
                   flexDirection: 'row',
                   position: 'absolute',
                   width: Dimensions.get('window').width - 40,
+                  height: Dimensions.get('window').height / 2.5,
                   top: 40,
                   marginTop: 10,
                   zIndex: 1000,

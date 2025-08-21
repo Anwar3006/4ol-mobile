@@ -455,16 +455,17 @@ const styles = StyleSheet.create({
     backgroundColor: themeColors.white,
     marginVertical: 10,
     // padding: 10,
-    // borderRadius: 10,
   },
   imageContainer: {
     marginBottom: 10,
+    borderRadius: 20,
   },
   image: {
     position: 'relative',
     width: '100%',
     height: width * 0.4,
     resizeMode: 'cover',
+    // borderRadius: 20,
   },
 
   favoritesIcon: {

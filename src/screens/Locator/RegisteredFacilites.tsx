@@ -137,8 +137,8 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
 
   const initialRegion = useMemo(
     () => ({
-      latitude: currentLocation.latitude,
-      longitude: currentLocation.longitude,
+      latitude: currentLocation.latitude || 6.5244, // Default to Accra if no location
+      longitude: currentLocation.longitude || -1.2244,
       latitudeDelta: 0.009,
       longitudeDelta: 0.009,
     }),
@@ -336,8 +336,11 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     // Update state with all markers that are within radius
     setBaseFilteredMarkers(withinRadius);
   }, [
-    currentLocation,
-    markers,
+    // currentLocation,
+    // markers,
+    currentLocation.latitude, // ✅ Good (number)
+    currentLocation.longitude, // ✅ Good (number)
+    markers.length,
     selectedFacilityType,
     selectedRadius,
     facilityTypeMapping,
@@ -432,7 +435,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     currentLocation.longitude,
     selectedFacilityType,
     selectedRadius,
-    filterMarkersByDistance,
+    // filterMarkersByDistance,
   ]);
 
   useEffect(() => {
@@ -443,7 +446,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     currentLocation.latitude,
     currentLocation.longitude,
     address,
-    handleFetchAddress,
+    // handleFetchAddress,
   ]);
 
   useEffect(() => {
@@ -560,21 +563,32 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
           value={topRated}
         />
       </View>
-      <MapView
-        customMapStyle={customMapStyle}
-        ref={mapRef}
-        style={{width: '100%', height: '100%', zIndex: -1}}
-        initialRegion={initialRegion}
-        zoomEnabled
-        scrollEnabled
-        showsUserLocation
-        zoomControlEnabled
-        showsMyLocationButton={false}
-        showsCompass={false}
-        maxZoomLevel={16}
-        minZoomLevel={10}>
-        {renderMarkers}
-      </MapView>
+      {currentLocation.latitude && currentLocation.longitude ? (
+        <MapView
+          customMapStyle={customMapStyle}
+          ref={mapRef}
+          style={{width: '100%', height: '100%', zIndex: -1}}
+          initialRegion={initialRegion}
+          zoomEnabled
+          scrollEnabled
+          showsUserLocation
+          zoomControlEnabled
+          showsMyLocationButton={false}
+          showsCompass={false}
+          maxZoomLevel={16}
+          minZoomLevel={10}>
+          {renderMarkers}
+        </MapView>
+      ) : (
+        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
+          <ActivityIndicator size="large" color={themeColors.primary} />
+          <Text style={{marginTop: 10, color: themeColors.black}}>
+            {loading
+              ? 'Getting your location...'
+              : 'Waiting for location access'}
+          </Text>
+        </View>
+      )}
       <Animated.View
         style={[
           styles.cardContainer,

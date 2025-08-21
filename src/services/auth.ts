@@ -127,15 +127,16 @@ export const signup = async (
       }
       await AsyncStorage.setItem('user_id', userId);
       await AsyncStorage.setItem('isLoggedIn', JSON.stringify(true));
-
-      const apiUrl = 'http://10.0.2.2:3000/api/update-phone';
-
+      console.log(userId);
+      // const apiUrl = 'https://94fc3c6e832d.ngrok-free.app/api/update-phone';
+      // const apiUrl = 'http://localhost:3000/api/update-phone';
+      const apiUrl = 'http://192.168.18.41:3000/api/update-phone';
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({userId, phone: user.phone_number}),
+        body: JSON.stringify({userId: userId, phone: user.phone_number}),
       });
 
       const result = await response.json();

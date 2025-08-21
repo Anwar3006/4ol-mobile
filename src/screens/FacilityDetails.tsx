@@ -28,6 +28,7 @@ import {useToast} from 'react-native-toast-notifications';
 import {AirbnbRating} from 'react-native-ratings';
 import {SCREENS} from '../constants/screens';
 import useLocation from '../hooks/useLocation';
+import {useWindowDimensions} from 'react-native';
 import {THIS_IS_MAP_KEY} from '../../config/variables';
 import LocationLayout from '../components/common/LocationLayout';
 import {checkFavoriteStatus, toggleFacilityFavorite} from '../services/profile';
@@ -47,7 +48,7 @@ import {supabase} from '../utils/supabaseClient';
 import Geolocation from '@react-native-community/geolocation';
 import {fetchDistanceAndDuration} from '../services/distanceDurationService';
 
-const {width} = Dimensions.get('window');
+// const {width} = Dimensions.get('window');
 
 type FacilityDetailsProps = {
   navigation?: NativeStackNavigationProp<any>;
@@ -68,6 +69,9 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
   const [isFavorited, setIsFavorited] = useState(false);
   const [reviewData, setReviewData] = useState([]);
   const [userReview, setUserReview] = useState();
+  const {width, height} = useWindowDimensions();
+  console.log('width', width, 'height', height);
+  const isTablet = width >= 600; // Adjust based on your tablet breakpoint
 
   useEffect(() => {
     (async () => {
@@ -520,12 +524,12 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                   onRefresh={() => setRefresh(!refresh)}
                 />
               }>
-              <View style={styles.carouselContainer}>
+              <View style={[styles.carouselContainer, {width: width}]}>
                 <Carousel
                   loop
                   autoPlay={!(facilityDetails.mediaUrls.length > 0)}
                   width={width}
-                  height={width * 0.6}
+                  height={isTablet ? width * 0.4 : width * 0.6}
                   data={
                     facilityDetails.mediaUrls.length > 0
                       ? facilityDetails?.mediaUrls
@@ -545,7 +549,14 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                           ? {uri: item}
                           : item // item can be a local require()
                       }
-                      style={styles.image}
+                      style={[
+                        styles.image,
+                        {
+                          width: width,
+                          height: isTablet ? width * 0.4 : width * 0.6,
+                          resizeMode: isTablet ? 'stretch' : 'cover',
+                        },
+                      ]}
                     />
                   )}
                   onSnapToItem={handleSnap}
@@ -564,7 +575,7 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                   }>
                   <MaterialIcon
                     name={isFavorited ? 'heart' : 'heart-outline'}
-                    size={20}
+                    size={isTablet ? 35 : 24}
                     color={themeColors.primary}
                   />
                 </TouchableOpacity>
@@ -972,12 +983,12 @@ const styles = StyleSheet.create({
   },
   carouselContainer: {
     position: 'relative',
-    width,
-    height: width * 0.6,
+    // width,
+    // height: width * 0.6,
   },
   image: {
-    width,
-    height: width * 0.6,
+    // width: 500,
+    // height: 300 * 0.6,
     resizeMode: 'cover',
   },
   ratingIcon: {
