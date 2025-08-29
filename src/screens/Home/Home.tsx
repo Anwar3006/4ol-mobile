@@ -59,8 +59,7 @@ const HomeScreen = () => {
   useEffect(() => {
     const age = calculateAge(userData?.dob);
     subscribeToDemographic(age, userData?.region, userData?.sex);
-  }),
-    [userData];
+  }, [userData]);
 
   const filters: FiltersProps = {
     Hospital: {type: 'hospital', keyword: ''},

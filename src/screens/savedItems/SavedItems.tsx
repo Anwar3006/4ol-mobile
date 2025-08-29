@@ -12,6 +12,8 @@ import {
   Linking,
   Share,
   Alert,
+  Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {themeColors} from '../../theme/colors';
@@ -35,6 +37,7 @@ import {
   getFavoriteFacilities,
 } from '../../services/favoriteFacilites';
 import FacilityRating from '../../components/FacilityRating';
+import Geolocation from '@react-native-community/geolocation';
 
 const {width} = Dimensions.get('window');
 
@@ -59,6 +62,10 @@ const SavedItemsScreen: React.FC<SavedItemsScreenProps> = ({navigation}) => {
   );
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
+  const [currentLocation, setCurrentLocation] = useState({
+    latitude: null as any,
+    longitude: null as any,
+  });
 
   const handleActionPress = (type: 'call' | 'whatsapp') => {
     setActionType(type);
@@ -140,7 +147,9 @@ const SavedItemsScreen: React.FC<SavedItemsScreenProps> = ({navigation}) => {
           style: 'destructive',
           onPress: async () => {
             await deleteFavoriteFacility(id);
-            setFavorities(favorites.filter(fav => fav.facility.id !== id));
+            setFavorities(
+              favorites.filter((fav: any) => fav.facility.id !== id),
+            );
           },
         },
       ],
@@ -161,6 +170,42 @@ const SavedItemsScreen: React.FC<SavedItemsScreenProps> = ({navigation}) => {
     console.log('Response of Favorite ', JSON.stringify(response, null, 2));
     setFavorities(response);
   };
+
+  // Get user's current location
+  useEffect(() => {
+    const requestLocationPermission = async () => {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      }
+      return true; // iOS handles permissions automatically
+    };
+
+    const getLocation = async () => {
+      const hasPermission = await requestLocationPermission();
+      if (!hasPermission) {
+        console.log('Location permission denied');
+        return;
+      }
+
+      Geolocation.getCurrentPosition(
+        position => {
+          setCurrentLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
+        },
+        error => {
+          console.log('Error getting location:', error.message);
+        },
+        {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+      );
+    };
+
+    getLocation();
+  }, []);
 
   useEffect(() => {
     getFavFacilities();
@@ -294,13 +339,22 @@ const SavedItemsScreen: React.FC<SavedItemsScreenProps> = ({navigation}) => {
                     <Text style={styles.buttonText}>Contact</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    disabled={true}
-                    style={styles.button}
+                    disabled={
+                      !currentLocation?.latitude ||
+                      !item?.facility?.latitude ||
+                      !item?.facility?.longitude
+                    }
+                    style={[
+                      styles.button,
+                      (!currentLocation?.latitude ||
+                        !item?.facility?.latitude ||
+                        !item?.facility?.longitude) && {opacity: 0.5},
+                    ]}
                     onPress={() => {
                       navigation?.navigate('DIRECTION', {
                         destination: {
-                          latitude: 0,
-                          longitude: 0,
+                          latitude: item?.facility?.latitude || 0,
+                          longitude: item?.facility?.longitude || 0,
                         },
                       });
                     }}>
@@ -309,7 +363,14 @@ const SavedItemsScreen: React.FC<SavedItemsScreenProps> = ({navigation}) => {
                       size={15}
                       color={themeColors.white}
                     />
-                    <Text style={styles.buttonText}>Direction {'(N/A)'}</Text>
+                    <Text style={styles.buttonText}>
+                      Direction{' '}
+                      {!currentLocation?.latitude ||
+                      !item?.facility?.latitude ||
+                      !item?.facility?.longitude
+                        ? '(N/A)'
+                        : ''}
+                    </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
                     style={styles.button}

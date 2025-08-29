@@ -23,7 +23,7 @@
       android:supportsRtl="true">
       <meta-data
         android:name="com.google.android.geo.API_KEY"
-        android:value="" /> // Replace with your actual Google Maps API key
+        android:value="AIzaSyDqrGdgLsCYya5XcwoZNuAfKNCuponIhH4" />
         <meta-data
     android:name="com.notifee.notification_icon"
     android:resource="@drawable/ic_notification" />

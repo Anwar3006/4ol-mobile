@@ -47,6 +47,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {supabase} from '../utils/supabaseClient';
 import Geolocation from '@react-native-community/geolocation';
 import {fetchDistanceAndDuration} from '../services/distanceDurationService';
+import DistanceCache from '../utils/distanceCache';
 
 // const {width} = Dimensions.get('window');
 
@@ -132,6 +133,10 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
     latitude: null,
     longitude: null,
   });
+  const [distanceCalculated, setDistanceCalculated] = useState(false); // Track if distance was already calculated
+  const [lastCalculatedLocation, setLastCalculatedLocation] = useState(
+    null as any,
+  ); // Track last location used for calculation
 
   // useEffect(() => {
   //   if (location?.latitude && facilityData?.location) {
@@ -369,25 +374,88 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
   // 🛑 Now a second useEffect that waits for both destination and currentLocation
   useEffect(() => {
     const getDistanceDuration = async () => {
-      if (currentLocation && destination) {
-        const origin = `${currentLocation.latitude},${currentLocation.longitude}`;
-        const destinations = `${destination.latitude},${destination.longitude}`;
+      // Only proceed if both locations are valid (not null)
+      if (
+        currentLocation?.latitude &&
+        currentLocation?.longitude &&
+        destination?.latitude &&
+        destination?.longitude
+      ) {
+        const currentLocationString = `${currentLocation.latitude},${currentLocation.longitude}`;
 
-        try {
-          const {distance, duration} = await fetchDistanceAndDuration(
-            origin,
-            destinations,
-          );
-          setDistance(distance);
-          setDuration(duration);
-        } catch (error) {
-          console.error(error);
+        // Check if location has changed significantly (more than 100 meters)
+        const shouldRecalculate =
+          !lastCalculatedLocation ||
+          Math.abs(currentLocation.latitude - lastCalculatedLocation.latitude) >
+            0.001 || // ~100m
+          Math.abs(
+            currentLocation.longitude - lastCalculatedLocation.longitude,
+          ) > 0.001;
+
+        if (shouldRecalculate) {
+          const origin = currentLocationString;
+          const destinations = `${destination.latitude},${destination.longitude}`;
+
+          try {
+            // First, try to get cached distance data
+            const cachedDistance = await DistanceCache.getCachedDistance(
+              id as string,
+              currentLocation.latitude,
+              currentLocation.longitude,
+            );
+
+            if (cachedDistance) {
+              // Use cached data
+              setDistance(cachedDistance.distance);
+              setDuration(cachedDistance.duration);
+              setLastCalculatedLocation(currentLocation);
+              console.log('✅ Using cached distance data');
+            } else {
+              // Calculate new distance and cache it
+              console.log('🔄 Calculating distance and duration...');
+              console.log('📍 Location changed, recalculating...');
+              console.log('📍 From:', origin, 'To:', destinations);
+
+              const {distance, duration} = await fetchDistanceAndDuration(
+                origin,
+                destinations,
+              );
+
+              setDistance(distance);
+              setDuration(duration);
+              setLastCalculatedLocation(currentLocation);
+
+              // Cache the new distance data
+              await DistanceCache.setCachedDistance(
+                id as string,
+                currentLocation.latitude,
+                currentLocation.longitude,
+                distance,
+                duration,
+              );
+
+              console.log('✅ Distance calculated and cached successfully');
+            }
+          } catch (error) {
+            console.error('❌ Error calculating distance:', error);
+          }
+        } else {
+          console.log('📍 Location unchanged, using cached distance');
         }
+      } else {
+        console.log('⏳ Waiting for valid location data...', {
+          currentLocation: currentLocation
+            ? `${currentLocation.latitude},${currentLocation.longitude}`
+            : 'null',
+          destination: destination
+            ? `${destination.latitude},${destination.longitude}`
+            : 'null',
+        });
       }
     };
 
     getDistanceDuration();
-  }, [currentLocation, destination]); // ✅ Depend on both
+  }, [currentLocation, destination, lastCalculatedLocation, id]); // ✅ Depend on location changes and facility ID
 
   const handleToggleFacilityFavorite = async facilityId => {
     setIsFavorited(!isFavorited);

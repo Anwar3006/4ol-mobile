@@ -1,4 +1,4 @@
-import React, {useEffect, useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {
   View,
   Text,
@@ -25,12 +25,16 @@ import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {BottomTabSchema, StackParams} from '../interfaces';
 import RegisteredFacilites from '../screens/Locator/RegisteredFacilites';
 import {moderateScale, verticalScale} from '../utils/metrics';
+import APICallSummary from '../components/APICallSummary';
+import PersistentAPITracker from '../components/PersistentAPITracker';
 
 const Tab = createBottomTabNavigator<any>();
 
 const BottomTabNavigation: React.FC = () => {
   const userData: any = useSelector(user);
   const paddingAnim = useRef(new Animated.Value(0)).current;
+  const [showAPISummary, setShowAPISummary] = useState(false);
+  const [showPersistentTracker, setShowPersistentTracker] = useState(false);
 
   const navigation = useNavigation<NavigationProp<BottomTabSchema>>();
 
@@ -64,158 +68,191 @@ const BottomTabNavigation: React.FC = () => {
   });
 
   return (
-    <Tab.Navigator
-      screenOptions={({route}) => ({
-        tabBarHideOnKeyboard: true,
-        // tabBarStyle: {height: 70},
-        headerStyle: {
-          backgroundColor: themeColors.white,
-          elevation: 5,
-          shadowColor: '#000',
-          shadowOffset: {width: 0, height: 3},
-          shadowOpacity: 0.2,
-          shadowRadius: 5,
-        },
-        headerLeft: () => (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Profile')}
-            activeOpacity={0.7}
-            style={styles.profile_logo_container}>
-            <Text
-              style={{
-                color: themeColors.darkPink,
-                textTransform: 'uppercase',
-                fontWeight: '900',
-                fontSize: size.lg,
-              }}>{`${userData?.first_name?.slice(
-              0,
-              1,
-            )}${userData?.last_name?.slice(0, 1)}`}</Text>
-            {/* <Image
+    <>
+      <Tab.Navigator
+        screenOptions={({route}) => ({
+          tabBarHideOnKeyboard: true,
+          // tabBarStyle: {height: 70},
+          headerStyle: {
+            backgroundColor: themeColors.white,
+            elevation: 5,
+            shadowColor: '#000',
+            shadowOffset: {width: 0, height: 3},
+            shadowOpacity: 0.2,
+            shadowRadius: 5,
+          },
+          headerLeft: () => (
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Profile')}
+              activeOpacity={0.7}
+              style={styles.profile_logo_container}>
+              <Text
+                style={{
+                  color: themeColors.darkPink,
+                  textTransform: 'uppercase',
+                  fontWeight: '900',
+                  fontSize: size.lg,
+                }}>{`${userData?.first_name?.slice(
+                0,
+                1,
+              )}${userData?.last_name?.slice(0, 1)}`}</Text>
+              {/* <Image
               source={{
                 uri: 'https://t4.ftcdn.net/jpg/05/49/98/39/360_F_549983970_bRCkYfk0P6PP5fKbMhZMIb07mCJ6esXL.jpg',
               }}
               style={styles.avatar}
               alt="avatar"
             /> */}
-          </TouchableOpacity>
-        ),
+            </TouchableOpacity>
+          ),
 
-        headerTitleAlign: 'center',
+          headerTitleAlign: 'center',
 
-        headerTitle: () => (
-          <View style={styles.headerTitleContainer}>
-            <View
-              style={{
-                width: 50,
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: 50,
-                // position:'relative'
-              }}>
-              <Animated.View
+          headerTitle: () => (
+            <View style={styles.headerTitleContainer}>
+              <View
                 style={{
-                  backgroundColor: themeColors.primary,
-                  paddingHorizontal: paddingHorizontal, // Animated paddingHorizontal
-                  // paddingVertical:5,
-                  paddingVertical: paddingVertical, // Animated paddingVertical
-                  borderRadius: 5,
+                  width: 50,
                   justifyContent: 'center',
                   alignItems: 'center',
+                  height: 50,
+                  // position:'relative'
                 }}>
-                <View
+                <Animated.View
                   style={{
-                    width: 28, // Fixed width
-                    height: 28, // Fixed height
-                    justifyContent: 'center', // Center the image within the fixed view
+                    backgroundColor: themeColors.primary,
+                    paddingHorizontal: paddingHorizontal, // Animated paddingHorizontal
+                    // paddingVertical:5,
+                    paddingVertical: paddingVertical, // Animated paddingVertical
+                    borderRadius: 5,
+                    justifyContent: 'center',
                     alignItems: 'center',
                   }}>
-                  <Image
-                    source={require('../../assets/images/logo2.png')}
-                    style={{width: '100%', height: '100%'}} // Keep image dimensions fixed
-                  />
-                </View>
-              </Animated.View>
-            </View>
-            {/* <Text style={styles.headerTitle}>4 Our Life</Text> */}
-            {/* <Text style={styles.headerTitle}>
+                  <View
+                    style={{
+                      width: 28, // Fixed width
+                      height: 28, // Fixed height
+                      justifyContent: 'center', // Center the image within the fixed view
+                      alignItems: 'center',
+                    }}>
+                    <Image
+                      source={require('../../assets/images/logo2.png')}
+                      style={{width: '100%', height: '100%'}} // Keep image dimensions fixed
+                    />
+                  </View>
+                </Animated.View>
+              </View>
+              {/* <Text style={styles.headerTitle}>4 Our Life</Text> */}
+              {/* <Text style={styles.headerTitle}>
               Hi, {userData?.first_name} {userData?.last_name}
             </Text> */}
-          </View>
-        ),
-        headerRight: () => (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Notifications')}
-            style={styles.headerSide}>
-            <Icon
-              name="bell"
-              size={24}
-              color={themeColors.darkGray}
-              style={styles.bellIcon}
-            />
-          </TouchableOpacity>
-        ),
-        tabBarIcon: ({focused, color, size}) => {
-          let iconName: string;
-          if (route.name === SCREENS.HOME) {
-            iconName = 'home';
-          } else if (route.name === SCREENS.LOCATOR) {
-            iconName = 'location-arrow';
-          } else if (route.name === SCREENS.PILLSREMINDER) {
-            iconName = 'medkit';
-          } else if (route.name === SCREENS.SAVEDITEMS) {
-            iconName = 'favorite';
-          } else {
-            iconName = 'cog';
-          }
-
-          return (
-            <View
-              style={
-                focused ? styles.iconContainerFocused : styles.iconContainer
-              }>
-              {iconName == 'favorite' ? (
-                <MaterialIcon
-                  name={iconName}
-                  size={20}
-                  color={focused ? themeColors.white : themeColors.darkGray}
-                />
-              ) : iconName == 'medkit' ? (
-                <Image
-                  source={require('../../assets/images/pillsReminderIcon2.png')}
-                  style={{width: 22, height: 22}}
-                />
-              ) : (
-                <Icon
-                  name={iconName}
-                  size={20}
-                  color={focused ? themeColors.white : themeColors.darkGray}
-                />
-              )}
             </View>
-          );
-        },
-        tabBarShowLabel: false,
-      })}>
-      <Tab.Screen name={SCREENS.HOME} component={HomeScreen} />
-      {/* <Tab.Screen name={SCREENS.LOCATOR} component={LocatorScreen} /> */}
-      <Tab.Screen name={SCREENS.LOCATOR} component={RegisteredFacilites} />
-      <Tab.Screen
-        name={SCREENS.PILLSREMINDER}
-        component={PillsReminderScreen}
-        listeners={({navigation, route}) => ({
-          tabPress: e => {
-            if (!route.params?.initialTab) {
-              return;
+          ),
+          headerRight: () => (
+            <View style={{flexDirection: 'row', alignItems: 'center'}}>
+              <TouchableOpacity
+                onPress={() => setShowAPISummary(true)}
+                style={[styles.headerSide, {marginRight: 10}]}>
+                <Icon name="chart-bar" size={20} color={themeColors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowPersistentTracker(true)}
+                style={[styles.headerSide, {marginRight: 10}]}>
+                <Icon name="database" size={20} color={themeColors.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Notifications')}
+                style={styles.headerSide}>
+                <Icon
+                  name="bell"
+                  size={24}
+                  color={themeColors.darkGray}
+                  style={styles.bellIcon}
+                />
+              </TouchableOpacity>
+            </View>
+          ),
+          tabBarIcon: ({focused, color, size}) => {
+            let iconName: string;
+            if (route.name === SCREENS.HOME) {
+              iconName = 'home';
+            } else if (route.name === SCREENS.LOCATOR) {
+              iconName = 'location-arrow';
+            } else if (route.name === SCREENS.PILLSREMINDER) {
+              iconName = 'medkit';
+            } else if (route.name === SCREENS.SAVEDITEMS) {
+              iconName = 'favorite';
+            } else {
+              iconName = 'cog';
             }
-            e.preventDefault();
-            navigation.navigate(SCREENS.PILLSREMINDER, route.params);
+
+            return (
+              <View
+                style={
+                  focused ? styles.iconContainerFocused : styles.iconContainer
+                }>
+                {iconName == 'favorite' ? (
+                  <MaterialIcon
+                    name={iconName}
+                    size={20}
+                    color={focused ? themeColors.white : themeColors.darkGray}
+                  />
+                ) : iconName == 'medkit' ? (
+                  <Image
+                    source={require('../../assets/images/pillsReminderIcon2.png')}
+                    style={{width: 22, height: 22}}
+                  />
+                ) : (
+                  <Icon
+                    name={iconName}
+                    size={20}
+                    color={focused ? themeColors.white : themeColors.darkGray}
+                  />
+                )}
+              </View>
+            );
           },
-        })}
+          tabBarShowLabel: false,
+        })}>
+        <Tab.Screen name={SCREENS.HOME} component={HomeScreen} />
+        {/* <Tab.Screen name={SCREENS.LOCATOR} component={LocatorScreen} /> */}
+        <Tab.Screen
+          name={SCREENS.LOCATOR}
+          component={RegisteredFacilites}
+          // listeners={{
+          //   tabPress: e => {
+          //     // Prevent default navigation
+          //     e.preventDefault();
+          //   },
+          // }}
+        />
+        <Tab.Screen
+          name={SCREENS.PILLSREMINDER}
+          component={PillsReminderScreen}
+          listeners={({navigation, route}) => ({
+            tabPress: e => {
+              if (!route.params?.initialTab) {
+                return;
+              }
+              e.preventDefault();
+              navigation.navigate(SCREENS.PILLSREMINDER, route.params);
+            },
+          })}
+        />
+        <Tab.Screen name={SCREENS.SAVEDITEMS} component={SavedItemsScreen} />
+        <Tab.Screen name={SCREENS.SETTINGS} component={SettingsScreen} />
+      </Tab.Navigator>
+
+      {/* API Call Summary Modal */}
+      <APICallSummary
+        visible={showAPISummary}
+        onClose={() => setShowAPISummary(false)}
       />
-      <Tab.Screen name={SCREENS.SAVEDITEMS} component={SavedItemsScreen} />
-      <Tab.Screen name={SCREENS.SETTINGS} component={SettingsScreen} />
-    </Tab.Navigator>
+      <PersistentAPITracker
+        visible={showPersistentTracker}
+        onClose={() => setShowPersistentTracker(false)}
+      />
+    </>
   );
 };
 

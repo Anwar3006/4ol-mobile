@@ -852,12 +852,15 @@ import {
   filterMarkers,
   setSelectedDistance,
   setSelectedFilter,
+  shouldRefetchPlaces,
 } from '../../store/slices/MarkersSlice';
 import {logActivity} from '../../services/activityLogsService';
 import {user} from '../../store/selectors';
 import type {AppDispatch} from '../../store/index';
 import {horizontalScale, verticalScale} from '../../utils/metrics';
 import MarkModal from './MarkerModal';
+import apiCallTracker from '../../utils/apiCallTracker';
+import ModalCache from '../../utils/modalCache';
 export const useAppDispatch: () => AppDispatch = useDispatch;
 
 type TopRatedProps = {
@@ -883,9 +886,14 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
   const [selectedLocation, setSelectedLocation] = useState<any>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const dispatch = useAppDispatch();
-  const {markers, loading, selectedDistance, selectedFilter} = useSelector(
-    (state: RootState) => state.markers,
-  );
+  const {
+    markers,
+    loading,
+    selectedDistance,
+    selectedFilter,
+    lastFetchedLocation,
+    lastFetchedDistance,
+  } = useSelector((state: RootState) => state.markers);
   const [isEnabled, setIsEnabled] = useState(false);
   const [markModal, setMarkModal] = useState(false);
   const [image, setImage] = useState<string | null>(null);
@@ -897,15 +905,24 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
   } | null>(null);
 
   const filters: any = {
-    Hospital: {type: 'hospital', keyword: ''},
-    Herbal: {type: 'hospital', keyword: 'herbal'},
-    Laboratory: {type: 'health', keyword: 'diagnostic, laboratory'},
+    'Hospital/ Clinic': {type: 'hospital', keyword: ''},
+    'Herbal Centers': {type: 'hospital', keyword: 'herbal'},
+    'Diagnostic (Laboratory)': {
+      type: 'health',
+      keyword: 'diagnostic, laboratory',
+    },
+    Dental: {type: 'dentist', keyword: ''},
     Ambulance: {type: 'hospital', keyword: 'ambulance'},
     Pharmacy: {type: 'pharmacy', keyword: ''},
-    Wholesale: {type: 'pharmacy', keyword: 'wholesale'},
+    Homes: {type: 'health', keyword: 'nursing home, care home'},
+    'Eye Care': {type: 'health', keyword: 'eye care, optical'},
+    Osteopathy: {type: 'health', keyword: 'osteopathy'},
+    Physiotherapy: {type: 'health', keyword: 'physiotherapy, physical therapy'},
+    Prosthetics: {type: 'health', keyword: 'prosthetic, orthopedic'},
+    Psychiatric: {type: 'health', keyword: 'psychiatric, mental health'},
     'Display All': {
       keyword:
-        'hospital, pharmacy, herbal, diagnostic, laboratory, ambulance, wholesale, health center, clinic, urgent care, medical center, healthcare, veterinary, dental, physical therapy, wellness, nutrition, rehabilitation',
+        'hospital, clinic, pharmacy, herbal, diagnostic, laboratory, dental, ambulance, nursing home, eye care, osteopathy, physiotherapy, prosthetics, psychiatric, medical center, healthcare',
     },
   };
 
@@ -940,20 +957,33 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
       return;
     }
 
+    // Check if we need to refetch data
+    const needsRefetch = shouldRefetchPlaces(
+      location,
+      selectedDistance,
+      lastFetchedLocation,
+      lastFetchedDistance,
+    );
+
     // Now we can safely fetch!
     const fetchData = async () => {
       try {
-        await dispatch(
-          fetchNearbyPlaces({
-            latitude: location.latitude,
-            longitude: location.longitude,
-            selectedDistance,
-            API_KEY: THIS_IS_MAP_KEY,
-            filters,
-          }),
-        ).unwrap(); // .unwrap() handles Redux Toolkit promises
+        if (needsRefetch) {
+          console.log('Location or distance changed, fetching new data...');
+          await dispatch(
+            fetchNearbyPlaces({
+              latitude: location.latitude,
+              longitude: location.longitude,
+              selectedDistance,
+              API_KEY: THIS_IS_MAP_KEY,
+              filters,
+            }),
+          ).unwrap(); // .unwrap() handles Redux Toolkit promises
+        } else {
+          console.log('Using cached data, no API calls needed');
+        }
 
-        // Apply the filter after fetching
+        // Apply the filter after fetching (or use cached data)
         dispatch(filterMarkers(selectedFilter));
 
         // Log activity for distance filter
@@ -1055,9 +1085,22 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
       return;
     }
     try {
+      // Track function call
+      apiCallTracker.trackFunctionCall('fetchAutocompleteSuggestions');
+
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&key=${THIS_IS_MAP_KEY}`,
       );
+
+      // Track Google API call
+      apiCallTracker.trackAPICall(
+        'fetchAutocompleteSuggestions',
+        'place/autocomplete',
+        {
+          query,
+        },
+      );
+
       const data = await response.json();
       if (response.ok) {
         setSuggestions(data.predictions);
@@ -1071,9 +1114,19 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
 
   const fetchLocationName = async (latitude: any, longitude: any) => {
     try {
+      // Track function call
+      apiCallTracker.trackFunctionCall('fetchLocationName');
+
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${THIS_IS_MAP_KEY}`,
       );
+
+      // Track Google API call
+      apiCallTracker.trackAPICall('fetchLocationName', 'geocode', {
+        latitude,
+        longitude,
+      });
+
       const data = await response.json();
 
       if (response.ok) {
@@ -1098,9 +1151,18 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
 
   const fetchPlaceDetails = async (placeId: any) => {
     try {
+      // Track function call
+      apiCallTracker.trackFunctionCall('fetchPlaceDetails');
+
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${THIS_IS_MAP_KEY}`,
       );
+
+      // Track Google API call
+      apiCallTracker.trackAPICall('fetchPlaceDetails', 'place/details', {
+        placeId,
+      });
+
       const data = await response.json();
       if (response.ok) {
         const {lat, lng} = data.result.geometry.location;
@@ -1171,7 +1233,16 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
 
   const fetchImage = async (placeId: string) => {
     try {
+      // Track function call
+      apiCallTracker.trackFunctionCall('fetchImage');
+
       const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&key=${THIS_IS_MAP_KEY}`;
+
+      // Track Google API call
+      apiCallTracker.trackAPICall('fetchImage', 'place/details', {
+        placeId,
+      });
+
       const response = await fetch(url);
       const data = await response.json();
       if (data?.result?.photos && data?.result?.photos?.length > 0) {
@@ -1188,21 +1259,58 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
   };
 
   const openMarkModal = async (marker: any) => {
-    const imageUrl = await fetchImage(marker.place_id);
-    setImage(imageUrl ?? null);
+    // Track function call
+    apiCallTracker.trackFunctionCall('openMarkModal');
 
     if (!location) {
       console.error('User location not available');
       return;
     }
-    const origin = `${location.latitude},${location.longitude}`;
-    const destination = `${marker?.geometry?.location?.lat},${marker?.geometry?.location?.lng}`;
 
-    const distanceAndDuration = await fetchDistanceAndDuration(
-      origin,
-      destination,
+    // Check if we have cached modal data for this facility
+    const cachedModalData = await ModalCache.getCachedModalData(
+      marker.place_id,
+      location.latitude,
+      location.longitude,
     );
 
+    if (cachedModalData) {
+      // Use cached data - NO API calls needed!
+      console.log('🎯 Using cached modal data for facility:', marker.place_id);
+      setImage(cachedModalData.imageUrl);
+      setMarkerInfo({
+        name: marker?.name || 'unknown',
+        vicinity: marker?.vicinity || 'unknown place',
+        distance: cachedModalData.distance,
+        travelTime: cachedModalData.duration,
+      });
+      setMarkModal(true);
+      return;
+    }
+
+    // No cache found, fetch fresh data
+    console.log('🔄 Fetching fresh modal data for facility:', marker.place_id);
+
+    // Fetch image and distance in parallel
+    const [imageUrl, distanceAndDuration] = await Promise.all([
+      fetchImage(marker.place_id),
+      fetchDistanceAndDuration(
+        `${location.latitude},${location.longitude}`,
+        `${marker?.geometry?.location?.lat},${marker?.geometry?.location?.lng}`,
+      ),
+    ]);
+
+    // Cache the modal data for future use
+    await ModalCache.setCachedModalData(
+      marker.place_id,
+      location.latitude,
+      location.longitude,
+      imageUrl,
+      distanceAndDuration?.distance || 'unknown',
+      distanceAndDuration?.duration || 'unknown',
+    );
+
+    setImage(imageUrl ?? null);
     setMarkerInfo({
       name: marker?.name || 'unknown',
       vicinity: marker?.vicinity || 'unknown place',
@@ -1217,9 +1325,23 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
     destination: string,
   ) => {
     try {
+      // Track function call
+      apiCallTracker.trackFunctionCall('Locator.fetchDistanceAndDuration');
+
       let distance = '';
       let duration = '';
       const distanceMatrixUrl = `https://maps.googleapis.com/maps/api/distancematrix/json?units=metric&origins=${origin}&destinations=${destination}&key=${THIS_IS_MAP_KEY}`;
+
+      // Track Google API call
+      apiCallTracker.trackAPICall(
+        'Locator.fetchDistanceAndDuration',
+        'distancematrix',
+        {
+          origin,
+          destination,
+        },
+      );
+
       const response = await fetch(distanceMatrixUrl);
       const data = await response.json();
 

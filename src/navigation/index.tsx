@@ -271,7 +271,7 @@ const Route = () => {
 
   useEffect(() => {
     getPeriodData();
-  });
+  }, [userData?.id]);
 
   if (loading) {
     return (
