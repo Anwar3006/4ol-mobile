@@ -13,6 +13,7 @@ import {
   RefreshControl,
   Platform,
   PermissionsAndroid,
+  Alert,
 } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import Icon from 'react-native-vector-icons/FontAwesome5';
@@ -92,7 +93,12 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
 
   const toast = useToast();
   const {location} = useLocation();
-  const {id, setFavorites, favorites} = route?.params || {};
+  const {
+    id,
+    setFavorites,
+    favorites,
+    currentLocation: passedLocation,
+  } = (route?.params as any) || {};
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [facilityDetails, setFacilityDetails] = useState<any>();
@@ -130,8 +136,8 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
     longitude: null,
   });
   const [currentLocation, setCurrentLocation] = useState({
-    latitude: null,
-    longitude: null,
+    latitude: passedLocation?.latitude || null,
+    longitude: passedLocation?.longitude || null,
   });
   const [distanceCalculated, setDistanceCalculated] = useState(false); // Track if distance was already calculated
   const [lastCalculatedLocation, setLastCalculatedLocation] = useState(
@@ -213,6 +219,38 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
     } catch (error) {
       console.log('Error sharing:', error);
     }
+  };
+
+  const openInMaps = () => {
+    // Get destination coordinates
+    const facilityLat =
+      facilityDetails?.latitude || facilityDetails?.location?.lat;
+    const facilityLng =
+      facilityDetails?.longitude || facilityDetails?.location?.lng;
+
+    if (!facilityLat || !facilityLng) {
+      Alert.alert(
+        'Error',
+        'Location coordinates not available for this facility',
+      );
+      return;
+    }
+
+    const destination = `${facilityLat},${facilityLng}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+
+    Linking.canOpenURL(url)
+      .then(supported => {
+        if (supported) {
+          return Linking.openURL(url);
+        } else {
+          Alert.alert('Error', 'Unable to open Google Maps');
+        }
+      })
+      .catch(err => {
+        console.error('Error opening maps:', err);
+        Alert.alert('Error', 'Failed to open Google Maps');
+      });
   };
 
   useEffect(() => {
@@ -345,6 +383,21 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
     };
 
     const getLocation = async () => {
+      // If location was passed from previous screen, use it
+      if (passedLocation?.latitude && passedLocation?.longitude) {
+        console.log(
+          '📍 [FACILITY DETAILS] Using passed location:',
+          passedLocation,
+        );
+        setCurrentLocation(passedLocation);
+        setLoading(false);
+        return;
+      }
+
+      // Otherwise, get location from device
+      console.log(
+        '📍 [FACILITY DETAILS] No passed location, getting from device...',
+      );
       const hasPermission = await requestLocationPermission();
       if (!hasPermission) {
         console.log('Permission denied');
@@ -354,6 +407,10 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
 
       Geolocation.getCurrentPosition(
         position => {
+          console.log('📍 [FACILITY DETAILS] Got device location:', {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          });
           setCurrentLocation({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
@@ -595,17 +652,17 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
               <View style={[styles.carouselContainer, {width: width}]}>
                 <Carousel
                   loop
-                  autoPlay={!(facilityDetails.mediaUrls.length > 0)}
+                  autoPlay={!(facilityDetails?.mediaUrls?.length > 0)}
                   width={width}
                   height={isTablet ? width * 0.4 : width * 0.6}
                   data={
-                    facilityDetails.mediaUrls.length > 0
+                    facilityDetails?.mediaUrls?.length > 0
                       ? facilityDetails?.mediaUrls
                       : images
                   }
                   scrollAnimationDuration={1000}
                   enabled={
-                    (facilityDetails.mediaUrls.length > 0
+                    (facilityDetails?.mediaUrls?.length > 0
                       ? facilityDetails?.mediaUrls.length
                       : images.length) > 1
                   } // 👈 This disables scroll when only one item
@@ -613,7 +670,7 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                     <Image
                       source={
                         //@ts-ignore
-                        facilityDetails.mediaUrls.length > 0
+                        facilityDetails?.mediaUrls?.length > 0
                           ? {uri: item}
                           : item // item can be a local require()
                       }
@@ -649,7 +706,7 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                 </TouchableOpacity>
               </View>
               <View style={styles.paginationContainer}>
-                {facilityDetails.mediaUrls.length
+                {facilityDetails?.mediaUrls?.length
                   ? facilityDetails?.mediaUrls?.map((_, index: number) => (
                       <View
                         key={index}
@@ -991,14 +1048,7 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
               <TouchableOpacity
                 disabled={!distance}
                 style={styles.button}
-                onPress={() => {
-                  navigation?.navigate(SCREENS.DIRECTION, {
-                    destination: {
-                      latitude: facilityData?.location?.lat,
-                      longitude: facilityData?.location?.lng,
-                    },
-                  });
-                }}>
+                onPress={openInMaps}>
                 <Icon
                   name="map-marker-alt"
                   size={20}

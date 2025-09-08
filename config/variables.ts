@@ -22,6 +22,5 @@ export const ENCRYPT_KEY: string = envEncryptKey;
 export const limit: number = 10;
 
 // Google Maps API Key - Set to empty string to disable APIs
-export const THIS_IS_MAP_KEY: string = '';
-// export const THIS_IS_MAP_KEY: string =
-//   'AIzaSyDqrGdgLsCYya5XcwoZNuAfKNCuponIhH4';
+export const THIS_IS_MAP_KEY: string =
+  'AIzaSyAVBr8MkTtwvQn_LH2hc77jJ1Y4bNumcZM';

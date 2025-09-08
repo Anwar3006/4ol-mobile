@@ -17,8 +17,18 @@ import {getBannerAds} from '../../../services/adverissementBanner';
 import {horizontalScale, verticalScale} from '../../../utils/metrics';
 import moment from 'moment';
 
+interface AdItem {
+  headline: string;
+  description: string;
+  callToAction: string;
+  mediaUrl: string | null;
+  imageUrl: string | null;
+  videoUrl: string | null;
+  duration: number;
+}
+
 const Advertisement: React.FC = () => {
-  const [ads, setAds] = useState([]);
+  const [ads, setAds] = useState<AdItem[]>([]);
   const [loading, setLoading] = useState(true);
   const width = Dimensions.get('window').width;
 
@@ -26,7 +36,6 @@ const Advertisement: React.FC = () => {
     const fetchAds = async () => {
       const fetchedAds = await getBannerAds();
       setAds(fetchedAds);
-      console.log('ADS ===>', ads);
       setLoading(false);
     };
     fetchAds();

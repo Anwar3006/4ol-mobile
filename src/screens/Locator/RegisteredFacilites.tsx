@@ -15,6 +15,8 @@ import {
   TextInput,
   Switch,
   LayoutChangeEvent,
+  Linking,
+  Alert,
 } from 'react-native';
 import {Text} from 'react-native-paper';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -47,9 +49,9 @@ import {
 import {logActivity} from '../../services/activityLogsService';
 import {user} from '../../store/selectors';
 import type {AppDispatch} from '../../store/index';
-import apiCallTracker from '../../utils/apiCallTracker';
+// import apiCallTracker from '../../utils/apiCallTracker';
 import ModalCache from '../../utils/modalCache';
-import persistentApiTracker from '../../services/persistentApiTracker';
+
 import {THIS_IS_MAP_KEY} from '../../../config/variables';
 
 // Supabase Edge Function API guard
@@ -115,6 +117,17 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     travelTime: any;
   } | null>(null);
 
+  // Separate state for local facility modal data
+  const [localFacilityModalData, setLocalFacilityModalData] = useState<{
+    [facilityId: string]: {
+      name: string;
+      vicinity: string;
+      distance: string;
+      travelTime: string;
+      image: string | null;
+    };
+  }>({});
+
   // Cache for distance calculations to avoid API calls on filter changes
   const [distanceCache, setDistanceCache] = useState<Map<string, any>>(
     new Map(),
@@ -125,7 +138,11 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   // =========== SEARCH FUNCTIONALITY STATE ============
   const [searchText, setSearchText] = useState('');
   const [suggestions, setSuggestions] = useState<any[]>([]);
-  const [selectedLocation, setSelectedLocation] = useState<any>(null);
+  const [selectedLocation, setSelectedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+    placeDetails?: any; // Add this field for complete place details
+  } | null>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
 
@@ -286,8 +303,21 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
           }}
           tracksViewChanges={false}
           onPress={() => {
+            console.log(
+              '🔍 [EXISTING MARKER] Clicked on existing facility marker:',
+              {
+                id: marker.id,
+                name: marker.facility_name,
+                type: marker.facility_type,
+              },
+            );
+            // Clear previous marker info before setting new marker
+            setMarkerInfo(null);
+            setImage(null);
+            setMarkModal(false);
+            // Don't clear localFacilityModalData - keep it for reuse
             setSelectedMarker(marker);
-            showCard();
+            openMarkModal(marker); // Call openMarkModal for existing facilities too
           }}>
           <View style={styles.markerContainer}>
             <View
@@ -546,7 +576,55 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
       toValue: -200,
       useNativeDriver: true,
     }).start();
+    // Reset modal states when hiding card, but preserve local facility modal data
+    setMarkModal(false);
+    setMarkerInfo(null);
+    setImage(null);
+    // Don't clear localFacilityModalData - keep it for reuse
   }, [slideAnim]);
+
+  const animateToMyLocation = useCallback(() => {
+    if (currentLocation.latitude && currentLocation.longitude) {
+      console.log(
+        '📍 [MY LOCATION] Animating to user location:',
+        currentLocation,
+      );
+      mapRef.current?.animateToRegion(
+        {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude,
+          latitudeDelta: 0.009,
+          longitudeDelta: 0.009,
+        },
+        1000,
+      );
+    } else {
+      console.log('❌ [MY LOCATION] No current location available');
+    }
+  }, [currentLocation]);
+
+  const openInMaps = useCallback(() => {
+    if (!selectedMarker?.latitude || !selectedMarker?.longitude) {
+      Alert.alert('Error', 'Location coordinates not available');
+      return;
+    }
+
+    const destination = `${selectedMarker.latitude},${selectedMarker.longitude}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+
+    Linking.canOpenURL(url)
+      .then(supported => {
+        if (supported) {
+          return Linking.openURL(url);
+        } else {
+          Alert.alert('Error', 'Unable to open Google Maps');
+        }
+      })
+      .catch(err => {
+        console.error('Error opening maps:', err);
+        Alert.alert('Error', 'Failed to open Google Maps');
+      });
+  }, [selectedMarker]);
 
   // =========== OTHER FUNCTIONS ============
   const requestLocationPermission = async () => {
@@ -560,15 +638,26 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   };
 
   const getLocation = async () => {
+    console.log('📍 [LOCATION] Starting location request...');
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
-      console.log('Permission denied');
+      console.log(
+        '🚫 [LOCATION] Permission denied - user location marker will not show',
+      );
       setLoading(false); // Set loading to false if permission is denied
       return;
     }
+    console.log(
+      '✅ [LOCATION] Permission granted, getting current position...',
+    );
 
     Geolocation.getCurrentPosition(
       position => {
+        console.log('✅ [LOCATION] Location obtained:', {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        });
         setCurrentLocation({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
@@ -576,10 +665,14 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         setLoading(false); // Set loading to false when location is fetched
       },
       error => {
-        console.log('Error:', error.message);
+        console.log(
+          '❌ [LOCATION] Error getting location:',
+          error.message,
+          error.code,
+        );
         setLoading(false); // Set loading to false if there is an error
       },
-      {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+      {enableHighAccuracy: true, timeout: 30000, maximumAge: 10000},
     );
   };
 
@@ -610,7 +703,6 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
       }
 
       // Track function call
-      apiCallTracker.trackFunctionCall('fetchAutocompleteSuggestions');
 
       if (THIS_IS_MAP_KEY === 'TEST_MODE' || !THIS_IS_MAP_KEY) {
         console.log(
@@ -633,8 +725,14 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         )}...`,
       );
 
+      // Add location bias to get nearby results
+      const locationBias =
+        currentLocation.latitude && currentLocation.longitude
+          ? `&location=${currentLocation.latitude},${currentLocation.longitude}&radius=50000`
+          : '';
+
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&key=${THIS_IS_MAP_KEY}`,
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&types=establishment${locationBias}&key=${THIS_IS_MAP_KEY}`,
       );
 
       const data = await response.json();
@@ -646,14 +744,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         );
       }
       if (response.ok && data.status === 'OK') {
-        // Track Google API call only after successful response
-        apiCallTracker.trackAPICall(
-          'fetchAutocompleteSuggestions',
-          'place/autocomplete',
-          {
-            query,
-          },
-        );
+        // API call tracking removed - keeping Supabase API guard
         setSuggestions(data.predictions);
         setShowSuggestions(true);
       } else {
@@ -692,31 +783,77 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   // Get place details from place ID
   const fetchPlaceDetails = async (placeId: any) => {
     try {
+      console.log(
+        '🔍 [PLACE DETAILS] Starting fetchPlaceDetails for placeId:',
+        placeId,
+      );
+
       // Check API guard first (even in test mode for testing)
       try {
         await checkApiAllowed('DirectToPlace');
+        console.log('✅ [PLACE DETAILS] API guard check passed');
       } catch (error) {
         console.log(
-          '🚫 Place Details API call blocked by Supabase guard:',
+          '🚫 [PLACE DETAILS] Place Details API call blocked by Supabase guard:',
           (error as Error).message,
         );
         return;
       }
 
-      // Track function call
-      apiCallTracker.trackFunctionCall('fetchPlaceDetails');
+      // API call tracking removed - keeping Supabase API guard
 
       if (THIS_IS_MAP_KEY === 'TEST_MODE' || !THIS_IS_MAP_KEY) {
         console.log('🧪 [TEST MODE] Mock place details for placeId:', placeId);
-        // Mock place details for testing
-        const mockLocation = {latitude: 6.5244, longitude: -1.2244};
-        setSelectedLocation(mockLocation);
+        // Mock complete place details for testing
+        const mockPlaceDetails = {
+          place_id: placeId,
+          name: 'Test Healthcare Facility',
+          formatted_address: '123 Test Street, Accra, Ghana',
+          formatted_phone_number: '+233 20 123 4567',
+          website: 'https://testfacility.com',
+          rating: 4.5,
+          user_ratings_total: 120,
+          opening_hours: {
+            open_now: true,
+            weekday_text: [
+              'Monday: 8:00 AM – 6:00 PM',
+              'Tuesday: 8:00 AM – 6:00 PM',
+              'Wednesday: 8:00 AM – 6:00 PM',
+              'Thursday: 8:00 AM – 6:00 PM',
+              'Friday: 8:00 AM – 6:00 PM',
+              'Saturday: 9:00 AM – 5:00 PM',
+              'Sunday: Closed',
+            ],
+          },
+          photos: [
+            {photo_reference: 'mock_photo_ref_1'},
+            {photo_reference: 'mock_photo_ref_2'},
+          ],
+          geometry: {
+            location: {lat: 6.5244, lng: -1.2244},
+          },
+          types: ['health', 'establishment'],
+          business_status: 'OPERATIONAL',
+        };
+
+        console.log(
+          '🧪 [TEST MODE] Mock place details created:',
+          mockPlaceDetails,
+        );
+
+        setSelectedLocation({
+          latitude: mockPlaceDetails.geometry.location.lat,
+          longitude: mockPlaceDetails.geometry.location.lng,
+          placeDetails: mockPlaceDetails, // Store complete details
+        });
+
+        console.log('🧪 [TEST MODE] Selected location set with place details');
 
         // Animate map to selected location
         mapRef.current?.animateToRegion(
           {
-            latitude: mockLocation.latitude,
-            longitude: mockLocation.longitude,
+            latitude: mockPlaceDetails.geometry.location.lat,
+            longitude: mockPlaceDetails.geometry.location.lng,
             latitudeDelta: 0.009,
             longitudeDelta: 0.009,
           },
@@ -746,12 +883,31 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         );
       }
       if (response.ok && data.status === 'OK') {
-        // Track Google API call only after successful response
-        apiCallTracker.trackAPICall('fetchPlaceDetails', 'place/details', {
-          placeId,
+        // API call tracking removed - keeping Supabase API guard
+
+        console.log(
+          '✅ [PLACE DETAILS API] Successfully fetched place details',
+        );
+        console.log('📍 [PLACE DETAILS API] Place data structure:', {
+          name: data.result.name,
+          address: data.result.formatted_address,
+          phone: data.result.formatted_phone_number,
+          website: data.result.website,
+          rating: data.result.rating,
+          photos: data.result.photos?.length || 0,
+          types: data.result.types,
         });
+
         const {lat, lng} = data.result.geometry.location;
-        setSelectedLocation({latitude: lat, longitude: lng});
+        setSelectedLocation({
+          latitude: lat,
+          longitude: lng,
+          placeDetails: data.result, // Store the complete place details
+        });
+
+        console.log(
+          '📍 [PLACE DETAILS API] Selected location set with complete place details',
+        );
 
         // Animate map to selected location
         mapRef.current?.animateToRegion(
@@ -764,10 +920,13 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
           1000,
         );
       } else {
-        console.error('Error fetching place details:', data.status);
+        console.error(
+          '❌ [PLACE DETAILS API] Error fetching place details:',
+          data.status,
+        );
       }
     } catch (error) {
-      console.error('Error:', error);
+      console.error('❌ [PLACE DETAILS API] Exception occurred:', error);
     }
   };
 
@@ -813,7 +972,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         return null;
       }
 
-      apiCallTracker.trackFunctionCall('fetchImage');
+      // apiCallTracker.trackFunctionCall('fetchImage');
 
       if (THIS_IS_MAP_KEY === 'TEST_MODE' || !THIS_IS_MAP_KEY) {
         console.log('🧪 [TEST MODE] Mock image for placeId:', placeId);
@@ -852,7 +1011,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         }
 
         // Track Google API call only after successful Place Details response
-        apiCallTracker.trackAPICall('fetchImage', 'place/details', {placeId});
+        // apiCallTracker.trackAPICall('fetchImage', 'place/details', {placeId});
 
         const reference = data?.result?.photos[0]?.photo_reference;
         const photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${reference}&key=${THIS_IS_MAP_KEY}`;
@@ -865,7 +1024,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         );
 
         // Track Google API call for Places Photo API (this is just URL generation, no actual API call)
-        apiCallTracker.trackAPICall('fetchImage', 'place/photo', {placeId});
+        // apiCallTracker.trackAPICall('fetchImage', 'place/photo', {placeId});
 
         return photoUrl;
       } else {
@@ -877,29 +1036,121 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     }
   };
 
-  // Optimized openMarkModal function with caching
+  // Enhanced openMarkModal function with comprehensive data handling
   const openMarkModal = async (marker: any) => {
-    apiCallTracker.trackFunctionCall('openMarkModal');
+    // Generate unique session ID for this modal opening
+    const modalSessionId = Date.now().toString();
+
+    // Validate marker data
+    if (!marker || !marker.latitude || !marker.longitude) {
+      console.error('❌ [OPEN MODAL] Invalid marker data:', marker);
+      return;
+    }
+
+    console.log(
+      `🚀 [OPEN MODAL:${modalSessionId}] Starting openMarkModal for marker:`,
+      {
+        id: marker?.id,
+        place_id: marker?.place_id,
+        name: marker?.facility_name || marker?.name,
+        type: marker?.facility_type || 'searched_place',
+        coordinates: {lat: marker.latitude, lng: marker.longitude},
+      },
+    );
+
+    // apiCallTracker.trackFunctionCall('openMarkModal');
 
     if (!currentLocation.latitude || !currentLocation.longitude) {
-      console.error('User location not available');
+      console.error('❌ [OPEN MODAL] User location not available');
       return;
+    }
+
+    // Validate coordinates are numbers
+    if (
+      isNaN(currentLocation.latitude) ||
+      isNaN(currentLocation.longitude) ||
+      isNaN(marker.latitude) ||
+      isNaN(marker.longitude)
+    ) {
+      console.error('❌ [OPEN MODAL] Invalid coordinates:', {
+        currentLocation: {
+          lat: currentLocation.latitude,
+          lng: currentLocation.longitude,
+        },
+        marker: {lat: marker.latitude, lng: marker.longitude},
+      });
+      return;
+    }
+
+    // Check if this is a searched place marker (has enhanced data from Google Places)
+    const isSearchedPlace = marker?.phone || marker?.website || marker?.rating;
+
+    // Check if this is an existing facility from our database
+    const isExistingFacility =
+      marker?.facility_type &&
+      marker?.gps_address &&
+      !marker?.place_id?.startsWith('ChIJ');
+
+    console.log(`🔍 [OPEN MODAL:${modalSessionId}] Marker type detection:`, {
+      isSearchedPlace,
+      isExistingFacility,
+      hasPlaceId: !!marker?.place_id,
+      facilityType: marker?.facility_type,
+    });
+
+    if (isSearchedPlace) {
+      console.log(
+        `✅ [OPEN MODAL:${modalSessionId}] Using enhanced data from searched place marker`,
+      );
+      console.log(
+        `📊 [OPEN MODAL:${modalSessionId}] Available enhanced data:`,
+        {
+          phone: marker?.phone,
+          website: marker?.website,
+          rating: marker?.rating,
+          user_ratings_total: marker?.user_ratings_total,
+          business_status: marker?.business_status,
+          types: marker?.types,
+        },
+      );
+    } else if (isExistingFacility) {
+      console.log('🏥 [OPEN MODAL] Using existing facility data from database');
+      console.log('📊 [OPEN MODAL] Available database data:', {
+        facility_name: marker?.facility_name,
+        facility_type: marker?.facility_type,
+        gps_address: marker?.gps_address,
+        district: marker?.district,
+        area: marker?.area,
+        avg_rating: marker?.avg_rating,
+        business_hours: marker?.business_hours,
+      });
     }
 
     if (THIS_IS_MAP_KEY === 'TEST_MODE' || !THIS_IS_MAP_KEY) {
       console.log(
         '🧪 [TEST MODE] Mock modal data for marker:',
-        marker.facility_name,
+        marker.facility_name || marker.name,
       );
+
+      // Check if this is an existing facility in test mode
+      const isExistingFacility = marker?.facility_type && marker?.gps_address;
+
       // Mock modal data for testing
       setImage('https://via.placeholder.com/400x300?text=Test+Facility+Image');
       setMarkerInfo({
-        name: marker?.facility_name || 'Test Facility',
-        vicinity: marker?.address || 'Test Address',
+        name: marker?.name || marker?.facility_name || 'Test Facility',
+        vicinity: isExistingFacility
+          ? `${marker?.gps_address || ''}, ${marker?.district || ''}, ${
+              marker?.area || ''
+            }`
+              .replace(/^,\s*/, '')
+              .replace(/,\s*,/g, ',')
+          : marker?.address || marker?.vicinity || 'Test Address',
         distance: '2.5 km',
         travelTime: '8 min',
       });
       setMarkModal(true);
+      console.log('🧪 [TEST MODE] Modal opened with mock data');
       return;
     }
 
@@ -913,36 +1164,170 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     if (cachedModalData) {
       // Use cached data - NO API calls needed!
       console.log(
-        '🎯 Using cached modal data for facility:',
+        '🎯 [OPEN MODAL] Using cached modal data for facility:',
         marker.place_id || marker.id,
       );
       setImage(cachedModalData.imageUrl);
       setMarkerInfo({
         name: marker?.name || marker?.facility_name || 'unknown',
-        vicinity: marker?.vicinity || marker?.address || 'unknown place',
+        vicinity: isExistingFacility
+          ? `${marker?.gps_address || ''}, ${marker?.district || ''}, ${
+              marker?.area || ''
+            }`
+              .replace(/^,\s*/, '')
+              .replace(/,\s*,/g, ',')
+          : marker?.vicinity || marker?.address || 'unknown place',
         distance: cachedModalData.distance,
         travelTime: cachedModalData.duration,
       });
       setMarkModal(true);
+      console.log('🎯 [OPEN MODAL] Modal opened with cached data');
       return;
     }
 
     // No cache found, fetch fresh data
     console.log(
-      '🔄 Fetching fresh modal data for facility:',
+      '🔄 [OPEN MODAL] Fetching fresh modal data for facility:',
       marker.place_id || marker.id,
     );
 
-    // Fetch image and distance in parallel
-    const [imageUrl, distanceAndDuration] = await Promise.all([
-      fetchImage(marker.place_id || marker.id),
-      fetchDistanceAndDuration(
-        `${currentLocation.latitude},${currentLocation.longitude}`,
-        `${marker?.latitude || marker?.geometry?.location?.lat},${
-          marker?.longitude || marker?.geometry?.location?.lng
-        }`,
-      ),
-    ]);
+    // For searched places, we already have most data, just need image and distance
+    if (isSearchedPlace) {
+      console.log(
+        '🔍 [OPEN MODAL] Searched place - fetching only image and distance data',
+      );
+    } else if (isExistingFacility) {
+      console.log(
+        '🏥 [OPEN MODAL] Existing facility - using database data, calculating approximate distance',
+      );
+    } else {
+      console.log('🔍 [OPEN MODAL] Regular facility - fetching all data');
+    }
+
+    let imageUrl = null;
+    let distanceAndDuration = null;
+
+    if (isSearchedPlace) {
+      // For searched places, fetch image and distance from Google APIs
+      console.log('🔍 [OPEN MODAL] Starting API calls for searched place:', {
+        placeId: marker.place_id || marker.id,
+        origin: `${currentLocation.latitude},${currentLocation.longitude}`,
+        destination: `${marker?.latitude},${marker?.longitude}`,
+      });
+
+      [imageUrl, distanceAndDuration] = await Promise.all([
+        fetchImage(marker.place_id || marker.id),
+        fetchDistanceAndDuration(
+          `${currentLocation.latitude},${currentLocation.longitude}`,
+          `${marker?.latitude},${marker?.longitude}`,
+        ),
+      ]);
+    } else if (isExistingFacility) {
+      // For existing facilities, check if we have cached modal data first
+      const facilityId = marker.id;
+      const cachedLocalData = localFacilityModalData[facilityId];
+
+      if (cachedLocalData) {
+        console.log(
+          '🏥 [OPEN MODAL] Using cached local facility modal data:',
+          cachedLocalData,
+        );
+
+        // Use cached data for local facility
+        setImage(cachedLocalData.image);
+        setMarkerInfo({
+          name: cachedLocalData.name,
+          vicinity: cachedLocalData.vicinity,
+          distance: cachedLocalData.distance,
+          travelTime: cachedLocalData.travelTime,
+        });
+
+        // Small delay to ensure state updates are processed
+        setTimeout(() => {
+          setMarkModal(true);
+          console.log(
+            '✅ [OPEN MODAL] Local facility modal opened with cached data',
+          );
+        }, 100);
+        return;
+      }
+
+      console.log('🏥 [OPEN MODAL] Creating new local facility modal data');
+
+      // Use existing facility image if available
+      if (marker?.mediaUrls?.[0]) {
+        imageUrl = marker.mediaUrls[0];
+        console.log(
+          '🏥 [OPEN MODAL] Using existing facility image from mediaUrls',
+        );
+      }
+
+      // Use the distance and duration that were already calculated by fetchDistancesAndDirections
+      const localDistance = marker.distance || marker.distanceText || 'Unknown';
+      const localDuration = marker.duration || 'Unknown';
+
+      distanceAndDuration = {
+        distance: localDistance,
+        duration: localDuration,
+      };
+
+      console.log(
+        '📏 [OPEN MODAL] Using pre-calculated distance for existing facility:',
+        {
+          distance: distanceAndDuration.distance,
+          duration: distanceAndDuration.duration,
+          markerDistance: marker.distance,
+          markerDuration: marker.duration,
+        },
+      );
+
+      // Store this data in local facility modal cache
+      const localModalData = {
+        name: marker?.facility_name || 'Unknown',
+        vicinity: `${marker?.gps_address || ''}, ${marker?.district || ''}, ${
+          marker?.area || ''
+        }`
+          .replace(/^,\s*/, '')
+          .replace(/,\s*,/g, ','),
+        distance: localDistance,
+        travelTime: localDuration,
+        image: imageUrl,
+      };
+
+      setLocalFacilityModalData(prev => ({
+        ...prev,
+        [facilityId]: localModalData,
+      }));
+
+      console.log(
+        '🏥 [OPEN MODAL] Stored local facility modal data:',
+        localModalData,
+      );
+    } else {
+      // For other cases, fetch from Google APIs
+      console.log('🔍 [OPEN MODAL] Starting API calls for regular facility:', {
+        placeId: marker.place_id || marker.id,
+        origin: `${currentLocation.latitude},${currentLocation.longitude}`,
+        destination: `${marker?.latitude},${marker?.longitude}`,
+      });
+
+      [imageUrl, distanceAndDuration] = await Promise.all([
+        fetchImage(marker.place_id || marker.id),
+        fetchDistanceAndDuration(
+          `${currentLocation.latitude},${currentLocation.longitude}`,
+          `${marker?.latitude},${marker?.longitude}`,
+        ),
+      ]);
+    }
+
+    console.log('📊 [OPEN MODAL] API call results:', {
+      imageUrl: imageUrl ? 'Available' : 'Not available',
+      distanceAndDuration: distanceAndDuration,
+      distance: distanceAndDuration?.distance,
+      duration: distanceAndDuration?.duration,
+      hasDistance: !!distanceAndDuration?.distance,
+      hasDuration: !!distanceAndDuration?.duration,
+    });
 
     // Cache the modal data for future use
     await ModalCache.setCachedModalData(
@@ -954,21 +1339,90 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
       distanceAndDuration?.duration || 'unknown',
     );
 
-    setImage(imageUrl ?? null);
+    // For existing facilities, use their mediaUrls if no Google image found
+    if (isExistingFacility && !imageUrl && marker?.mediaUrls?.[0]) {
+      setImage(marker.mediaUrls[0]);
+      console.log(
+        '🏥 [OPEN MODAL] Using existing facility image from mediaUrls',
+      );
+    } else {
+      setImage(imageUrl ?? null);
+    }
+    // Prepare values for markerInfo
+    const finalDistance = distanceAndDuration?.distance || 'Unknown';
+    const finalTravelTime = distanceAndDuration?.duration || 'Unknown';
+
+    console.log('🔍 [OPEN MODAL] Setting markerInfo with values:', {
+      name: marker?.name || marker?.facility_name || 'unknown',
+      vicinity: isExistingFacility
+        ? `${marker?.gps_address || ''}, ${marker?.district || ''}, ${
+            marker?.area || ''
+          }`
+        : marker?.vicinity || marker?.address || 'unknown place',
+      distance: finalDistance,
+      travelTime: finalTravelTime,
+      isExistingFacility,
+    });
+
     setMarkerInfo({
+      name: marker?.name || marker?.facility_name || 'unknown',
+      vicinity: isExistingFacility
+        ? `${marker?.gps_address || ''}, ${marker?.district || ''}, ${
+            marker?.area || ''
+          }`
+            .replace(/^,\s*/, '')
+            .replace(/,\s*,/g, ',')
+        : marker?.vicinity || marker?.address || 'unknown place',
+      distance: finalDistance,
+      travelTime: finalTravelTime,
+    });
+
+    console.log('🔍 [OPEN MODAL] markerInfo state set to:', {
       name: marker?.name || marker?.facility_name || 'unknown',
       vicinity: marker?.vicinity || marker?.address || 'unknown place',
       distance: distanceAndDuration?.distance,
       travelTime: distanceAndDuration?.duration,
     });
-    setMarkModal(true);
+
+    // Small delay to ensure state updates are processed
+    setTimeout(() => {
+      // Verify we have the essential data before opening modal
+      if (marker?.facility_name && finalDistance) {
+        setMarkModal(true);
+        console.log(
+          '✅ [OPEN MODAL] Modal opened with fresh data after state update',
+        );
+      } else {
+        console.error(
+          '❌ [OPEN MODAL] Failed to set essential data, modal not opened',
+        );
+        console.log('❌ [OPEN MODAL] Facility name:', marker?.facility_name);
+        console.log('❌ [OPEN MODAL] Final distance:', finalDistance);
+      }
+    }, 100);
   };
 
   // =========== EFFECTS ============
   // All useEffect hooks grouped together
+
+  // Debug effect for modal state changes
   useEffect(() => {
-    // Initialize API tracker (don't reset every time)
-    persistentApiTracker.getStats();
+    if (selectedMarker) {
+      console.log('🔍 [MODAL STATE DEBUG] Modal opened with:', {
+        markerInfo: markerInfo,
+        image: image,
+        selectedMarker: {
+          id: selectedMarker.id,
+          name: selectedMarker.facility_name,
+          distance: selectedMarker.distance,
+          duration: selectedMarker.duration,
+        },
+      });
+    }
+  }, [selectedMarker, markerInfo, image]);
+
+  useEffect(() => {
+    // API tracking removed - keeping Supabase API guard
 
     // Clear distance cache since we're changing location
     setDistanceCache(new Map());
@@ -1201,7 +1655,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
 
   // Component render
   return (
-    <View style={{flex: 1, backgroundColor: 'yellow'}}>
+    <View style={{flex: 1}}>
       <LocationLayout>
         <View
           style={{
@@ -1409,6 +1863,23 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                 zIndex: -1,
                 backgroundColor: '#f0f0f0',
                 position: 'relative',
+              }}
+              onLayout={async () => {
+                // Check API guard for test mode map load
+                try {
+                  console.log(
+                    '🔍 [TEST MAP] Calling checkApiAllowed for AndroidMapHit in test mode',
+                  );
+                  await checkApiAllowed('AndroidMapHit');
+                  console.log(
+                    '✅ [TEST MAP] checkApiAllowed passed - count should be incremented in Supabase',
+                  );
+                } catch (error) {
+                  console.log(
+                    '🚫 [TEST MAP] Map load blocked by Supabase guard:',
+                    (error as Error).message,
+                  );
+                }
               }}>
               <View
                 style={{
@@ -1420,7 +1891,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                   justifyContent: 'center',
                 }}>
                 <Text style={{color: '#666', fontSize: 16, marginBottom: 10}}>
-                  🧪 TEST MODE MAP
+                  TEST MODE MAP
                 </Text>
                 <Text
                   style={{color: '#999', fontSize: 12, textAlign: 'center'}}>
@@ -1453,9 +1924,35 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
-                  onTouchEnd={() => {
+                  onTouchEnd={async () => {
                     setSelectedMarker(marker);
                     showCard();
+                    // In test mode, simulate the API guard hits that would occur
+                    // when opening the modal: place details, image, and distance
+                    try {
+                      await checkApiAllowed('PlaceDetail');
+                    } catch (e) {
+                      console.log(
+                        '🚫 [TEST MARKER] PlaceDetail blocked:',
+                        (e as Error).message,
+                      );
+                    }
+                    try {
+                      await checkApiAllowed('PlaceImage');
+                    } catch (e) {
+                      console.log(
+                        '🚫 [TEST MARKER] PlaceImage blocked:',
+                        (e as Error).message,
+                      );
+                    }
+                    try {
+                      await checkApiAllowed('SinglePlaceDistance');
+                    } catch (e) {
+                      console.log(
+                        '🚫 [TEST MARKER] SinglePlaceDistance blocked:',
+                        (e as Error).message,
+                      );
+                    }
                   }}>
                   <Text
                     style={{color: 'white', fontSize: 10, fontWeight: 'bold'}}>
@@ -1555,17 +2052,14 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                 width: '100%',
                 height: '100%',
                 zIndex: 1,
-                borderWidth: 5,
-                borderColor: 'red', // Temporary border to see if MapView container is visible
-                backgroundColor: 'blue', // Temporary background to see if container is visible
               }}
               initialRegion={initialRegion}
               provider={PROVIDER_GOOGLE}
               zoomEnabled
               scrollEnabled
-              showsUserLocation
+              showsUserLocation={true}
               zoomControlEnabled
-              showsMyLocationButton={false}
+              showsMyLocationButton={true}
               showsCompass={false}
               maxZoomLevel={16}
               minZoomLevel={10}
@@ -1575,24 +2069,46 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                 console.log('🗺️ [MAP] Initial region:', initialRegion);
                 console.log('🗺️ [MAP] API Key available:', !!THIS_IS_MAP_KEY);
                 console.log('🗺️ [MAP] Provider:', PROVIDER_GOOGLE);
-                console.log('🗺️ [MAP] Map should now be visible');
-                console.log(
-                  '🗺️ [MAP] If you see a red border but no map tiles, the Android SDK is not working',
-                );
+                console.log('🗺️ [MAP] Current location:', currentLocation);
+                console.log('🗺️ [MAP] showsUserLocation:', true);
+                console.log('🗺️ [MAP] showsMyLocationButton:', true);
 
-                // Check API guard for map load (even in test mode for testing)
+                // Check API guard for map load
                 try {
+                  console.log(
+                    '🔍 [MAP LOAD] Calling checkApiAllowed for AndroidMapHit',
+                  );
                   await checkApiAllowed('AndroidMapHit');
+                  console.log(
+                    '✅ [MAP LOAD] checkApiAllowed passed - count should be incremented in Supabase',
+                  );
                 } catch (error) {
                   console.log(
-                    '🚫 Map load blocked by Supabase guard:',
+                    '🚫 [MAP LOAD] Map load blocked by Supabase guard:',
                     (error as Error).message,
                   );
                   return;
                 }
 
                 // Track Maps SDK for Android map load
-                persistentApiTracker.trackMapViewLoad();
+                // API tracking removed - keeping Supabase API guard
+
+                // If we have current location, animate to it
+                if (currentLocation.latitude && currentLocation.longitude) {
+                  console.log(
+                    '📍 [MAP] Animating to user location:',
+                    currentLocation,
+                  );
+                  mapRef.current?.animateToRegion(
+                    {
+                      latitude: currentLocation.latitude,
+                      longitude: currentLocation.longitude,
+                      latitudeDelta: 0.009,
+                      longitudeDelta: 0.009,
+                    },
+                    1000,
+                  );
+                }
               }}
               onRegionChangeComplete={region => {
                 console.log('🗺️ [MAP] Region changed to:', region);
@@ -1606,7 +2122,95 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                   coordinate={selectedLocation}
                   title="Searched Location"
                   pinColor={themeColors.primary}
+                  onPress={() => {
+                    console.log(
+                      '🔍 [SEARCHED MARKER] Clicked on searched location marker',
+                    );
+                    console.log(
+                      '🔍 [SEARCHED MARKER] Selected location data:',
+                      selectedLocation,
+                    );
+
+                    // Clear previous marker info before setting new marker
+                    setMarkerInfo(null);
+                    setImage(null);
+                    setMarkModal(false);
+                    // Clear local facility modal data when switching to searched place
+                    setLocalFacilityModalData({});
+
+                    // Create a complete marker object using the stored place details
+                    const searchedMarker = {
+                      place_id:
+                        selectedLocation.placeDetails?.place_id ||
+                        'searched_location',
+                      id:
+                        selectedLocation.placeDetails?.place_id ||
+                        'searched_location',
+                      facility_name:
+                        selectedLocation.placeDetails?.name ||
+                        'Searched Location',
+                      name:
+                        selectedLocation.placeDetails?.name ||
+                        'Searched Location',
+                      vicinity:
+                        selectedLocation.placeDetails?.formatted_address ||
+                        'Unknown Address',
+                      address:
+                        selectedLocation.placeDetails?.formatted_address ||
+                        'Unknown Address',
+                      latitude: selectedLocation.latitude,
+                      longitude: selectedLocation.longitude,
+                      geometry: {
+                        location: {
+                          lat: selectedLocation.latitude,
+                          lng: selectedLocation.longitude,
+                        },
+                      },
+                      // Add all the additional details from place details
+                      phone:
+                        selectedLocation.placeDetails?.formatted_phone_number,
+                      website: selectedLocation.placeDetails?.website,
+                      rating: selectedLocation.placeDetails?.rating,
+                      user_ratings_total:
+                        selectedLocation.placeDetails?.user_ratings_total,
+                      opening_hours:
+                        selectedLocation.placeDetails?.opening_hours,
+                      photos: selectedLocation.placeDetails?.photos,
+                      types: selectedLocation.placeDetails?.types,
+                      business_status:
+                        selectedLocation.placeDetails?.business_status,
+                    };
+
+                    console.log(
+                      '🔍 [SEARCHED MARKER] Created searched marker object:',
+                      searchedMarker,
+                    );
+                    console.log(
+                      '🔍 [SEARCHED MARKER] Calling openMarkModal for enhanced data fetching',
+                    );
+
+                    setSelectedMarker(searchedMarker);
+                    openMarkModal(searchedMarker); // Call openMarkModal for searched places
+                  }}
                 />
+              )}
+              {/* Manual user location marker as fallback */}
+              {currentLocation.latitude && currentLocation.longitude && (
+                <Marker
+                  coordinate={{
+                    latitude: currentLocation.latitude,
+                    longitude: currentLocation.longitude,
+                  }}
+                  title="Your Location"
+                  description="Current location">
+                  <View style={styles.userLocationMarker}>
+                    <MaterialCommunityIcons
+                      name="crosshairs-gps"
+                      size={22}
+                      color="#007AFF"
+                    />
+                  </View>
+                </Marker>
               )}
             </MapView>
           )
@@ -1626,6 +2230,33 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
             </Text>
           </View>
         )}
+
+        {/* Custom My Location Button - Only show when map is loaded */}
+        {(() => {
+          const hasLocation = !!(
+            currentLocation.latitude && currentLocation.longitude
+          );
+          return (
+            hasLocation &&
+            !(THIS_IS_MAP_KEY === 'TEST_MODE' || !THIS_IS_MAP_KEY)
+          );
+        })() && (
+          <TouchableOpacity
+            style={styles.myLocationButton}
+            onPress={animateToMyLocation}
+            disabled={!currentLocation.latitude || !currentLocation.longitude}>
+            <MaterialCommunityIcons
+              name="crosshairs-gps"
+              size={24}
+              color={
+                currentLocation.latitude && currentLocation.longitude
+                  ? themeColors.primary
+                  : '#ccc'
+              }
+            />
+          </TouchableOpacity>
+        )}
+
         <Animated.View
           style={[
             styles.cardContainer,
@@ -1633,12 +2264,14 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
               transform: [{translateY: slideAnim}],
             },
           ]}>
-          {selectedMarker && (
+          {markModal && selectedMarker && (
             <View style={styles.card}>
               <View style={styles.cardContent}>
                 <Image
                   source={
-                    selectedMarker.mediaUrls?.[0]
+                    image
+                      ? {uri: image}
+                      : selectedMarker.mediaUrls?.[0]
                       ? {uri: selectedMarker.mediaUrls?.[0]}
                       : require('../../../assets/hospital1.jpeg')
                   }
@@ -1655,7 +2288,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                     }}>
                     <Text
                       style={[styles.facilityName, {flex: 1, color: 'black'}]}>
-                      {selectedMarker.facility_name}
+                      {markerInfo?.name || selectedMarker.facility_name}
                     </Text>
                     <View
                       style={{
@@ -1667,6 +2300,10 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                         onPress={() => {
                           hideCard();
                           setSelectedMarker(null);
+                          setMarkModal(false);
+                          // Only clear markerInfo and image, keep localFacilityModalData
+                          setMarkerInfo(null);
+                          setImage(null);
                         }}>
                         <Icon name="close" size={24} color="#666" />
                       </TouchableOpacity>
@@ -1682,10 +2319,14 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                         alignSelf: 'flex-start',
                       },
                     ]}>
-                    {selectedMarker.gps_address
-                      ? selectedMarker.gps_address
+                    {markerInfo?.vicinity || selectedMarker.gps_address
+                      ? markerInfo?.vicinity || selectedMarker.gps_address
                       : 'Street no 13 Heaven town'}
-                    , {selectedMarker.district}, {selectedMarker.area}
+                    {!markerInfo?.vicinity && !selectedMarker.gps_address && (
+                      <>
+                        , {selectedMarker.district}, {selectedMarker.area}
+                      </>
+                    )}
                   </Text>
                   {/* DISTANCE DURAITON ROW */}
                   {isReady && (
@@ -1709,7 +2350,20 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                           color={themeColors.primary}
                         />
                         <Text style={{color: 'gray', fontSize: 12}}>
-                          {selectedMarker.distance.toFixed(1) || '1'} km
+                          {(() => {
+                            const distance =
+                              markerInfo?.distance || selectedMarker.distance;
+                            if (distance && typeof distance === 'number') {
+                              return `${distance.toFixed(1)} km`;
+                            } else if (
+                              distance &&
+                              typeof distance === 'string'
+                            ) {
+                              return `${distance} km`;
+                            } else {
+                              return '1 km';
+                            }
+                          })()}
                         </Text>
                       </View>
                       <View
@@ -1725,7 +2379,9 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                           color={themeColors.primary}
                         />
                         <Text style={{color: 'gray', fontSize: 12}}>
-                          {selectedMarker.duration || '1'}
+                          {markerInfo?.travelTime ||
+                            selectedMarker.duration ||
+                            '1'}
                         </Text>
                       </View>
                     </View>
@@ -1770,6 +2426,67 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                       </View>
                     </View>
                   ) : null}
+
+                  {/* Google Maps and View Details Buttons - Conditional based on marker type */}
+                  <View
+                    style={{
+                      marginTop: 8,
+                      flexDirection: 'row',
+                      gap: 5,
+                      justifyContent: 'space-between',
+                    }}>
+                    {/* GOOGLE MAPS BTN - Always show */}
+                    <TouchableOpacity
+                      style={{
+                        flex: 1,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#4285F4',
+                        padding: 8,
+                        borderRadius: 5,
+                        marginRight:
+                          selectedMarker?.facility_type &&
+                          selectedMarker?.gps_address
+                            ? 5
+                            : 0,
+                      }}
+                      onPress={openInMaps}>
+                      <FontAwesome5
+                        name="map-marked-alt"
+                        size={16}
+                        color="white"
+                      />
+                    </TouchableOpacity>
+
+                    {/* VIEW DETAILS BTN - Only show for local facilities */}
+                    {selectedMarker?.facility_type &&
+                      selectedMarker?.gps_address && (
+                        <TouchableOpacity
+                          style={{
+                            flex: 1,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: themeColors.primary,
+                            padding: 8,
+                            borderRadius: 5,
+                          }}
+                          onPress={() => {
+                            console.log('Selected Marker:', selectedMarker);
+                            console.log(
+                              '📍 [NAVIGATION] Passing location data:',
+                              currentLocation,
+                            );
+
+                            navigation?.navigate(SCREENS.FACILITYDETAILS, {
+                              id: selectedMarker?.id,
+                              currentLocation: currentLocation, // Pass current location
+                            });
+                          }}>
+                          <Feather name="arrow-right" size={16} color="white" />
+                        </TouchableOpacity>
+                      )}
+                  </View>
+
                   {/* Open/Closed Status Badge */}
                   {selectedMarker.business_hours && (
                     <View
@@ -1841,49 +2558,24 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                         }
 
                         return (
-                          <>
-                            <View
+                          <View
+                            style={{
+                              maxWidth: '100%',
+                              backgroundColor: isOpen ? '#e6f7ed' : '#fff8e6', // Light shade of green or yellow
+                              paddingVertical: 4,
+                              paddingHorizontal: 8,
+                              borderRadius: 4,
+                              alignSelf: 'flex-start',
+                            }}>
+                            <Text
                               style={{
-                                maxWidth: '80%',
-                                backgroundColor: isOpen ? '#e6f7ed' : '#fff8e6', // Light shade of green or yellow
-                                paddingVertical: 4,
-                                paddingHorizontal: 8,
-                                borderRadius: 4,
-                                alignSelf: 'flex-start',
+                                color: isOpen ? '#1e8449' : '#daa520', // Darker shade of green or yellow
+                                fontSize: 12,
+                                fontWeight: '600',
                               }}>
-                              <Text
-                                style={{
-                                  color: isOpen ? '#1e8449' : '#daa520', // Darker shade of green or yellow
-                                  fontSize: 12,
-                                  fontWeight: '600',
-                                }}>
-                                {statusText}
-                              </Text>
-                            </View>
-                            {/* VIEW DETAILS BTN */}
-                            <TouchableOpacity
-                              style={{
-                                flex: 1,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: themeColors.primary,
-                                padding: 4,
-                                borderRadius: 5,
-                              }}
-                              onPress={() => {
-                                console.log('Selected Marker:', selectedMarker);
-
-                                navigation?.navigate(SCREENS.FACILITYDETAILS, {
-                                  id: selectedMarker?.id,
-                                });
-                              }}>
-                              <Feather
-                                name="arrow-right"
-                                size={16}
-                                color="white"
-                              />
-                            </TouchableOpacity>
-                          </>
+                              {statusText}
+                            </Text>
+                          </View>
                         );
                       })()}
                     </View>
@@ -2108,6 +2800,44 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 3.84,
     elevation: 5,
+  },
+  myLocationButton: {
+    position: 'absolute',
+    bottom: 120,
+    right: 20,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 1000,
+  },
+  userLocationMarker: {
+    // width: 24,
+    // height: 24,
+    // borderRadius: 12,
+    // backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    // justifyContent: 'center',
+    // alignItems: 'center',
+    // borderWidth: 2,
+    // borderColor: '#007AFF',
+    // shadowColor: '#000',
+    // shadowOffset: {
+    //   width: 0,
+    //   height: 1,
+    // },
+    // shadowOpacity: 0.2,
+    // shadowRadius: 2,
+    // elevation: 3,
   },
 });
 

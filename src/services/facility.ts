@@ -1,7 +1,6 @@
 import {THIS_IS_MAP_KEY, limit} from '../../config/variables';
 import useLocation from '../hooks/useLocation';
 import {supabase} from '../utils/supabaseClient';
-import apiCallTracker from '../utils/apiCallTracker';
 
 export const getFacilityListByCategory = async (
   category: string,
@@ -98,8 +97,7 @@ export const getFacilityDetailsById = async (
 
 const getRatingsAndDistance = async (placeName: string, location: any) => {
   try {
-    // Track function call
-    apiCallTracker.trackFunctionCall('getRatingsAndDistance');
+    // API call tracking removed - keeping Supabase API guard
 
     let data = {
       distance: 0,
@@ -110,10 +108,7 @@ const getRatingsAndDistance = async (placeName: string, location: any) => {
       placeName,
     )}&inputtype=textquery&fields=place_id&key=${THIS_IS_MAP_KEY}`;
 
-    // Track Google API call
-    apiCallTracker.trackAPICall('getRatingsAndDistance', 'findplacefromtext', {
-      placeName,
-    });
+    // API call tracking removed - keeping Supabase API guard
 
     const searchResponse = await fetch(searchUrl);
     const searchData = await searchResponse.json();
@@ -124,10 +119,7 @@ const getRatingsAndDistance = async (placeName: string, location: any) => {
       // Step 2: Use the place_id to get complete details
       const detailsUrl = `https://maps/api/place/details/json?place_id=${placeId}&fields=name,geometry,photo&key=${THIS_IS_MAP_KEY}`;
 
-      // Track Google API call
-      apiCallTracker.trackAPICall('getRatingsAndDistance', 'place/details', {
-        placeId,
-      });
+      // API call tracking removed - keeping Supabase API guard
 
       const detailsResponse = await fetch(detailsUrl);
       const detailsData = await detailsResponse.json();
@@ -175,21 +167,12 @@ const fetchDistanceAndDuration = async (
   destination: {lat: number; lng: number},
 ) => {
   try {
-    // Track function call
-    apiCallTracker.trackFunctionCall('facility.fetchDistanceAndDuration');
+    // API call tracking removed - keeping Supabase API guard
 
     let distance: any;
     const distanceMatrixUrl = `https://maps/api/distancematrix/json?units=metric&origins=${origin.lat},${origin.lng}&destinations=${destination.lat},${destination.lng}&key=${THIS_IS_MAP_KEY}`;
 
-    // Track Google API call
-    apiCallTracker.trackAPICall(
-      'facility.fetchDistanceAndDuration',
-      'distancematrix',
-      {
-        origin,
-        destination,
-      },
-    );
+    // API call tracking removed - keeping Supabase API guard
 
     const response = await fetch(distanceMatrixUrl);
     const data = await response.json();

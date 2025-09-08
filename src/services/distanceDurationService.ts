@@ -1,6 +1,5 @@
 import axios from 'axios';
 import {THIS_IS_MAP_KEY} from '../../config/variables';
-import apiCallTracker from '../utils/apiCallTracker';
 
 // Supabase Edge Function API guard
 const checkApiAllowed = async (action: string) => {
@@ -69,8 +68,7 @@ export const fetchDistancesAndDurations = async (
   isInternalCall: boolean = false,
 ): Promise<DistanceDuration[]> => {
   try {
-    // Track function call
-    apiCallTracker.trackFunctionCall('fetchDistancesAndDurations');
+    // API call tracking removed - keeping Supabase API guard
 
     // Format origin string
     const origin =
@@ -127,15 +125,8 @@ export const fetchDistancesAndDurations = async (
       const functionName = isInternalCall
         ? 'fetchDistanceAndDuration'
         : 'fetchDistancesAndDurations';
-      const apiAllowed = await apiCallTracker.trackAPICall(
-        functionName,
-        'distancematrix',
-        {
-          origin,
-          destinations: destinationCoords.length,
-          isInternalCall,
-        },
-      );
+      // API call tracking removed - keeping Supabase API guard
+      const apiAllowed = true; // Simplified since we're not tracking anymore
 
       if (!apiAllowed) {
         console.log(
@@ -195,19 +186,9 @@ export const fetchDistanceAndDuration = async (
       return {distance: '', duration: ''};
     }
 
-    // Check API guard first (even in test mode for testing)
-    try {
-      await checkApiAllowed('SinglePlaceDistance');
-    } catch (error) {
-      console.log(
-        '🚫 Single Place Distance API call blocked by Supabase guard:',
-        (error as Error).message,
-      );
-      return {distance: '', duration: ''};
-    }
+    // Note: checkApiAllowed is called in fetchDistancesAndDurations to avoid double counting
 
-    // Track function call
-    apiCallTracker.trackFunctionCall('fetchDistanceAndDuration');
+    // API call tracking removed - keeping Supabase API guard
     console.log('📞 fetchDistanceAndDuration called with:', {
       origin,
       destination,

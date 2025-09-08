@@ -25,16 +25,12 @@ import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {BottomTabSchema, StackParams} from '../interfaces';
 import RegisteredFacilites from '../screens/Locator/RegisteredFacilites';
 import {moderateScale, verticalScale} from '../utils/metrics';
-import APICallSummary from '../components/APICallSummary';
-import PersistentAPITracker from '../components/PersistentAPITracker';
 
 const Tab = createBottomTabNavigator<any>();
 
 const BottomTabNavigation: React.FC = () => {
   const userData: any = useSelector(user);
   const paddingAnim = useRef(new Animated.Value(0)).current;
-  const [showAPISummary, setShowAPISummary] = useState(false);
-  const [showPersistentTracker, setShowPersistentTracker] = useState(false);
 
   const navigation = useNavigation<NavigationProp<BottomTabSchema>>();
 
@@ -151,16 +147,6 @@ const BottomTabNavigation: React.FC = () => {
           headerRight: () => (
             <View style={{flexDirection: 'row', alignItems: 'center'}}>
               <TouchableOpacity
-                onPress={() => setShowAPISummary(true)}
-                style={[styles.headerSide, {marginRight: 10}]}>
-                <Icon name="chart-bar" size={20} color={themeColors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowPersistentTracker(true)}
-                style={[styles.headerSide, {marginRight: 10}]}>
-                <Icon name="database" size={20} color={themeColors.primary} />
-              </TouchableOpacity>
-              <TouchableOpacity
                 onPress={() => navigation.navigate('Notifications')}
                 style={styles.headerSide}>
                 <Icon
@@ -244,14 +230,6 @@ const BottomTabNavigation: React.FC = () => {
       </Tab.Navigator>
 
       {/* API Call Summary Modal */}
-      <APICallSummary
-        visible={showAPISummary}
-        onClose={() => setShowAPISummary(false)}
-      />
-      <PersistentAPITracker
-        visible={showPersistentTracker}
-        onClose={() => setShowPersistentTracker(false)}
-      />
     </>
   );
 };

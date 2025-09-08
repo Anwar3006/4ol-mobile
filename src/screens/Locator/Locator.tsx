@@ -859,7 +859,7 @@ import {user} from '../../store/selectors';
 import type {AppDispatch} from '../../store/index';
 import {horizontalScale, verticalScale} from '../../utils/metrics';
 import MarkModal from './MarkerModal';
-import apiCallTracker from '../../utils/apiCallTracker';
+
 import ModalCache from '../../utils/modalCache';
 export const useAppDispatch: () => AppDispatch = useDispatch;
 
@@ -1086,7 +1086,7 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
     }
     try {
       // Track function call
-      apiCallTracker.trackFunctionCall('fetchAutocompleteSuggestions');
+      // API call tracking removed - keeping Supabase API guard
 
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${query}&key=${THIS_IS_MAP_KEY}`,

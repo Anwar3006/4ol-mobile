@@ -23,7 +23,7 @@
       android:supportsRtl="true">
       <meta-data
         android:name="com.google.android.geo.API_KEY"
-        android:value="AIzaSyDqrGdgLsCYya5XcwoZNuAfKNCuponIhH4" />
+        android:value="AIzaSyAVBr8MkTtwvQn_LH2hc77jJ1Y4bNumcZM" />
         <meta-data
     android:name="com.notifee.notification_icon"
     android:resource="@drawable/ic_notification" />

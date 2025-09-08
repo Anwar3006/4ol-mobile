@@ -1,5 +1,4 @@
 import {createSlice, createAsyncThunk} from '@reduxjs/toolkit';
-import apiCallTracker from '../../utils/apiCallTracker';
 
 // Supabase Edge Function API guard
 const checkApiAllowed = async (action: string) => {
@@ -37,8 +36,7 @@ export const fetchNearbyPlaces = createAsyncThunk(
   }) => {
     console.log('CALLED====>');
 
-    // Track function call
-    apiCallTracker.trackFunctionCall('fetchNearbyPlaces');
+    // API call tracking removed - keeping Supabase API guard
 
     const allMarkers: any = [];
 
@@ -47,7 +45,7 @@ export const fetchNearbyPlaces = createAsyncThunk(
       // Use a broad search to get all healthcare facilities
       // Keywords based on your filter categories: Hospital/Clinic, Pharmacy, Herbal Centers, Diagnostic Lab, Dental, Ambulance, Homes, Eye Care, Osteopathy, Physiotherapy, Prosthetics, Psychiatric
       const broadKeywords =
-        'hospital, clinic, pharmacy, herbal, diagnostic, laboratory, dental, ambulance, nursing home, eye care, osteopathy, physiotherapy, prosthetics, psychiatric, medical center, healthcare';
+        'hospital , pharmacy , dentist , doctor , physiotherapist , dental_clinic ';
 
       let url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${selectedDistance}&keyword=${encodeURIComponent(
         broadKeywords,
@@ -90,16 +88,8 @@ export const fetchNearbyPlaces = createAsyncThunk(
         }
 
         if (response.ok && data.status === 'OK') {
-          // Track Google API call only after successful response
-          const apiAllowed = await apiCallTracker.trackAPICall(
-            'fetchNearbyPlaces',
-            'nearbysearch',
-            {
-              page: pageCount + 1,
-              keywords: broadKeywords,
-              pageToken: !!nextPageToken,
-            },
-          );
+          // API call tracking removed - keeping Supabase API guard
+          const apiAllowed = true; // Simplified since we're not tracking anymore
 
           if (!apiAllowed) {
             console.log('🚫 API call blocked by persistent tracker');
@@ -118,6 +108,8 @@ export const fetchNearbyPlaces = createAsyncThunk(
             'Error fetching places:',
             data.error_message || 'Unknown error',
           );
+          console.error('Full API response:', data);
+          console.error('Request URL:', pageUrl);
           break;
         }
       } while (nextPageToken && pageCount < 3); // Limit to 3 pages to avoid too many calls
@@ -218,7 +210,7 @@ export const fetchNearbyPlaces = createAsyncThunk(
         categorizedMarkers.map((marker: any) => [marker.place_id, marker]),
       ).values(),
     );
-
+    console.log(uniqueMarkers);
     console.log(
       `Fetched ${uniqueMarkers.length} unique places in 1-3 API calls`,
     );
