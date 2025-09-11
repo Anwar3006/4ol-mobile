@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useLayoutEffect} from 'react';
 import {
   StyleSheet,
   Text,
@@ -103,6 +103,15 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
   const [loading, setLoading] = useState(false);
   const [facilityDetails, setFacilityDetails] = useState<any>();
   const [isModalVisible, setIsModalVisible] = useState(false);
+
+  // Update header title dynamically when facility details are loaded
+  useLayoutEffect(() => {
+    if (facilityDetails?.facility_name) {
+      navigation?.setOptions({
+        title: facilityDetails.facility_name,
+      });
+    }
+  }, [facilityDetails?.facility_name, navigation]);
   const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const [actionType, setActionType] = useState<'call' | 'whatsapp' | null>(
     null,
@@ -1045,6 +1054,14 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                 <Icon name="phone-alt" size={20} color={themeColors.white} />
                 <Text style={styles.buttonText}>Contact</Text>
               </TouchableOpacity>
+              <View
+                style={{
+                  backgroundColor: 'white',
+                  height: 30,
+                  width: 2,
+                }}>
+                <Text></Text>
+              </View>
               <TouchableOpacity
                 disabled={!distance}
                 style={styles.button}
@@ -1061,6 +1078,14 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                   )}
                 </Text>
               </TouchableOpacity>
+              <View
+                style={{
+                  backgroundColor: 'white',
+                  height: 30,
+                  width: 2,
+                }}>
+                <Text></Text>
+              </View>
               <TouchableOpacity style={styles.button} onPress={handleShare}>
                 <Icon name="share-alt" size={20} color={themeColors.white} />
                 <Text style={styles.buttonText}>Share</Text>
@@ -1178,8 +1203,8 @@ const styles = StyleSheet.create({
     paddingBottom: 15,
   },
   sectionTitle: {
-    marginBottom: 10,
-    fontSize: size.md,
+    // marginBottom: 5,
+    fontSize: size.lg,
     color: themeColors.darkGray,
     fontFamily: fonts.OpenSansBold,
     textTransform: 'uppercase',

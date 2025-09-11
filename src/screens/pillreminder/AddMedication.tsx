@@ -9,6 +9,9 @@ import {
   Image,
   ScrollView,
   SafeAreaView,
+  Platform,
+  Alert,
+  Linking,
 } from 'react-native';
 import {Dropdown} from 'react-native-element-dropdown';
 import ColorPicker, {
@@ -32,6 +35,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import EntypoIcon from 'react-native-vector-icons/Entypo';
 import {launchImageLibrary, launchCamera} from 'react-native-image-picker';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
+import {PERMISSIONS, request, check, RESULTS} from 'react-native-permissions';
 
 export default function AddMedication({route}: any) {
   const router: any = useNavigation();
@@ -205,48 +209,141 @@ export default function AddMedication({route}: any) {
     setErrors(prev => ({...prev, medicationType: ''}));
   };
 
+  // Permission request functions
+  const requestCameraPermission = async () => {
+    try {
+      const permission =
+        Platform.OS === 'ios'
+          ? PERMISSIONS.IOS.CAMERA
+          : PERMISSIONS.ANDROID.CAMERA;
+
+      const result = await request(permission);
+      return result === RESULTS.GRANTED;
+    } catch (error) {
+      console.error('Error requesting camera permission:', error);
+      return false;
+    }
+  };
+
+  const requestGalleryPermission = async () => {
+    try {
+      let permission;
+
+      if (Platform.OS === 'ios') {
+        permission = PERMISSIONS.IOS.PHOTO_LIBRARY;
+      } else {
+        // Check Android version and use appropriate permission
+        const androidVersion = Platform.Version;
+        if (androidVersion >= 33) {
+          // Android 13+ (API 33+)
+          permission = PERMISSIONS.ANDROID.READ_MEDIA_IMAGES;
+        } else {
+          // Android 12 and below (API 32 and below)
+          permission = PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE;
+        }
+      }
+
+      const result = await request(permission);
+      return result === RESULTS.GRANTED;
+    } catch (error) {
+      console.error('Error requesting gallery permission:', error);
+      return false;
+    }
+  };
+
+  const showPermissionAlert = (permissionType: 'camera' | 'gallery') => {
+    Alert.alert(
+      'Permission Required',
+      `Please grant ${permissionType} permission to proceed.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Open Settings',
+          onPress: () => {
+            if (Platform.OS === 'ios') {
+              Linking.openURL('app-settings:');
+            } else {
+              Linking.openSettings();
+            }
+          },
+        },
+      ],
+    );
+  };
+
   // Image selection options
   const selectImage = () => {
     setShowImageOptions(true);
   };
 
-  const takePhoto = () => {
-    launchCamera(
-      {
-        mediaType: 'photo',
-        quality: 0.8,
-      },
-      response => {
-        if (response.didCancel) {
-          console.log('User cancelled camera');
-        } else if (response.errorCode) {
-          console.log('Camera Error: ', response.errorMessage);
-        } else if (response.assets && response.assets[0].uri) {
-          setImageUri(response.assets[0].uri);
-        }
-        setShowImageOptions(false);
-      },
-    );
+  const takePhoto = async () => {
+    try {
+      setShowImageOptions(false);
+
+      // Request camera permission
+      const hasPermission = await requestCameraPermission();
+
+      if (!hasPermission) {
+        showPermissionAlert('camera');
+        return;
+      }
+
+      // Launch camera if permission is granted
+      launchCamera(
+        {
+          mediaType: 'photo',
+          quality: 0.8,
+        },
+        response => {
+          if (response.didCancel) {
+            console.log('User cancelled camera');
+          } else if (response.errorCode) {
+            console.log('Camera Error: ', response.errorMessage);
+          } else if (response.assets && response.assets[0].uri) {
+            setImageUri(response.assets[0].uri);
+          }
+        },
+      );
+    } catch (error) {
+      console.error('Error in takePhoto:', error);
+    }
   };
 
-  const chooseFromGallery = () => {
-    launchImageLibrary(
-      {
-        mediaType: 'photo',
-        selectionLimit: 1,
-        quality: 0.8,
-      },
-      response => {
-        if (response.didCancel) {
-          console.log('User cancelled image picker');
-        } else if (response.errorCode) {
-          console.log('ImagePicker Error: ', response.errorMessage);
-        } else if (response.assets && response.assets[0].uri) {
-          setImageUri(response.assets[0].uri);
-        }
-        setShowImageOptions(false);
-      },
-    );
+  const chooseFromGallery = async () => {
+    try {
+      setShowImageOptions(false);
+
+      // Request gallery permission
+      const hasPermission = await requestGalleryPermission();
+
+      if (!hasPermission) {
+        showPermissionAlert('gallery');
+        return;
+      }
+
+      // Launch image library if permission is granted
+      launchImageLibrary(
+        {
+          mediaType: 'photo',
+          selectionLimit: 1,
+          quality: 0.8,
+        },
+        response => {
+          if (response.didCancel) {
+            console.log('User cancelled image picker');
+          } else if (response.errorCode) {
+            console.log('ImagePicker Error: ', response.errorMessage);
+          } else if (response.assets && response.assets[0].uri) {
+            setImageUri(response.assets[0].uri);
+          }
+        },
+      );
+    } catch (error) {
+      console.error('Error in chooseFromGallery:', error);
+    }
   };
 
   const onSelectColor = ({hex}: {hex: string}) => {

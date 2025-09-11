@@ -54,7 +54,7 @@ import {AppRegistry} from 'react-native';
 import {navigationRef} from '../services/NavigationRef';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {requestExactAlarmPermission} from '../services/notificationService';
-import notifee, {AndroidImportance} from '@notifee/react-native';
+import notifee, {AndroidImportance, EventType} from '@notifee/react-native';
 import messaging from '@react-native-firebase/messaging';
 import {handlePendingNotification} from '../services/notificationActions';
 import {checkRedirect} from '../services/checkRedirect';
