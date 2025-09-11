@@ -73,6 +73,7 @@ def enableProguardInReleaseBuilds = true
  */
 def jscFlavor = 'org.webkit:android-jsc:+'
 
+apply from: new File(["node", "--print", "require.resolve('@sentry/react-native/package.json')"].execute().text.trim(), "../sentry.gradle")
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -105,7 +106,8 @@ android {
             signingConfig signingConfigs.debug
         }
     release {
-            signingConfig signingConfigs.release
+            // signingConfig signingConfigs.release
+            signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds  // This will now be true
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             debuggable false

@@ -25,6 +25,7 @@ import {
   handlePendingNavigation,
 } from '../services/NavigationRef';
 import {checkRedirect} from '../services/checkRedirect';
+import * as Sentry from '@sentry/react-native';
 const Route = () => {
   const optionalConfigObject = {
     title: 'Please Authenticate', // Android
@@ -54,27 +55,47 @@ const Route = () => {
   useEffect(() => {
     // checkRedirect();
     const handleAppStateChange = async (nextAppState: any) => {
-      if (
-        appState.current.match(/inactive|background/) &&
-        nextAppState === 'active'
-      ) {
-        const lastMinimizedTime = await AsyncStorage.getItem(
-          'lastMinimizedTime',
-        );
-        const currentTime = new Date().getTime();
-        if (
-          lastMinimizedTime &&
-          currentTime - parseInt(lastMinimizedTime) >= 30000 // Check if 30 seconds have passed
-        ) {
-          // dispatch(isBiometricUser(true));
-          triggerBiometricLogin();
-        }
-      } else if (nextAppState.match(/inactive|background/)) {
-        const currentTime = new Date().getTime();
-        await AsyncStorage.setItem('lastMinimizedTime', currentTime.toString());
-      }
+      try {
+        // Add Sentry breadcrumb
+        Sentry.addBreadcrumb({
+          message: 'App state changed',
+          category: 'app-lifecycle',
+          data: {
+            previousState: appState.current,
+            newState: nextAppState,
+          },
+        });
 
-      appState.current = nextAppState;
+        if (
+          appState.current.match(/inactive|background/) &&
+          nextAppState === 'active'
+        ) {
+          const lastMinimizedTime = await AsyncStorage.getItem(
+            'lastMinimizedTime',
+          );
+          const currentTime = new Date().getTime();
+          if (
+            lastMinimizedTime &&
+            currentTime - parseInt(lastMinimizedTime) >= 30000 // Check if 30 seconds have passed
+          ) {
+            Sentry.addBreadcrumb({
+              message: 'Triggering biometric after 30 seconds',
+              category: 'biometric',
+            });
+            // dispatch(isBiometricUser(true));
+            triggerBiometricLogin();
+          }
+        } else if (nextAppState.match(/inactive|background/)) {
+          const currentTime = new Date().getTime();
+          await AsyncStorage.setItem('lastMinimizedTime', currentTime.toString());
+        }
+
+        appState.current = nextAppState;
+      } catch (error) {
+        Sentry.captureException(error, {
+          tags: { component: 'app-state-change' },
+        });
+      }
     };
 
     const handleAppClose = async () => {
@@ -117,36 +138,63 @@ const Route = () => {
   }, []);
 
   const triggerBiometricLogin = async () => {
-    await AsyncStorage.setItem('isAuthenticated', JSON.stringify(false));
-    const userId = await AsyncStorage.getItem('user_id');
-    const isLoggedInJSON = await AsyncStorage.getItem('isLoggedIn');
-    const isLoggedIn = isLoggedInJSON ? JSON.parse(isLoggedInJSON) : false;
-    const biometricEnabledJSON = await AsyncStorage.getItem('biometricEnabled');
-    const biometricEnabled = biometricEnabledJSON
-      ? JSON.parse(biometricEnabledJSON)
-      : false;
+    try {
+      Sentry.addBreadcrumb({
+        message: 'Biometric authentication triggered',
+        category: 'auth',
+      });
 
-    if (userId && isLoggedIn && biometricEnabled) {
-      TouchID.authenticate(
-        'Authenticate to access the app',
-        optionalConfigObject,
-      )
-        .then(async (success: any) => {
-          console.log('success biometric', success);
-          console.log('Biometric authentication success');
-          setIsModalVisible(false);
-          await AsyncStorage.setItem('isAuthenticated', JSON.stringify(true));
-          dispatch(isBiometricUser(false));
-        })
-        .catch(async (error: any) => {
-          await AsyncStorage.removeItem('isAuthenticated');
-          // await AsyncStorage.removeItem('isLoggedIn');
-          dispatch(setUserData(''));
-          console.log('Biometric authentication failed', error);
-          setIsModalVisible(true);
-        });
-    } else {
-      dispatch(isBiometricUser(false));
+      await AsyncStorage.setItem('isAuthenticated', JSON.stringify(false));
+      const userId = await AsyncStorage.getItem('user_id');
+      const isLoggedInJSON = await AsyncStorage.getItem('isLoggedIn');
+      const isLoggedIn = isLoggedInJSON ? JSON.parse(isLoggedInJSON) : false;
+      const biometricEnabledJSON = await AsyncStorage.getItem('biometricEnabled');
+      const biometricEnabled = biometricEnabledJSON
+        ? JSON.parse(biometricEnabledJSON)
+        : false;
+
+      if (userId && isLoggedIn && biometricEnabled) {
+        TouchID.authenticate(
+          'Authenticate to access the app',
+          optionalConfigObject,
+        )
+          .then(async (success: any) => {
+            Sentry.addBreadcrumb({
+              message: 'Biometric authentication successful',
+              category: 'auth',
+            });
+            console.log('success biometric', success);
+            console.log('Biometric authentication success');
+            setIsModalVisible(false);
+            await AsyncStorage.setItem('isAuthenticated', JSON.stringify(true));
+            dispatch(isBiometricUser(false));
+          })
+          .catch(async (error: any) => {
+            // Capture biometric errors
+            Sentry.captureException(error, {
+              tags: {
+                component: 'biometric-auth',
+                userId: userId,
+              },
+              extra: {
+                isAuthenticated: await AsyncStorage.getItem('isAuthenticated'),
+                lastMinimizedTime: await AsyncStorage.getItem('lastMinimizedTime'),
+                biometricEnabled: biometricEnabled,
+              },
+            });
+            await AsyncStorage.removeItem('isAuthenticated');
+            // await AsyncStorage.removeItem('isLoggedIn');
+            dispatch(setUserData(''));
+            console.log('Biometric authentication failed', error);
+            setIsModalVisible(true);
+          });
+      } else {
+        dispatch(isBiometricUser(false));
+      }
+    } catch (error) {
+      Sentry.captureException(error, {
+        tags: { component: 'biometric-flow' },
+      });
     }
   };
 
@@ -162,6 +210,11 @@ const Route = () => {
       // await AsyncStorage.setItem('isLoginFlow', 'true');
 
       try {
+        Sentry.addBreadcrumb({
+          message: 'Fetching user data',
+          category: 'user-data',
+        });
+
         const userId = await AsyncStorage.getItem('user_id');
         const value = await AsyncStorage.getItem('isLoggedIn');
         const isLoggedIn = value ? JSON.parse(value) : false;
@@ -245,6 +298,9 @@ const Route = () => {
           setLoading(false);
         }
       } catch (error) {
+        Sentry.captureException(error, {
+          tags: { component: 'user-data-fetch' },
+        });
         console.log('Error retrieving user ID from AsyncStorage:', error);
         setLoading(false);
       }
@@ -255,6 +311,12 @@ const Route = () => {
 
   const getPeriodData = async () => {
     try {
+      Sentry.addBreadcrumb({
+        message: 'Fetching period tracker data',
+        category: 'supabase',
+        data: { userId: userData.id },
+      });
+
       const {data, error} = await supabase
         .from('tracker_logs')
         .select('*')
@@ -265,6 +327,10 @@ const Route = () => {
         dispatch(setPeriodTracker(data as any[]));
       }
     } catch (error) {
+      Sentry.captureException(error, {
+        tags: { component: 'period-data-fetch' },
+        extra: { userId: userData.id },
+      });
       console.error('~ error fetching tracker logs:', error);
     }
   };
