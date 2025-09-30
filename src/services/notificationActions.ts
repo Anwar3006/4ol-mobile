@@ -107,10 +107,14 @@ export const handlePendingNotification = async () => {
 
     // Wait until navigation is ready
     let tries = 0;
+    const maxMs = 5000;
+    const startedAt = Date.now();
     const interval = setInterval(async () => {
       if (navigationRef.current?.isReady()) {
         clearInterval(interval);
-
+        if (Date.now() - startedAt > maxMs) {
+          return;
+        }
         // Navigate to a loading screen first
         navigationRef.current.navigate('MedicationDetailsView', {
           isLoading: true,
@@ -157,6 +161,8 @@ export const handlePendingNotification = async () => {
         console.warn('Navigation not ready after 5s');
       }
     }, 200);
+    // Safety timeout to clear interval if never ready
+    setTimeout(() => clearInterval(interval), 6000);
   } catch (error) {
     console.error('Failed to handle pending notification:', error);
     await AsyncStorage.removeItem('pendingNotification');

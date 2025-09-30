@@ -53,6 +53,7 @@ import type {AppDispatch} from '../../store/index';
 import ModalCache from '../../utils/modalCache';
 
 import {THIS_IS_MAP_KEY} from '../../../config/variables';
+import {supabase} from '../../utils/supabaseClient';
 
 // Supabase Edge Function API guard
 const checkApiAllowed = async (action: string) => {
@@ -104,7 +105,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     [],
   );
   const [selectedMarker, setSelectedMarker] = useState<any>(null);
-  const [selectedRadius, setSelectedRadius] = useState<number>(10);
+  const [selectedRadius, setSelectedRadius] = useState<number>(0);
   const [address, setAddress] = useState('');
   const [topRated, setTopRated] = useState<boolean>(false);
   const [baseFilteredMarkers, setBaseFilteredMarkers] = useState<any[]>([]);
@@ -199,6 +200,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   const facilityTypes = Object.keys(facilityTypeMapping);
 
   const radiusOptions = [
+    {label: 'Show All', value: 0},
     {label: '2 km', value: 2},
     {label: '3 km', value: 3},
     {label: '4 km', value: 4},
@@ -236,8 +238,8 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         (THIS_IS_MAP_KEY === 'TEST_MODE' || !THIS_IS_MAP_KEY
           ? -1.2244
           : -1.2244),
-      latitudeDelta: 0.009,
-      longitudeDelta: 0.009,
+      latitudeDelta: 0.05,
+      longitudeDelta: 0.05,
     };
     console.log('🗺️ [MAP] Initial region set:', region);
     return region;
@@ -283,57 +285,92 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   }, [selectedFacilityTypes]);
 
   const renderMarkers = useMemo(() => {
-    // Only show a limited number of markers based on distance
-    return filteredMarkers.slice(0, 20).map((marker, index) => {
+    console.log(
+      '🗺️ [RENDER MARKERS] Total filtered markers:',
+      filteredMarkers.length,
+    );
+    console.log('🗺️ [RENDER MARKERS] Showing first 100 markers');
+
+    // Show more markers since we're showing all places by default
+    return filteredMarkers.slice(0, 100).map((marker, index) => {
       const currentDay = new Date()
         .toLocaleString('en-us', {weekday: 'long'})
         .toLowerCase();
       const currentTime = new Date().toTimeString().slice(0, 5);
       const isOpen =
+        marker.business_hours &&
         marker.business_hours[currentDay] &&
         currentTime >= marker.business_hours[currentDay].opening &&
         currentTime <= marker.business_hours[currentDay].closing;
 
+      // Special styling for searched facilities
+      const isSearchedFacility = marker.isSearchedFacility;
+
+      console.log('🗺️ [MARKER] Rendering marker:', {
+        id: marker.id,
+        name: marker.facility_name,
+        lat: marker.latitude,
+        lng: marker.longitude,
+        distance: marker.distance,
+      });
+
       return (
         <Marker
-          key={index}
+          key={marker.id || index}
           coordinate={{
             latitude: marker.latitude,
             longitude: marker.longitude,
           }}
           tracksViewChanges={false}
           onPress={() => {
-            console.log(
-              '🔍 [EXISTING MARKER] Clicked on existing facility marker:',
-              {
-                id: marker.id,
-                name: marker.facility_name,
-                type: marker.facility_type,
-              },
-            );
+            console.log('🔍 [MARKER] Clicked on marker:', {
+              id: marker.id,
+              name: marker.facility_name,
+              type: marker.facility_type,
+              isSearchedFacility: isSearchedFacility,
+            });
             // Clear previous marker info before setting new marker
             setMarkerInfo(null);
             setImage(null);
             setMarkModal(false);
             // Don't clear localFacilityModalData - keep it for reuse
             setSelectedMarker(marker);
-            openMarkModal(marker); // Call openMarkModal for existing facilities too
+            openMarkModal(marker); // Call openMarkModal for all facilities
           }}>
           <View style={styles.markerContainer}>
             <View
               style={[
                 styles.customMarker,
                 {
-                  backgroundColor: isOpen ? themeColors.primary : '#d9534f',
+                  backgroundColor: isSearchedFacility
+                    ? themeColors.primary
+                    : isOpen
+                    ? themeColors.primary
+                    : '#d9534f',
+                  borderWidth: isSearchedFacility ? 3 : 0,
+                  borderColor: isSearchedFacility ? '#fff' : 'transparent',
+                  elevation: isSearchedFacility ? 8 : 3,
+                  shadowColor: isSearchedFacility
+                    ? themeColors.primary
+                    : '#000',
+                  shadowOffset: isSearchedFacility
+                    ? {width: 0, height: 4}
+                    : {width: 0, height: 2},
+                  shadowOpacity: isSearchedFacility ? 0.3 : 0.2,
+                  shadowRadius: isSearchedFacility ? 6 : 3,
                 },
               ]}>
-              {React.cloneElement(
-                facilityIconMapping[
-                  Object.keys(facilityTypeMapping).find(
-                    key => facilityTypeMapping[key] === marker.facility_type,
-                  ) || 'Hospital/ Clinic'
-                ] || <Icon name="medical-bag" size={14} color="#fff" />,
-                {color: '#fff', size: 14},
+              {isSearchedFacility ? (
+                <Icon name="hospital-building" size={18} color="white" />
+              ) : (
+                React.cloneElement(
+                  facilityIconMapping[
+                    Object.keys(facilityTypeMapping).find(
+                      key => facilityTypeMapping[key] === marker.facility_type,
+                    ) || 'Hospital/ Clinic'
+                  ] || <Icon name="medical-bag" size={14} color="#fff" />,
+                  {color: '#fff', size: 14},
+                )
               )}
             </View>
           </View>
@@ -391,11 +428,14 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   }, []);
 
   const filterMarkersByDistance = useCallback(async () => {
-    if (!currentLocation?.latitude || !markers.length) return;
+    if (!markers.length) return;
 
     console.log('🔍 [FILTER] filterMarkersByDistance called');
     console.log('🔍 [FILTER] Selected Facility Types:', selectedFacilityTypes);
-    console.log('🔍 [FILTER] Selected Radius:', selectedRadius);
+    console.log(
+      '🔍 [FILTER] Selected Radius:',
+      selectedRadius === 0 ? 'Show All' : selectedRadius + ' km',
+    );
     console.log('🔍 [FILTER] Total markers to filter:', markers.length);
 
     // Check if location has changed significantly (more than 100 meters)
@@ -446,24 +486,14 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
       return R * c; // Distance in km
     };
 
-    // Apply distance calculation (use cache if location hasn't changed)
+    // Use saved distances from markers (no re-calculation needed)
     const markersWithDistance = filteredResults.map(marker => {
-      const cacheKey = `${marker.latitude},${marker.longitude}`;
-
-      // Use cached distance if location hasn't changed
-      if (!locationChanged && distanceCache.has(cacheKey)) {
-        const cachedData = distanceCache.get(cacheKey);
-        console.log(
-          '🔍 [FILTER] Using cached distance for marker:',
-          marker.facility_name,
-        );
-        return {
-          ...marker,
-          ...cachedData,
-        };
+      // If marker already has distance data, use it
+      if (marker.distance !== undefined && marker.distanceText) {
+        return marker;
       }
 
-      // Calculate new distance
+      // Only calculate distance if marker doesn't have it (fallback)
       const distanceInKm = calculateHaversineDistance(
         currentLocation.latitude!,
         currentLocation.longitude!,
@@ -471,88 +501,39 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         marker.longitude,
       );
 
-      const distanceData = {
-        distance: distanceInKm,
-        distanceText: `${distanceInKm.toFixed(1)} km`,
-        duration: '~' + Math.ceil(distanceInKm * 4) + ' min', // Rough estimate
-      };
-
-      // Cache the distance data
-      setDistanceCache(prev => new Map(prev.set(cacheKey, distanceData)));
-
       return {
         ...marker,
-        ...distanceData,
+        distance: distanceInKm,
+        distanceText: `${distanceInKm.toFixed(1)} km`,
+        duration: '~' + Math.ceil(distanceInKm * 4) + ' min',
       };
     });
 
     // 3. Filter by radius and sort by distance
     const withinRadius = markersWithDistance
-      .filter(m => m.distance <= selectedRadius)
+      .filter(m => selectedRadius === 0 || m.distance <= selectedRadius) // Show all if radius = 0
       .sort((a, b) => a.distance - b.distance);
 
     console.log('🔍 [FILTER] After radius filter:', withinRadius.length);
-    console.log('🔍 [FILTER] Radius used:', selectedRadius, 'km');
+    console.log(
+      '🔍 [FILTER] Radius used:',
+      selectedRadius === 0 ? 'Show All' : selectedRadius + ' km',
+    );
 
-    // 4. Only get precise distances for the top 20 results
-    const topResults = withinRadius.slice(0, 20);
+    // 4. Limit results to top 100 for performance
+    const topResults = withinRadius.slice(0, 100);
 
     console.log('🔍 [FILTER] Final filtered results:', topResults.length);
-    console.log('🔍 [FILTER] Filtering complete - NO API calls made');
-
-    // Only get precise distances via API if location has changed
-    if (topResults.length > 0 && locationChanged) {
-      console.log(
-        '🔍 [FILTER] Location changed, fetching precise distances via API',
-      );
-      const origin = `${currentLocation.latitude!},${currentLocation.longitude!}`;
-      const destinations = topResults.map(
-        marker => `${marker.latitude},${marker.longitude}`,
-      );
-
-      try {
-        const distanceResults = await fetchDistancesAndDurations(
-          origin,
-          destinations,
-          false, // false = direct call (not internal)
-        );
-
-        // Update only the top markers with precise distance data
-        topResults.forEach((marker, index) => {
-          if (distanceResults[index]) {
-            marker.distanceText = distanceResults[index].distance;
-            marker.duration = distanceResults[index].duration;
-
-            // Cache the precise distance data
-            const cacheKey = `${marker.latitude},${marker.longitude}`;
-            setDistanceCache(
-              prev =>
-                new Map(
-                  prev.set(cacheKey, {
-                    distance: marker.distance,
-                    distanceText: distanceResults[index].distance,
-                    duration: distanceResults[index].duration,
-                  }),
-                ),
-            );
-          }
-        });
-      } catch (error) {
-        console.log('Error fetching precise distances:', error);
-        // Continue with approximate distances
-      }
-    } else if (topResults.length > 0) {
-      console.log(
-        '🔍 [FILTER] Location unchanged, using cached/approximate distances - NO API calls',
-      );
-    }
+    console.log(
+      '🔍 [FILTER] Filtering complete - using saved distances, NO API calls',
+    );
 
     // Update location tracking
     setLastCalculatedLocation(currentLocation);
 
-    // Update state with all markers that are within radius
-    setFilteredMarkers(withinRadius);
-    setBaseFilteredMarkers(withinRadius);
+    // Update state with filtered markers (single update, no re-render)
+    setFilteredMarkers(topResults);
+    setBaseFilteredMarkers(topResults);
   }, [
     currentLocation.latitude,
     currentLocation.longitude,
@@ -674,6 +655,281 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
       },
       {enableHighAccuracy: true, timeout: 30000, maximumAge: 10000},
     );
+  };
+
+  // =========== LOCAL DATABASE SEARCH FUNCTIONS ============
+
+  // Helper function for distance calculation
+  const calculateHaversineDistance = (
+    lat1: number,
+    lon1: number,
+    lat2: number,
+    lon2: number,
+  ) => {
+    const R = 6371; // Earth radius in km
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
+
+  // Use your existing fetchDistancesAndDurations function
+  const calculateAllDistancesWithExistingFunction = async (
+    facilities: any[],
+    userLat: number,
+    userLng: number,
+  ) => {
+    try {
+      const origin = `${userLat},${userLng}`;
+      const destinations = facilities.map(
+        facility => `${facility.latitude},${facility.longitude}`,
+      );
+
+      console.log(
+        '🚀 [DISTANCE MATRIX] Calculating distances for',
+        facilities.length,
+        'facilities using existing function',
+      );
+
+      // Use your existing function to get distances for all facilities
+      const distanceResults = await fetchDistancesAndDurations(
+        origin,
+        destinations,
+        false, // false = direct call (not internal)
+      );
+
+      // Combine facility data with distance results
+      const facilitiesWithDistances = facilities.map((facility, index) => {
+        const distanceData = distanceResults[index] || {
+          distance: 'N/A',
+          duration: 'N/A',
+        };
+
+        // Parse distance to number for filtering
+        const distanceInKm = parseDistanceToKm(distanceData.distance);
+
+        return {
+          ...facility,
+          distance: distanceInKm,
+          distanceText: distanceData.distance,
+          duration: distanceData.duration,
+        };
+      });
+
+      console.log(
+        '✅ [DISTANCE MATRIX] Calculated distances for all facilities using existing function',
+      );
+      return facilitiesWithDistances;
+    } catch (error) {
+      console.error('❌ [DISTANCE MATRIX] Error calculating distances:', error);
+
+      // Fallback to Haversine calculation if API fails
+      return facilities.map(facility => {
+        const distance = calculateHaversineDistance(
+          userLat,
+          userLng,
+          facility.latitude,
+          facility.longitude,
+        );
+        return {
+          ...facility,
+          distance,
+          distanceText: `${distance.toFixed(1)} km`,
+          duration: `~${Math.ceil(distance * 4)} min`,
+        };
+      });
+    }
+  };
+
+  // Helper function to parse distance string to number
+  const parseDistanceToKm = (distanceStr: string): number => {
+    if (!distanceStr || distanceStr === 'N/A') return 999; // Large number for filtering
+
+    // Parse "1.2 km" or "1,200 m" to number
+    const match = distanceStr.match(/(\d+(?:\.\d+)?)\s*(km|m)/i);
+    if (match) {
+      const value = parseFloat(match[1]);
+      const unit = match[2].toLowerCase();
+      return unit === 'km' ? value : value / 1000; // Convert meters to km
+    }
+
+    return 999; // Default large number
+  };
+
+  // Local database search function (no API calls)
+  const searchLocalFacilities = async (searchQuery: string) => {
+    if (searchQuery.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setSearchLoading(true);
+    try {
+      // Search in local database - NO API CALLS
+      const {data, error} = await supabase
+        .from('healthcare_profiles')
+        .select(
+          'id, facility_name, latitude, longitude, gps_address, facility_type, avg_rating, mediaUrls',
+        )
+        .or(
+          `facility_name.ilike.%${searchQuery}%,gps_address.ilike.%${searchQuery}%,facility_type.ilike.%${searchQuery}%`,
+        )
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null)
+        .eq('status', 'Approved')
+        .limit(10);
+
+      if (error) {
+        console.error('Error searching local facilities:', error);
+        setSuggestions([]);
+        setShowSuggestions(false);
+        return;
+      }
+
+      // Format suggestions for local facilities and calculate distances
+      const localSuggestions = data.map((facility: any) => {
+        // Calculate distance for each facility
+        let distance = 0;
+        let distanceText = 'N/A';
+        let duration = 'N/A';
+
+        if (currentLocation.latitude && currentLocation.longitude) {
+          distance = calculateHaversineDistance(
+            currentLocation.latitude,
+            currentLocation.longitude,
+            facility.latitude,
+            facility.longitude,
+          );
+          distanceText = `${distance.toFixed(1)} km`;
+          // Calculate duration from distance and format appropriately
+          // Based on real data: 250km = 5-6h (≈1.3 min/km)
+          const approximateTimeMinutes = Math.ceil(distance * 1.3);
+          if (approximateTimeMinutes >= 60) {
+            const hours = Math.floor(approximateTimeMinutes / 60);
+            const remainingMinutes = approximateTimeMinutes % 60;
+            if (remainingMinutes === 0) {
+              duration = `~${hours}h`;
+            } else {
+              duration = `~${hours}h ${remainingMinutes}m`;
+            }
+          } else {
+            duration = `~${approximateTimeMinutes} min`;
+          }
+          console.log('🔍 [SEARCH] Duration calculation:', {
+            distance: distance,
+            calculatedDuration: duration,
+            formula: `Math.ceil(${distance} * 1.3) = ${Math.ceil(
+              distance * 1.3,
+            )}`,
+          });
+          console.log(
+            '🔍 [SEARCH] Calculated distance/duration for facility:',
+            {
+              facilityName: facility.facility_name,
+              distance: distance,
+              distanceText: distanceText,
+              duration: duration,
+            },
+          );
+        }
+
+        const result = {
+          place_id: facility.id,
+          description: facility.facility_name,
+          facility_type: facility.facility_type,
+          gps_address: facility.gps_address,
+          latitude: facility.latitude,
+          longitude: facility.longitude,
+          avg_rating: facility.avg_rating,
+          mediaUrls: facility.mediaUrls,
+          distance: distance,
+          distanceText: distanceText,
+          duration: duration, // Add duration to search results
+          isLocalFacility: true,
+        };
+
+        console.log('🔍 [SEARCH] Final search result object:', {
+          facilityName: facility.facility_name,
+          distance: result.distance,
+          distanceText: result.distanceText,
+          duration: result.duration,
+        });
+
+        return result;
+      });
+
+      // Sort by distance (show all results, but rank by distance)
+      localSuggestions.sort((a, b) => a.distance - b.distance);
+
+      setSuggestions(localSuggestions);
+      setShowSuggestions(true);
+      console.log(
+        '🔍 [LOCAL SEARCH] Found local facilities:',
+        localSuggestions.length,
+        'ranked by distance',
+      );
+    } catch (error) {
+      console.error('Error in local search:', error);
+      setSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Calculate distance for searched facility
+  const calculateDistanceForSearchedFacility = async (facility: any) => {
+    try {
+      const origin = `${currentLocation.latitude},${currentLocation.longitude}`;
+      const destination = `${facility.latitude},${facility.longitude}`;
+
+      console.log(
+        '🚀 [DISTANCE] Calculating distance for searched facility:',
+        facility.facility_name,
+      );
+
+      const {distance, duration} = await fetchDistanceAndDuration(
+        origin,
+        destination,
+      );
+
+      // Update the facility with calculated distance
+      const updatedFacility = {
+        ...facility,
+        distanceText: distance,
+        duration: duration,
+        distance: parseDistanceToKm(distance),
+      };
+
+      // Update markers with the new distance data
+      setMarkers(prev =>
+        prev.map(m => (m.id === facility.id ? updatedFacility : m)),
+      );
+      setFilteredMarkers(prev =>
+        prev.map(m => (m.id === facility.id ? updatedFacility : m)),
+      );
+      setBaseFilteredMarkers(prev =>
+        prev.map(m => (m.id === facility.id ? updatedFacility : m)),
+      );
+
+      console.log('✅ [DISTANCE] Distance calculated for searched facility:', {
+        name: facility.facility_name,
+        distance: distance,
+        duration: duration,
+      });
+    } catch (error) {
+      console.error(
+        '❌ [DISTANCE] Error calculating distance for searched facility:',
+        error,
+      );
+    }
   };
 
   // =========== SEARCH FUNCTIONS FROM LOCATOR ============
@@ -931,9 +1187,88 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   };
 
   // Handle selecting a suggestion
-  const handleSelectSuggestion = (placeId: any, description: any) => {
-    setSearchText(description);
-    fetchPlaceDetails(placeId);
+  const handleSelectSuggestion = (suggestion: any) => {
+    setSearchText(suggestion.description);
+
+    if (suggestion.isLocalFacility) {
+      // Handle local facility selection - NO API CALLS
+      setSelectedLocation({
+        latitude: suggestion.latitude,
+        longitude: suggestion.longitude,
+        placeDetails: {
+          place_id: suggestion.place_id,
+          name: suggestion.description,
+          facility_type: suggestion.facility_type,
+          gps_address: suggestion.gps_address,
+          avg_rating: suggestion.avg_rating,
+          mediaUrls: suggestion.mediaUrls,
+          // Include distance data from search results
+          distance: suggestion.distance,
+          distanceText: suggestion.distanceText,
+          duration: suggestion.duration,
+        },
+      });
+
+      // Animate map to the selected location
+      if (mapRef.current) {
+        mapRef.current.animateToRegion(
+          {
+            latitude: suggestion.latitude,
+            longitude: suggestion.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          },
+          1000,
+        );
+      }
+
+      // Don't filter markers - keep all existing markers visible
+      // Just add the searched facility as a special marker
+      const searchedFacility = {
+        ...suggestion,
+        id: suggestion.place_id,
+        facility_name: suggestion.description,
+        latitude: suggestion.latitude,
+        longitude: suggestion.longitude,
+        isSearchedFacility: true, // Flag to identify searched facility
+        // Pass distance and time data from search results instead of hardcoding
+        distance: suggestion.distance,
+        distanceText: suggestion.distanceText,
+        duration: suggestion.duration,
+      };
+
+      console.log('🔍 [SELECT SUGGESTION] Created searched facility:', {
+        facilityName: searchedFacility.facility_name,
+        distance: searchedFacility.distance,
+        distanceText: searchedFacility.distanceText,
+        duration: searchedFacility.duration,
+        isSearchedFacility: searchedFacility.isSearchedFacility,
+      });
+
+      // Add searched facility to markers if not already present
+      const existingMarker = markers.find(m => m.id === suggestion.place_id);
+      if (!existingMarker) {
+        setMarkers(prev => [searchedFacility, ...prev]);
+        setFilteredMarkers(prev => [searchedFacility, ...prev]);
+        setBaseFilteredMarkers(prev => [searchedFacility, ...prev]);
+      }
+
+      // Distance and duration are already calculated in search results, no need to recalculate
+
+      // Open modal for the searched facility
+      setTimeout(() => {
+        console.log('🔍 [SEARCH] Opening modal with distance data:', {
+          distance: searchedFacility.distance,
+          distanceText: searchedFacility.distanceText,
+          duration: searchedFacility.duration,
+        });
+        openMarkModal(searchedFacility);
+      }, 500); // Small delay to ensure map animation completes
+    } else {
+      // Handle Google Places selection (if you still want to support it)
+      fetchPlaceDetails(suggestion.place_id);
+    }
+
     setSuggestions([]);
     setShowSuggestions(false);
   };
@@ -948,8 +1283,8 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
 
   // Handle search button press
   const handleSearchButtonPress = () => {
-    if (searchText.length > 2) {
-      fetchAutocompleteSuggestions(searchText);
+    if (searchText.length > 1) {
+      searchLocalFacilities(searchText); // Use local search instead of Google Places
     } else {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -1082,8 +1417,12 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
       return;
     }
 
-    // Check if this is a searched place marker (has enhanced data from Google Places)
-    const isSearchedPlace = marker?.phone || marker?.website || marker?.rating;
+    // Check if this is a searched place marker (has enhanced data from Google Places or is from search results)
+    const isSearchedPlace =
+      marker?.phone ||
+      marker?.website ||
+      marker?.rating ||
+      marker?.isSearchedFacility;
 
     // Check if this is an existing facility from our database
     const isExistingFacility =
@@ -1096,6 +1435,9 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
       isExistingFacility,
       hasPlaceId: !!marker?.place_id,
       facilityType: marker?.facility_type,
+      isSearchedFacility: !!marker?.isSearchedFacility,
+      markerDistanceText: marker?.distanceText,
+      markerDuration: marker?.duration,
     });
 
     if (isSearchedPlace) {
@@ -1191,10 +1533,10 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
       marker.place_id || marker.id,
     );
 
-    // For searched places, we already have most data, just need image and distance
+    // For local facilities, use database data directly - NO API CALLS
     if (isSearchedPlace) {
       console.log(
-        '🔍 [OPEN MODAL] Searched place - fetching only image and distance data',
+        '🔍 [OPEN MODAL] Local facility - using database data directly',
       );
     } else if (isExistingFacility) {
       console.log(
@@ -1208,20 +1550,84 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     let distanceAndDuration = null;
 
     if (isSearchedPlace) {
-      // For searched places, fetch image and distance from Google APIs
-      console.log('🔍 [OPEN MODAL] Starting API calls for searched place:', {
-        placeId: marker.place_id || marker.id,
-        origin: `${currentLocation.latitude},${currentLocation.longitude}`,
-        destination: `${marker?.latitude},${marker?.longitude}`,
+      // For local facilities, use database data directly - NO API CALLS
+      console.log('🔍 [OPEN MODAL] Using database data for local facility:', {
+        facilityId: marker.place_id || marker.id,
+        name: marker.facility_name,
       });
 
-      [imageUrl, distanceAndDuration] = await Promise.all([
-        fetchImage(marker.place_id || marker.id),
-        fetchDistanceAndDuration(
-          `${currentLocation.latitude},${currentLocation.longitude}`,
-          `${marker?.latitude},${marker?.longitude}`,
-        ),
-      ]);
+      // Use database data directly - NO API CALLS
+      if (marker?.mediaUrls && marker.mediaUrls.length > 0) {
+        imageUrl = marker.mediaUrls[0]; // Use first image from database
+        console.log('🔍 [OPEN MODAL] Using database image');
+      }
+
+      // Check if distance is missing and calculate it
+      // For searched facilities, use pre-calculated data if available
+      console.log('🔍 [OPEN MODAL] Checking distance data conditions:', {
+        isSearchedFacility: marker.isSearchedFacility,
+        distanceText: marker.distanceText,
+        duration: marker.duration,
+        condition1:
+          marker.isSearchedFacility &&
+          marker.distanceText &&
+          marker.distanceText !== 'N/A' &&
+          marker.distanceText !== 'Selected',
+      });
+
+      if (
+        marker.isSearchedFacility &&
+        marker.distanceText &&
+        marker.distanceText !== 'N/A' &&
+        marker.distanceText !== 'Selected'
+      ) {
+        // Use pre-calculated distance data from search results
+        distanceAndDuration = {
+          distance: marker.distanceText,
+          duration: marker.duration || 'N/A',
+        };
+        console.log(
+          '🔍 [OPEN MODAL] Using pre-calculated search result data:',
+          distanceAndDuration,
+        );
+      } else if (
+        !marker.distanceText ||
+        marker.distanceText === 'N/A' ||
+        marker.distanceText === 'Selected'
+      ) {
+        console.log('🔍 [OPEN MODAL] Distance missing, calculating...');
+        try {
+          const origin = `${currentLocation.latitude},${currentLocation.longitude}`;
+          const destination = `${marker.latitude},${marker.longitude}`;
+          const {distance, duration} = await fetchDistanceAndDuration(
+            origin,
+            destination,
+          );
+          distanceAndDuration = {distance, duration};
+          console.log(
+            '🔍 [OPEN MODAL] Distance calculated:',
+            distance,
+            duration,
+          );
+        } catch (error) {
+          console.error('🔍 [OPEN MODAL] Error calculating distance:', error);
+          distanceAndDuration = {
+            distance: marker.distanceText || 'N/A',
+            duration: marker.duration || 'N/A',
+          };
+        }
+      } else {
+        // Use pre-calculated distance from fetchDistancesAndDurations function
+        distanceAndDuration = {
+          distance: marker.distanceText || 'N/A',
+          duration: marker.duration || 'N/A',
+        };
+        console.log('🔍 [OPEN MODAL] Using pre-calculated distance data:', {
+          markerDistanceText: marker.distanceText,
+          markerDuration: marker.duration,
+          distanceAndDuration: distanceAndDuration,
+        });
+      }
     } else if (isExistingFacility) {
       // For existing facilities, check if we have cached modal data first
       const facilityId = marker.id;
@@ -1619,25 +2025,67 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
         console.log('🧪 [TEST MODE] Mock markers set:', mockMarkers.length);
         console.log('🧪 [TEST MODE] Mock markers data:', mockMarkers);
       } else {
-        // Real mode: Fetch actual markers
+        // Real mode: Fetch all facilities from database
+        console.log('🌍 [REAL MODE] Fetching all facilities from database');
+
+        const {data: allFacilities, error} = await supabase
+          .from('healthcare_profiles')
+          .select('*')
+          .not('latitude', 'is', null)
+          .not('longitude', 'is', null)
+          .eq('status', 'Approved');
+
+        if (error) {
+          console.error('Error fetching facilities:', error);
+          return;
+        }
+
+        console.log('🌍 [REAL MODE] Fetched facilities:', allFacilities.length);
+        console.log('🌍 [REAL MODE] Current location:', currentLocation);
         console.log(
-          '🌍 [REAL MODE] Fetching real markers from Google Places API',
+          '🌍 [REAL MODE] Selected radius:',
+          selectedRadius === 0 ? 'Show All' : selectedRadius + ' km',
         );
-        console.log('🌍 [REAL MODE] API Key available:', !!THIS_IS_MAP_KEY);
-        try {
-          const data = MapService;
-          const markersData = await data.getMapMarkerDetails({});
-          console.log('🌍 [REAL MODE] Raw markers data:', markersData);
-          setMarkers(markersData);
-          setFilteredMarkers(markersData);
-          setBaseFilteredMarkers(markersData);
-          console.log('🌍 [REAL MODE] Real markers set:', markersData.length);
-        } catch (error) {
-          console.error('🌍 [REAL MODE] Error fetching markers:', error);
+
+        // Calculate distances for ALL facilities using single API call
+        if (currentLocation.latitude && currentLocation.longitude) {
+          console.log(
+            '🌍 [REAL MODE] Calculating distances for all facilities using single API call...',
+          );
+
+          // Calculate distances for all facilities in one API call
+          const facilitiesWithDistances =
+            await calculateAllDistancesWithExistingFunction(
+              allFacilities,
+              currentLocation.latitude,
+              currentLocation.longitude,
+            );
+
+          console.log(
+            '🌍 [REAL MODE] All facilities with distances calculated:',
+            facilitiesWithDistances.length,
+          );
+
+          // Save all places with distances (single state update)
+          setMarkers(facilitiesWithDistances);
+          setFilteredMarkers(facilitiesWithDistances);
+          setBaseFilteredMarkers(facilitiesWithDistances);
+
+          console.log(
+            '🌍 [REAL MODE] All facilities saved with distance data - ready for filtering',
+          );
+        } else {
+          // No location yet, save facilities without distances
+          console.log(
+            '🌍 [REAL MODE] No location available, saving facilities without distances',
+          );
+          setMarkers(allFacilities);
+          setFilteredMarkers(allFacilities);
+          setBaseFilteredMarkers(allFacilities);
         }
       }
     })();
-  }, []);
+  }, [currentLocation.latitude, currentLocation.longitude]);
 
   // Hide suggestions when user interacts with map
   const handleMapPress = () => {
@@ -1716,21 +2164,41 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                     <TouchableOpacity
                       key={index}
                       style={styles.suggestionItem}
-                      onPress={() =>
-                        handleSelectSuggestion(
-                          suggestion.place_id,
-                          suggestion.description,
-                        )
-                      }>
-                      <FontAwesome
-                        name="map-marker"
-                        size={16}
-                        color="#666"
-                        style={styles.suggestionIcon}
+                      onPress={() => handleSelectSuggestion(suggestion)}>
+                      <View style={styles.suggestionContent}>
+                        <Text style={styles.suggestionTitle}>
+                          {suggestion.description}
+                        </Text>
+                        {suggestion.isLocalFacility && (
+                          <>
+                            <Text style={styles.suggestionSubtitle}>
+                              {suggestion.facility_type}
+                            </Text>
+                            <Text style={styles.suggestionAddress}>
+                              {suggestion.gps_address}
+                            </Text>
+                            <View style={styles.suggestionFooter}>
+                              {suggestion.avg_rating && (
+                                <Text style={styles.suggestionRating}>
+                                  ⭐ {suggestion.avg_rating.toFixed(1)}
+                                </Text>
+                              )}
+                              <Text style={styles.suggestionDistance}>
+                                📍 {suggestion.distanceText}
+                              </Text>
+                            </View>
+                          </>
+                        )}
+                      </View>
+                      <Icon
+                        name={
+                          suggestion.isLocalFacility
+                            ? 'hospital-building'
+                            : 'map-marker'
+                        }
+                        size={20}
+                        color={themeColors.primary}
                       />
-                      <Text style={styles.suggestionText}>
-                        {suggestion.description}
-                      </Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -1784,7 +2252,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                 data={radiusOptions}
                 labelField="label"
                 valueField="value"
-                placeholder="Select radius"
+                placeholder="Show All"
                 value={selectedRadius}
                 onChange={item => {
                   console.log(
@@ -2152,14 +2620,23 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                       name:
                         selectedLocation.placeDetails?.name ||
                         'Searched Location',
+                      gps_address:
+                        selectedLocation.placeDetails?.gps_address ||
+                        selectedLocation.placeDetails?.formatted_address ||
+                        'Unknown Address',
                       vicinity:
+                        selectedLocation.placeDetails?.gps_address ||
                         selectedLocation.placeDetails?.formatted_address ||
                         'Unknown Address',
                       address:
+                        selectedLocation.placeDetails?.gps_address ||
                         selectedLocation.placeDetails?.formatted_address ||
                         'Unknown Address',
                       latitude: selectedLocation.latitude,
                       longitude: selectedLocation.longitude,
+                      facility_type:
+                        selectedLocation.placeDetails?.facility_type ||
+                        'Searched Place',
                       geometry: {
                         location: {
                           lat: selectedLocation.latitude,
@@ -2170,15 +2647,27 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                       phone:
                         selectedLocation.placeDetails?.formatted_phone_number,
                       website: selectedLocation.placeDetails?.website,
-                      rating: selectedLocation.placeDetails?.rating,
+                      rating:
+                        selectedLocation.placeDetails?.avg_rating ||
+                        selectedLocation.placeDetails?.rating,
                       user_ratings_total:
                         selectedLocation.placeDetails?.user_ratings_total,
                       opening_hours:
                         selectedLocation.placeDetails?.opening_hours,
                       photos: selectedLocation.placeDetails?.photos,
+                      mediaUrls: selectedLocation.placeDetails?.mediaUrls,
                       types: selectedLocation.placeDetails?.types,
                       business_status:
                         selectedLocation.placeDetails?.business_status,
+                      business_hours:
+                        selectedLocation.placeDetails?.business_hours || {},
+                      isSearchedFacility: true,
+                      // Use distance data from search results if available
+                      distance: selectedLocation.placeDetails?.distance || 0,
+                      distanceText:
+                        selectedLocation.placeDetails?.distanceText || 'N/A',
+                      duration:
+                        selectedLocation.placeDetails?.duration || 'N/A',
                     };
 
                     console.log(
@@ -2351,15 +2840,21 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                         />
                         <Text style={{color: 'gray', fontSize: 12}}>
                           {(() => {
-                            const distance =
-                              markerInfo?.distance || selectedMarker.distance;
-                            if (distance && typeof distance === 'number') {
-                              return `${distance.toFixed(1)} km`;
-                            } else if (
-                              distance &&
-                              typeof distance === 'string'
+                            // Prioritize distanceText from selectedMarker (search results)
+                            const distanceText =
+                              selectedMarker.distanceText ||
+                              markerInfo?.distance;
+                            if (
+                              distanceText &&
+                              typeof distanceText === 'string' &&
+                              distanceText !== 'Selected'
                             ) {
-                              return `${distance} km`;
+                              return distanceText;
+                            } else if (
+                              distanceText &&
+                              typeof distanceText === 'number'
+                            ) {
+                              return `${distanceText.toFixed(1)} km`;
                             } else {
                               return '1 km';
                             }
@@ -2379,9 +2874,98 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                           color={themeColors.primary}
                         />
                         <Text style={{color: 'gray', fontSize: 12}}>
-                          {markerInfo?.travelTime ||
-                            selectedMarker.duration ||
-                            '1'}
+                          {(() => {
+                            console.log('🔍 [MODAL TIME] Debug time values:', {
+                              markerInfoTravelTime: markerInfo?.travelTime,
+                              selectedMarkerDuration: selectedMarker.duration,
+                              selectedMarker: selectedMarker,
+                            });
+
+                            // First try to get time from markerInfo or selectedMarker
+                            let timeValue =
+                              markerInfo?.travelTime || selectedMarker.duration;
+
+                            // If no time value, calculate approximate time from distance
+                            if (
+                              !timeValue ||
+                              timeValue === 'N/A' ||
+                              timeValue === '1'
+                            ) {
+                              const distanceText =
+                                selectedMarker.distanceText ||
+                                markerInfo?.distance;
+                              if (
+                                distanceText &&
+                                typeof distanceText === 'string'
+                              ) {
+                                // Extract number from distance text (e.g., "12.1 km" -> 12.1)
+                                const distanceMatch =
+                                  distanceText.match(/(\d+(?:\.\d+)?)/);
+                                if (distanceMatch) {
+                                  const distance = parseFloat(distanceMatch[1]);
+                                  const approximateTimeMinutes = Math.ceil(
+                                    distance * 1.3,
+                                  ); // ~1.3 minutes per km (based on real data)
+
+                                  // Convert to hours if more than 60 minutes
+                                  if (approximateTimeMinutes >= 60) {
+                                    const hours = Math.floor(
+                                      approximateTimeMinutes / 60,
+                                    );
+                                    const remainingMinutes =
+                                      approximateTimeMinutes % 60;
+                                    if (remainingMinutes === 0) {
+                                      timeValue = `~${hours}h`;
+                                    } else {
+                                      timeValue = `~${hours}h ${remainingMinutes}m`;
+                                    }
+                                  } else {
+                                    timeValue = `~${approximateTimeMinutes} min`;
+                                  }
+                                  console.log(
+                                    '🔍 [MODAL TIME] Calculated approximate time:',
+                                    {
+                                      distanceText: distanceText,
+                                      distance: distance,
+                                      approximateTime: timeValue,
+                                    },
+                                  );
+                                }
+                              } else if (
+                                distanceText &&
+                                typeof distanceText === 'number'
+                              ) {
+                                const approximateTimeMinutes = Math.ceil(
+                                  distanceText * 1.3,
+                                ); // ~1.3 minutes per km (based on real data)
+
+                                // Convert to hours if more than 60 minutes
+                                if (approximateTimeMinutes >= 60) {
+                                  const hours = Math.floor(
+                                    approximateTimeMinutes / 60,
+                                  );
+                                  const remainingMinutes =
+                                    approximateTimeMinutes % 60;
+                                  if (remainingMinutes === 0) {
+                                    timeValue = `~${hours}h`;
+                                  } else {
+                                    timeValue = `~${hours}h ${remainingMinutes}m`;
+                                  }
+                                } else {
+                                  timeValue = `~${approximateTimeMinutes} min`;
+                                }
+                                console.log(
+                                  '🔍 [MODAL TIME] Calculated approximate time from number:',
+                                  {
+                                    distance: distanceText,
+                                    approximateTime: timeValue,
+                                  },
+                                );
+                              }
+                            }
+
+                            return timeValue || '~5 min'; // Default fallback
+                          })()}
                         </Text>
                       </View>
                     </View>
@@ -2655,10 +3239,41 @@ const styles = StyleSheet.create({
   suggestionIcon: {
     marginRight: 10,
   },
-  suggestionText: {
+  suggestionContent: {
     flex: 1,
-    fontSize: 14,
+  },
+  suggestionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#333',
+    marginBottom: 4,
+  },
+  suggestionSubtitle: {
+    fontSize: 14,
+    color: themeColors.primary,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  suggestionAddress: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  suggestionRating: {
+    fontSize: 12,
+    color: '#ff6b35',
+    fontWeight: '500',
+  },
+  suggestionFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 2,
+  },
+  suggestionDistance: {
+    fontSize: 12,
+    color: themeColors.primary,
+    fontWeight: '500',
   },
 
   // =========== EXISTING STYLES ============

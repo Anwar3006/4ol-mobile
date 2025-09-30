@@ -80,7 +80,7 @@ const Timeline = ({periodTrackerData}: {periodTrackerData: any}) => {
             {/* Date Column */}
             <View
               style={{
-                flex: 0.2,
+                flex: 0.3,
                 gap: 0,
                 //backgroundColor: 'red',
               }}>

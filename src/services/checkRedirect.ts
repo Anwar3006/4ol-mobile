@@ -1,4 +1,4 @@
-import {navigationRef} from './notificationNavigationService'; // adjust path
+import {navigationRef} from './NavigationRef';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';

@@ -49,9 +49,6 @@ import {supabase} from '../utils/supabaseClient';
 import Geolocation from '@react-native-community/geolocation';
 import {fetchDistanceAndDuration} from '../services/distanceDurationService';
 import DistanceCache from '../utils/distanceCache';
-
-// const {width} = Dimensions.get('window');
-
 type FacilityDetailsProps = {
   navigation?: NativeStackNavigationProp<any>;
   route?: {
@@ -165,9 +162,134 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
   //   }
   // }, [location?.latitude, facilityData?.location]);
 
+  // Helpers for contact numbers selection
+  const getParsedTel = (): string[] => {
+    const telRaw = facilityDetails?.tel || '';
+    const parsed = telRaw ? parsePhoneNumbers(telRaw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  };
+
+  const getCallNumbers = (): string[] => {
+    const tel = getParsedTel();
+    if (tel.length > 0) return tel;
+    return facilityDetails?.contact_num
+      ? [String(facilityDetails.contact_num)]
+      : [];
+  };
+
+  const getWhatsappNumbers = (): string[] => {
+    const tel = getParsedTel();
+    if (tel.length > 0) return tel; // prefer tel for WhatsApp if present
+    return facilityDetails?.whatsapp ? [String(facilityDetails.whatsapp)] : [];
+  };
+
+  const dialNumber = (number: string) => {
+    const phoneUrl = `tel:${number}`;
+    console.log('🔍 [PHONE] Attempting to dial:', phoneUrl);
+
+    Linking.canOpenURL(phoneUrl)
+      .then(supported => {
+        console.log('🔍 [PHONE] canOpenURL result:', supported);
+        if (!supported) {
+          console.log('🔍 [PHONE] Phone not supported, trying direct open');
+          // Try to open directly even if canOpenURL returns false
+          Linking.openURL(phoneUrl).catch(err => {
+            console.log('🔍 [PHONE] Direct open failed:', err);
+            Alert.alert(
+              'Error',
+              'Phone calls are not supported on this device',
+            );
+          });
+        } else {
+          return Linking.openURL(phoneUrl);
+        }
+      })
+      .catch(err => {
+        console.log('🔍 [PHONE] canOpenURL error:', err);
+        // Try direct open as fallback
+        Linking.openURL(phoneUrl).catch(openErr => {
+          console.log('🔍 [PHONE] Fallback open failed:', openErr);
+          Alert.alert('Error', 'Failed to make phone call');
+        });
+      });
+  };
+
+  const openWhatsApp = (rawNumber: string) => {
+    const number = String(rawNumber).replace(/[-\s]/g, '');
+    if (!number) {
+      Alert.alert(
+        'No WhatsApp Number',
+        'WhatsApp number not available for this facility',
+      );
+      return;
+    }
+    const url = `whatsapp://send?phone=${number}`;
+    console.log('🔍 [WHATSAPP] Attempting to open:', url);
+
+    Linking.canOpenURL(url)
+      .then(supported => {
+        console.log('🔍 [WHATSAPP] canOpenURL result:', supported);
+        if (!supported) {
+          console.log(
+            '🔍 [WHATSAPP] WhatsApp not supported, trying direct open',
+          );
+          // Try to open directly even if canOpenURL returns false
+          Linking.openURL(url).catch(err => {
+            console.log('🔍 [WHATSAPP] Direct open failed:', err);
+            Alert.alert(
+              'WhatsApp Not Available',
+              'WhatsApp is not installed on this device',
+            );
+          });
+        } else {
+          return Linking.openURL(url);
+        }
+      })
+      .catch(err => {
+        console.log('🔍 [WHATSAPP] canOpenURL error:', err);
+        // Try direct open as fallback
+        Linking.openURL(url).catch(openErr => {
+          console.log('🔍 [WHATSAPP] Fallback open failed:', openErr);
+          Alert.alert('Error', 'Failed to open WhatsApp');
+        });
+      });
+  };
+
   const handleActionPress = (type: 'call' | 'whatsapp') => {
     setActionType(type);
-    // setIsModalVisible(true);
+
+    if (type === 'call') {
+      const numbers = getCallNumbers();
+      if (numbers.length === 0) {
+        Alert.alert(
+          'No Phone Number',
+          'Phone number not available for this facility',
+        );
+        return;
+      }
+      if (numbers.length === 1) {
+        dialNumber(numbers[0]);
+        return;
+      }
+      setIsModalVisible(true); // choose which to call
+      return;
+    }
+
+    if (type === 'whatsapp') {
+      const numbers = getWhatsappNumbers();
+      if (numbers.length === 0) {
+        Alert.alert(
+          'No WhatsApp Number',
+          'WhatsApp number not available for this facility',
+        );
+        return;
+      }
+      if (numbers.length === 1) {
+        openWhatsApp(numbers[0]);
+        return;
+      }
+      setIsModalVisible(true); // choose which to WhatsApp
+    }
   };
 
   const handleNumberSelect = (number: string) => {
@@ -175,35 +297,9 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
     setIsModalVisible(false);
 
     if (actionType === 'call') {
-      const phoneNumber = `tel:${number}`;
-      Linking.canOpenURL(phoneNumber)
-        .then(supported => {
-          if (!supported) {
-            console.log('Phone call not supported on this device');
-          } else {
-            return Linking.openURL(phoneNumber);
-          }
-        })
-        .catch(err =>
-          console.log('An error occurred while trying to make a call:', err),
-        );
+      dialNumber(number);
     } else if (actionType === 'whatsapp') {
-      let formattedNumber = number.replace(/[-\s]/g, ''); // Remove any dashes or spaces
-      // if (!formattedNumber.startsWith('+')) {
-      //   formattedNumber = `+233${formattedNumber.slice(-9)}`; // Assuming Ghana country code, adjust as necessary
-      // }
-      const url = `whatsapp://send?phone=${formattedNumber}`;
-      Linking.canOpenURL(url)
-        .then(supported => {
-          if (!supported) {
-            console.log("WhatsApp is not installed or can't open URL");
-          } else {
-            return Linking.openURL(url);
-          }
-        })
-        .catch(err =>
-          console.log('An error occurred while trying to open WhatsApp:', err),
-        );
+      openWhatsApp(number);
     }
   };
 
@@ -280,8 +376,19 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
         (successData: any) => {
           setFacilityDetails(successData);
           // getCompletePlaceDetails(successData.facility_name);
-          setHasWhatsapp(!!successData.whatsapp);
-          if (!successData.whatsapp) {
+          // hasWhatsapp if tel exists or whatsapp exists
+          const telParsed =
+            (successData?.tel ? parsePhoneNumbers(successData?.tel) : []) || [];
+          setHasWhatsapp(
+            (Array.isArray(telParsed) && telParsed.length > 0) ||
+              !!successData?.whatsapp,
+          );
+          if (
+            !(
+              (Array.isArray(telParsed) && telParsed.length > 0) ||
+              !!successData?.whatsapp
+            )
+          ) {
             setActionType('call');
           }
           setLoading(false);
@@ -556,17 +663,17 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
       });
     }
     await addFavoriteFacility(facilityId);
-    // toggleFacilityFavorite(
-    //   userData?.id,
-    //   id as string,
-    //   () => {},
-    //   (successData: any) => {
-    //     console.log('response', successData);
-    //   },
-    //   (error: any) => {
-    //     console.log('Error', error);
-    //   },
-    // );
+    toggleFacilityFavorite(
+      userData?.id,
+      id as string,
+      () => {},
+      (successData: any) => {
+        console.log('response', successData);
+      },
+      (error: any) => {
+        console.log('Error', error);
+      },
+    );
   };
 
   useEffect(() => {
@@ -695,12 +802,11 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                   )}
                   onSnapToItem={handleSnap}
                 />
-                {userReview && (
-                  <FacilityRating
-                    userReview={userReview ? userReview : null}
-                    facilityId={facilityDetails.id}
-                  />
-                )}
+                <FacilityRating
+                  userReview={userReview ? userReview : undefined}
+                  facilityId={facilityDetails.id}
+                  facilityName={facilityDetails.facility_name}
+                />
 
                 <TouchableOpacity
                   style={styles.favoritesIcon}
@@ -959,26 +1065,30 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                 visible={isModalVisible}
                 animationType="slide"
                 onRequestClose={() => setIsModalVisible(false)}>
-                <View style={styles.modalOverlay}>
+                <View
+                  style={[styles.modalOverlay, {width: width, height: height}]}>
                   <View style={styles.modalContainer}>
                     {!actionType ? (
                       <View style={{alignItems: 'center'}}>
-                        <TouchableOpacity
-                          style={[styles.button, {marginVertical: 15}]}
-                          onPress={() => handleActionPress('call')}>
-                          <Icon
-                            name="phone-alt"
-                            size={20}
-                            color={themeColors.primary}
-                          />
-                          <Text
-                            style={[
-                              styles.buttonText,
-                              {color: themeColors.primary},
-                            ]}>
-                            Call
-                          </Text>
-                        </TouchableOpacity>
+                        {getCallNumbers().length > 0 && (
+                          <TouchableOpacity
+                            style={[styles.button, {marginVertical: 15}]}
+                            onPress={() => handleActionPress('call')}>
+                            <Icon
+                              name="phone-alt"
+                              size={20}
+                              color={themeColors.primary}
+                            />
+                            <Text
+                              style={[
+                                styles.buttonText,
+                                {color: themeColors.primary},
+                              ]}
+                              onPress={() => handleActionPress('call')}>
+                              Call
+                            </Text>
+                          </TouchableOpacity>
+                        )}
                         {hasWhatsapp && (
                           <TouchableOpacity
                             style={[styles.button, {marginVertical: 15}]}
@@ -992,7 +1102,8 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                               style={[
                                 styles.buttonText,
                                 {color: themeColors.primary},
-                              ]}>
+                              ]}
+                              onPress={() => handleActionPress('whatsapp')}>
                               WhatsApp
                             </Text>
                           </TouchableOpacity>
@@ -1005,28 +1116,22 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                             ? 'Select a Number to Call'
                             : 'Select a Number for WhatsApp'}
                         </Text>
-                        {parsePhoneNumbers(facilityDetails?.tel || '')?.map(
-                          (number: string, index: number) => (
-                            <View key={index} style={styles.modalItemContainer}>
-                              <TouchableOpacity
-                                style={styles.modalItem}
+                        {(actionType === 'call'
+                          ? getCallNumbers()
+                          : getWhatsappNumbers()
+                        ).map((number: string, index: number) => (
+                          <View key={index} style={styles.modalItemContainer}>
+                            <TouchableOpacity
+                              style={styles.modalItem}
+                              onPress={() => handleNumberSelect(number)}>
+                              <Text
+                                style={styles.modalItemText}
                                 onPress={() => handleNumberSelect(number)}>
-                                <Text style={styles.modalItemText}>
-                                  {number}
-                                </Text>
-                              </TouchableOpacity>
-                              {/* <TouchableOpacity
-                              style={styles.copyButton}
-                              onPress={() => handleCopyNumber(number)}>
-                              <Icon
-                                name="copy"
-                                size={20}
-                                color={themeColors.primary}
-                              />
-                            </TouchableOpacity> */}
-                            </View>
-                          ),
-                        )}
+                                {number}
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        ))}
                       </>
                     )}
                     <TouchableOpacity
@@ -1037,7 +1142,16 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                           setActionType(null);
                         }
                       }}>
-                      <Text style={styles.modalCancelText}>Cancel</Text>
+                      <Text
+                        style={styles.modalCancelText}
+                        onPress={() => {
+                          setIsModalVisible(false);
+                          if (hasWhatsapp) {
+                            setActionType(null);
+                          }
+                        }}>
+                        Cancel
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -1241,7 +1355,7 @@ const styles = StyleSheet.create({
     fontSize: size.md,
   },
   modalOverlay: {
-    flex: 1,
+    // flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.5)',

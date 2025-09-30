@@ -10,28 +10,28 @@ import {AirbnbRating} from 'react-native-ratings';
 import {themeColors} from '../theme/colors';
 import RatingModal from './RatingModal';
 import {ActivityIndicator} from 'react-native-paper';
+import {useSelector} from 'react-redux';
+import {user} from '../store/selectors';
 
 const FacilityRating = ({
   facilityId,
   userReview,
+  facilityName,
 }: {
   facilityId: string;
-  userReview?: Map<string, string>;
+  userReview?: any;
+  facilityName?: string;
 }) => {
+  const userData: any = useSelector(user);
   const [rating, setRating] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [existingRating, setExistingRating] = useState(null);
 
   useEffect(() => {
     const fetchRating = async () => {
       try {
+        // Get the average rating for display
         const rating = await getFacilityRating(facilityId);
         setRating(rating as number);
-        if (rating) {
-          setExistingRating(rating); // Store existing rating
-        } else {
-          setExistingRating(null); // No rating found
-        }
       } catch (error) {
         console.error('Error fetching facility rating:', error);
       }
@@ -53,12 +53,14 @@ const FacilityRating = ({
       const numericRating = updatedRating ? Number(updatedRating) : null;
       if (numericRating !== null) {
         setRating(numericRating);
-        setExistingRating(numericRating);
+      } else {
+        setRating(updatedRating as number);
       }
-
-      setRating(updatedRating as number);
+      setModalVisible(false); // Ensure modal closes after successful submission
     } catch (error) {
       console.error('Error submitting rating:', error);
+      setModalVisible(false); // Close modal even on error to prevent getting stuck
+      throw error; // Re-throw to let the modal handle the error display
     }
   };
 
@@ -85,7 +87,7 @@ const FacilityRating = ({
         <AirbnbRating
           isDisabled
           count={5}
-          defaultRating={rating}
+          defaultRating={rating || 0}
           size={12}
           showRating={false}
         />
@@ -96,8 +98,10 @@ const FacilityRating = ({
         onClose={() => setModalVisible(false)}
         onSubmit={handleRatingSubmit}
         initialRating={rating || 0}
-        existingRating={existingRating}
+        existingRating={null}
         userReview={userReview}
+        userId={userData?.id}
+        facilityId={facilityId}
       />
     </>
   );

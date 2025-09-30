@@ -20,10 +20,7 @@ import {setPeriodTracker} from '../store/slices/periodTracker';
 import {supabase} from '../utils/supabaseClient';
 import {logDAU, logDownloads, logMAU} from '../services/appPerformanceService';
 import React from 'react';
-import {
-  navigationRef,
-  handlePendingNavigation,
-} from '../services/NavigationRef';
+import {navigationRef} from '../services/NavigationRef';
 import {checkRedirect} from '../services/checkRedirect';
 import * as Sentry from '@sentry/react-native';
 const Route = () => {
@@ -51,6 +48,8 @@ const Route = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
 
   const appState = useRef(AppState.currentState);
+  const biometricInProgressRef = useRef(false);
+  const lastResumeAtRef = useRef(0);
 
   useEffect(() => {
     // checkRedirect();
@@ -70,6 +69,12 @@ const Route = () => {
           appState.current.match(/inactive|background/) &&
           nextAppState === 'active'
         ) {
+          const now = Date.now();
+          if (now - lastResumeAtRef.current < 3000) {
+            // Throttle resume handling to avoid burst re-entries
+            return;
+          }
+          lastResumeAtRef.current = now;
           const lastMinimizedTime = await AsyncStorage.getItem(
             'lastMinimizedTime',
           );
@@ -82,18 +87,26 @@ const Route = () => {
               message: 'Triggering biometric after 30 seconds',
               category: 'biometric',
             });
-            // dispatch(isBiometricUser(true));
-            triggerBiometricLogin();
+            if (!biometricInProgressRef.current) {
+              biometricInProgressRef.current = true;
+              // dispatch(isBiometricUser(true));
+              triggerBiometricLogin().finally(() => {
+                biometricInProgressRef.current = false;
+              });
+            }
           }
         } else if (nextAppState.match(/inactive|background/)) {
           const currentTime = new Date().getTime();
-          await AsyncStorage.setItem('lastMinimizedTime', currentTime.toString());
+          await AsyncStorage.setItem(
+            'lastMinimizedTime',
+            currentTime.toString(),
+          );
         }
 
         appState.current = nextAppState;
       } catch (error) {
         Sentry.captureException(error, {
-          tags: { component: 'app-state-change' },
+          tags: {component: 'app-state-change'},
         });
       }
     };
@@ -148,7 +161,9 @@ const Route = () => {
       const userId = await AsyncStorage.getItem('user_id');
       const isLoggedInJSON = await AsyncStorage.getItem('isLoggedIn');
       const isLoggedIn = isLoggedInJSON ? JSON.parse(isLoggedInJSON) : false;
-      const biometricEnabledJSON = await AsyncStorage.getItem('biometricEnabled');
+      const biometricEnabledJSON = await AsyncStorage.getItem(
+        'biometricEnabled',
+      );
       const biometricEnabled = biometricEnabledJSON
         ? JSON.parse(biometricEnabledJSON)
         : false;
@@ -178,7 +193,9 @@ const Route = () => {
               },
               extra: {
                 isAuthenticated: await AsyncStorage.getItem('isAuthenticated'),
-                lastMinimizedTime: await AsyncStorage.getItem('lastMinimizedTime'),
+                lastMinimizedTime: await AsyncStorage.getItem(
+                  'lastMinimizedTime',
+                ),
                 biometricEnabled: biometricEnabled,
               },
             });
@@ -193,7 +210,7 @@ const Route = () => {
       }
     } catch (error) {
       Sentry.captureException(error, {
-        tags: { component: 'biometric-flow' },
+        tags: {component: 'biometric-flow'},
       });
     }
   };
@@ -299,7 +316,7 @@ const Route = () => {
         }
       } catch (error) {
         Sentry.captureException(error, {
-          tags: { component: 'user-data-fetch' },
+          tags: {component: 'user-data-fetch'},
         });
         console.log('Error retrieving user ID from AsyncStorage:', error);
         setLoading(false);
@@ -314,7 +331,7 @@ const Route = () => {
       Sentry.addBreadcrumb({
         message: 'Fetching period tracker data',
         category: 'supabase',
-        data: { userId: userData.id },
+        data: {userId: userData.id},
       });
 
       const {data, error} = await supabase
@@ -328,8 +345,8 @@ const Route = () => {
       }
     } catch (error) {
       Sentry.captureException(error, {
-        tags: { component: 'period-data-fetch' },
-        extra: { userId: userData.id },
+        tags: {component: 'period-data-fetch'},
+        extra: {userId: userData.id},
       });
       console.error('~ error fetching tracker logs:', error);
     }

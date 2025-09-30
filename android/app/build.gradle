@@ -79,9 +79,11 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.fourthpayltd.fourourlife"
+    // namespace "com.fourthpayltd.fourourlife"
+    namespace "com.fourourlifeapp.fourourlife"
     defaultConfig {
-        applicationId "com.fourthpayltd.fourourlife"
+        // applicationId "com.fourthpayltd.fourourlife"
+        applicationId "com.fourourlifeapp.fourourlife"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 2
@@ -95,10 +97,14 @@ android {
             keyPassword 'android'
         }
         release {
-            storeFile file('fourourlife-release.keystore')
-            storePassword 'Zxcv@123'
-            keyAlias 'fourourlife'
-            keyPassword 'Zxcv@123'
+            // storeFile file('fourourlife-release.keystore')
+            // storePassword 'Zxcv@123'
+            // keyAlias 'fourourlife'
+            // keyPassword 'Zxcv@123'
+            storeFile file('fourourlifeapp-release.keystore')  // NEW keystore file
+            storePassword '4ourlife'                        // NEW password
+            keyAlias 'fourourlife'                          // NEW alias
+            keyPassword '4ourlife'
         }
     }
     buildTypes {
@@ -106,8 +112,8 @@ android {
             signingConfig signingConfigs.debug
         }
     release {
-            // signingConfig signingConfigs.release
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
+            // signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds  // This will now be true
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             debuggable false

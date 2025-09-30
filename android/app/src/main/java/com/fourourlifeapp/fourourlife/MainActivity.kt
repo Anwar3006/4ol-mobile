@@ -1,4 +1,4 @@
-package com.fourthpayltd.fourourlife
+package com.fourourlifeapp.fourourlife
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
