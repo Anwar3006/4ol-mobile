@@ -1,4 +1,4 @@
-package com.fourourlifeapp.fourourlife
+package com.fourourlifeapppay.fourourlifeapppay
 
 import android.app.Application
 import com.facebook.react.PackageList

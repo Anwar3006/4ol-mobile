@@ -80,14 +80,16 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     // namespace "com.fourthpayltd.fourourlife"
-    namespace "com.fourourlifeapp.fourourlife"
+    // namespace "com.fourourlifeapp.fourourlife"
+    namespace "com.fourourlifeapppay.fourourlifeapppay"
     defaultConfig {
         // applicationId "com.fourthpayltd.fourourlife"
-        applicationId "com.fourourlifeapp.fourourlife"
+        // applicationId "com.fourourlifeapp.fourourlife"
+        applicationId "com.fourourlifeapppay.fourourlifeapppay"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 2
-        versionName "2.0"
+        versionCode 7
+        versionName "7.0"
     }
     signingConfigs {
         debug {
@@ -113,7 +115,6 @@ android {
         }
     release {
             signingConfig signingConfigs.release
-            // signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds  // This will now be true
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             debuggable false

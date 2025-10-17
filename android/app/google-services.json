@@ -26,6 +26,25 @@
     },
     {
       "client_info": {
+        "mobilesdk_app_id": "1:817046625018:android:f1d64d1f37903904794743",
+        "android_client_info": {
+          "package_name": "com.fourourlifeapppay.fourourlifeapppay"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAY6aIEPpLaqi3x8VucpkhLO1yPK4fLV40"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:817046625018:android:f1feadbad5a511c2794743",
         "android_client_info": {
           "package_name": "com.fourthpayltd.fourourlife"
