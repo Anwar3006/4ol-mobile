@@ -31,7 +31,6 @@ import {SCREENS} from '../constants/screens';
 import useLocation from '../hooks/useLocation';
 import {useWindowDimensions} from 'react-native';
 import {THIS_IS_MAP_KEY} from '../../config/variables';
-import LocationLayout from '../components/common/LocationLayout';
 import {checkFavoriteStatus, toggleFacilityFavorite} from '../services/profile';
 import {useSelector} from 'react-redux';
 import {user} from '../store/selectors';
@@ -342,19 +341,22 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
     }
 
     const destination = `${facilityLat},${facilityLng}`;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+    const url =
+      Platform.OS === 'ios'
+        ? `http://maps.apple.com/?daddr=${destination}&dirflg=d`
+        : `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
 
     Linking.canOpenURL(url)
       .then(supported => {
         if (supported) {
           return Linking.openURL(url);
         } else {
-          Alert.alert('Error', 'Unable to open Google Maps');
+          Alert.alert('Error', 'Unable to open Maps application');
         }
       })
       .catch(err => {
         console.error('Error opening maps:', err);
-        Alert.alert('Error', 'Failed to open Google Maps');
+        Alert.alert('Error', 'Failed to open Maps application');
       });
   };
 
@@ -740,8 +742,7 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
   };
 
   return (
-    <LocationLayout>
-      <View style={styles.container}>
+    <View style={styles.container}>
         {loading ? (
           <View style={styles.loaderContainer}>
             <ActivityIndicator color={themeColors.primary} size={'large'} />
@@ -1208,7 +1209,6 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
           </>
         )}
       </View>
-    </LocationLayout>
   );
 };
 

@@ -243,6 +243,12 @@ export default function AddReminderDetails({route}) {
   const [showStart, setShowStart] = useState(false);
   const [showEnd, setShowEnd] = useState(false);
 
+  // Temporary state for iOS pickers (to prevent auto-close)
+  const [tempStartDate, setTempStartDate] = useState(startDate);
+  const [tempEndDate, setTempEndDate] = useState(endDate);
+  const [tempScheduledTimes, setTempScheduledTimes] = useState<Date[]>(scheduledTimes);
+  const [tempFirstIntakeTime, setTempFirstIntakeTime] = useState(firstIntakeTime);
+
   // Calculate interval if notification type is Interval
   useEffect(() => {
     if (
@@ -276,17 +282,35 @@ export default function AddReminderDetails({route}) {
       headerTitle: `${medicationName} Reminder Details`,
     });
   }, [navigation, medicationName, color]);
+  // iOS: Update temp state only, don't close picker
+  // Android: Update actual state and close picker
   const onChangeStart = (event: any, selectedDate?: Date) => {
-    setShowStart(Platform.OS === 'ios');
-    if (selectedDate) {
-      setStartDate(selectedDate);
-      if (notificationSchedule === 'one_day') setEndDate(selectedDate);
+    if (Platform.OS === 'ios') {
+      // iOS: Only update temp state, don't close
+      if (selectedDate) {
+        setTempStartDate(selectedDate);
+      }
+    } else {
+      // Android: Update actual state and close
+      setShowStart(false);
+      if (selectedDate) {
+        setStartDate(selectedDate);
+        if (notificationSchedule === 'one_day') setEndDate(selectedDate);
+      }
     }
   };
 
   const onChangeEnd = (event: any, selectedDate?: Date) => {
-    setShowEnd(Platform.OS === 'ios');
-    if (selectedDate) setEndDate(selectedDate);
+    if (Platform.OS === 'ios') {
+      // iOS: Only update temp state, don't close
+      if (selectedDate) {
+        setTempEndDate(selectedDate);
+      }
+    } else {
+      // Android: Update actual state and close
+      setShowEnd(false);
+      if (selectedDate) setEndDate(selectedDate);
+    }
   };
 
   // Handler for time pickers for scheduled times
@@ -295,18 +319,72 @@ export default function AddReminderDetails({route}) {
     event: any,
     selectedDate?: Date,
   ) => {
-    setShowTimePicker(null);
-    if (selectedDate) {
-      const newTimes = [...scheduledTimes];
-      newTimes[index] = selectedDate;
-      setScheduledTimes(newTimes);
+    if (Platform.OS === 'ios') {
+      // iOS: Only update temp state, don't close
+      if (selectedDate) {
+        const newTimes = [...tempScheduledTimes];
+        newTimes[index] = selectedDate;
+        setTempScheduledTimes(newTimes);
+      }
+    } else {
+      // Android: Update actual state and close
+      setShowTimePicker(null);
+      if (selectedDate) {
+        const newTimes = [...scheduledTimes];
+        newTimes[index] = selectedDate;
+        setScheduledTimes(newTimes);
+      }
     }
   };
 
   const onChangeFirstIntake = (event: any, selectedDate?: Date) => {
-    setShowFirstTimePicker(false);
-    if (selectedDate) setFirstIntakeTime(selectedDate);
+    if (Platform.OS === 'ios') {
+      // iOS: Only update temp state, don't close
+      if (selectedDate) {
+        setTempFirstIntakeTime(selectedDate);
+      }
+    } else {
+      // Android: Update actual state and close
+      setShowFirstTimePicker(false);
+      if (selectedDate) setFirstIntakeTime(selectedDate);
+    }
   };
+
+  // Confirm handlers for iOS (Done button)
+  const onConfirmStartDate = () => {
+    setStartDate(tempStartDate);
+    if (notificationSchedule === 'one_day') setEndDate(tempStartDate);
+    setShowStart(false);
+  };
+
+  const onConfirmEndDate = () => {
+    setEndDate(tempEndDate);
+    setShowEnd(false);
+  };
+
+  const onConfirmScheduledTime = (index: number) => {
+    setScheduledTimes([...tempScheduledTimes]);
+    setShowTimePicker(null);
+  };
+
+  const onConfirmFirstIntakeTime = () => {
+    setFirstIntakeTime(tempFirstIntakeTime);
+    setShowFirstTimePicker(false);
+  };
+
+  // Initialize temp states when pickers open
+  useEffect(() => {
+    if (showStart) setTempStartDate(startDate);
+    if (showEnd) setTempEndDate(endDate);
+    if (showFirstTimePicker) setTempFirstIntakeTime(firstIntakeTime);
+  }, [showStart, showEnd, showFirstTimePicker]);
+
+  useEffect(() => {
+    if (showTimePicker) {
+      const newTempTimes = [...scheduledTimes];
+      setTempScheduledTimes(newTempTimes);
+    }
+  }, [showTimePicker]);
 
   const onSubmit = async () => {
     try {
@@ -752,7 +830,7 @@ export default function AddReminderDetails({route}) {
             />
           </>
         )}
-        <View style={{marginTop: 10, flexDirection: 'row', gap: 10}}>
+        <View style={{marginTop: 10, flexDirection: 'column', gap: 10}}>
           <View style={{flexGrow: 1}}>
             <View style={{flexDirection: 'row', alignItems: 'center'}}>
               <Text style={{fontWeight: '700', color: 'black'}}>
@@ -780,15 +858,62 @@ export default function AddReminderDetails({route}) {
                 {moment(startDate.toDateString()).format('DD/MM/YYYY')}
               </Text>
             </TouchableOpacity>
+            {showStart && (
+              <View
+                style={{
+                  marginTop: 8,
+                  borderWidth: 1,
+                  borderColor: 'lightgray',
+                  borderRadius: 8,
+                  padding: 8,
+                  backgroundColor: '#fff',
+                  maxWidth: '100%',
+                  alignSelf: 'flex-start',
+                }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 6,
+                  }}>
+                  <Text style={{color: 'black', fontWeight: '600'}}>
+                    Select Start Date
+                  </Text>
+                  <View style={{flexDirection: 'row', gap: 10}}>
+                    {Platform.OS === 'ios' && (
+                      <TouchableOpacity
+                        onPress={onConfirmStartDate}
+                        style={{
+                          backgroundColor: themeColors.primary,
+                          paddingHorizontal: 16,
+                          paddingVertical: 6,
+                          borderRadius: 6,
+                        }}>
+                        <Text style={{color: 'white', fontWeight: '600'}}>
+                          Done
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={() => setShowStart(false)}>
+                      <MaterialIcons
+                        name="close"
+                        size={20}
+                        color={themeColors.primary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <DateTimePicker
+                  value={Platform.OS === 'ios' ? tempStartDate : startDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  onChange={onChangeStart}
+                  style={{alignSelf: 'flex-start', transform: [{scale: 0.9}]}}
+                />
+              </View>
+            )}
           </View>
-          {showStart && (
-            <DateTimePicker
-              value={startDate}
-              mode="date"
-              display="default"
-              onChange={onChangeStart}
-            />
-          )}
           <View style={{flexGrow: 1}}>
             <View style={{flexDirection: 'row', alignItems: 'center'}}>
               <Text style={{fontWeight: '700', color: 'black'}}>
@@ -816,15 +941,63 @@ export default function AddReminderDetails({route}) {
                 {moment(endDate.toDateString()).format('DD/MM/YYYY')}
               </Text>
             </TouchableOpacity>
+            {showEnd && (
+              <View
+                style={{
+                  marginTop: 8,
+                  borderWidth: 1,
+                  borderColor: 'lightgray',
+                  borderRadius: 8,
+                  padding: 8,
+                  backgroundColor: '#fff',
+                  maxWidth: '100%',
+                  alignSelf: 'flex-start',
+                }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 6,
+                  }}>
+                  <Text style={{color: 'black', fontWeight: '600'}}>
+                    Select End Date
+                  </Text>
+                  <View style={{flexDirection: 'row', gap: 10}}>
+                    {Platform.OS === 'ios' && (
+                      <TouchableOpacity
+                        onPress={onConfirmEndDate}
+                        style={{
+                          backgroundColor: themeColors.primary,
+                          paddingHorizontal: 16,
+                          paddingVertical: 6,
+                          borderRadius: 6,
+                        }}>
+                        <Text style={{color: 'white', fontWeight: '600'}}>
+                          Done
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity onPress={() => setShowEnd(false)}>
+                      <MaterialIcons
+                        name="close"
+                        size={20}
+                        color={themeColors.primary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <DateTimePicker
+                  value={Platform.OS === 'ios' ? tempEndDate : endDate}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                  minimumDate={startDate}
+                  onChange={onChangeEnd}
+                  style={{alignSelf: 'flex-start', transform: [{scale: 0.9}]}}
+                />
+              </View>
+            )}
           </View>
-          {showEnd && (
-            <DateTimePicker
-              value={endDate}
-              mode="date"
-              display="default"
-              onChange={onChangeEnd}
-            />
-          )}
         </View>
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
           <Text style={{fontWeight: '700', color: 'black'}}>
@@ -973,14 +1146,66 @@ export default function AddReminderDetails({route}) {
                   </Text>
                 </TouchableOpacity>
                 {showTimePicker && showTimePicker.index === index && (
-                  <DateTimePicker
-                    value={time}
-                    mode="time"
-                    display="default"
-                    onChange={(e, selectedDate) =>
-                      onChangeScheduledTime(index, e, selectedDate)
-                    }
-                  />
+                  <View
+                    style={{
+                      marginTop: 8,
+                      borderWidth: 1,
+                      borderColor: 'lightgray',
+                      borderRadius: 8,
+                      padding: 8,
+                      backgroundColor: '#fff',
+                      maxWidth: '100%',
+                      alignSelf: 'flex-start',
+                    }}>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 6,
+                      }}>
+                      <Text style={{color: 'black', fontWeight: '600'}}>
+                        Select Time
+                      </Text>
+                      <View style={{flexDirection: 'row', gap: 10}}>
+                        {Platform.OS === 'ios' && (
+                          <TouchableOpacity
+                            onPress={() => onConfirmScheduledTime(index)}
+                            style={{
+                              backgroundColor: themeColors.primary,
+                              paddingHorizontal: 16,
+                              paddingVertical: 6,
+                              borderRadius: 6,
+                            }}>
+                            <Text style={{color: 'white', fontWeight: '600'}}>
+                              Done
+                            </Text>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          onPress={() => setShowTimePicker(null)}>
+                          <MaterialIcons
+                            name="close"
+                            size={20}
+                            color={themeColors.primary}
+                          />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                    <DateTimePicker
+                      value={
+                        Platform.OS === 'ios'
+                          ? tempScheduledTimes[index] || time
+                          : time
+                      }
+                      mode="time"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={(e, selectedDate) =>
+                        onChangeScheduledTime(index, e, selectedDate)
+                      }
+                      style={{alignSelf: 'flex-start'}}
+                    />
+                  </View>
                 )}
               </View>
             ))}
@@ -1018,12 +1243,62 @@ export default function AddReminderDetails({route}) {
               </Text>
             </TouchableOpacity>
             {showFirstTimePicker && (
-              <DateTimePicker
-                value={firstIntakeTime}
-                mode="time"
-                display="default"
-                onChange={onChangeFirstIntake}
-              />
+              <View
+                style={{
+                  marginTop: 8,
+                  borderWidth: 1,
+                  borderColor: 'lightgray',
+                  borderRadius: 8,
+                  padding: 8,
+                  backgroundColor: '#fff',
+                  maxWidth: '100%',
+                  alignSelf: 'flex-start',
+                }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: 6,
+                  }}>
+                  <Text style={{color: 'black', fontWeight: '600'}}>
+                    Select First Intake Time
+                  </Text>
+                  <View style={{flexDirection: 'row', gap: 10}}>
+                    {Platform.OS === 'ios' && (
+                      <TouchableOpacity
+                        onPress={onConfirmFirstIntakeTime}
+                        style={{
+                          backgroundColor: themeColors.primary,
+                          paddingHorizontal: 16,
+                          paddingVertical: 6,
+                          borderRadius: 6,
+                        }}>
+                        <Text style={{color: 'white', fontWeight: '600'}}>
+                          Done
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    <TouchableOpacity
+                      onPress={() => setShowFirstTimePicker(false)}>
+                      <MaterialIcons
+                        name="close"
+                        size={20}
+                        color={themeColors.primary}
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+                <DateTimePicker
+                  value={
+                    Platform.OS === 'ios' ? tempFirstIntakeTime : firstIntakeTime
+                  }
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={onChangeFirstIntake}
+                  style={{alignSelf: 'flex-start'}}
+                />
+              </View>
             )}
             <View style={{flexDirection: 'row', alignItems: 'center'}}>
               <Text style={{fontWeight: '700', color: 'black'}}>

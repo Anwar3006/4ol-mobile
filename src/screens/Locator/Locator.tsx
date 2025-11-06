@@ -830,6 +830,8 @@ import {
   Switch,
   ScrollView,
   Button,
+  Platform,
+  UIManager,
 } from 'react-native';
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import EntypoIcon from 'react-native-vector-icons/Entypo';
@@ -841,7 +843,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {THIS_IS_MAP_KEY} from '../../../config/variables';
 import useLocation from '../../hooks/useLocation';
 import LocationLayout from '../../components/common/LocationLayout';
-import MapView, {Marker} from 'react-native-maps';
+import MapView, {Marker, PROVIDER_GOOGLE} from 'react-native-maps';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import {Picker} from '@react-native-picker/picker';
 import Icon from 'react-native-vector-icons/FontAwesome5';
@@ -903,6 +905,36 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
     distance: any;
     travelTime: any;
   } | null>(null);
+
+  // Diagnostics: detect if Google Maps provider for iOS is available
+  const isIOSGoogleProviderAvailable =
+    Platform.OS === 'ios' && !!UIManager.getViewManagerConfig('AIRGoogleMap');
+
+  useEffect(() => {
+    console.log(
+      `🧭 [MAP DIAG] Platform=${Platform.OS}, iOS Google Provider Available=${isIOSGoogleProviderAvailable}`,
+    );
+  }, [isIOSGoogleProviderAvailable]);
+
+  // Diagnostics: ping a lightweight Google Geocoding endpoint on iOS to verify key allows web services
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return;
+    const test = async () => {
+      try {
+        if (!THIS_IS_MAP_KEY || THIS_IS_MAP_KEY.length < 20) {
+          console.log('🚫 [MAP DIAG] iOS API key missing or invalid length');
+          return;
+        }
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=accra&key=${THIS_IS_MAP_KEY}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        console.log('🧪 [MAP DIAG] iOS Geocode probe status:', data.status);
+      } catch (e) {
+        console.log('❌ [MAP DIAG] iOS Geocode probe failed:', e);
+      }
+    };
+    test();
+  }, []);
 
   const filters: any = {
     'Hospital/ Clinic': {type: 'hospital', keyword: ''},
@@ -1444,6 +1476,13 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
       </Modal>
       <View style={styles.mapContainer}>
         <MapView
+          provider={
+            Platform.OS === 'android'
+              ? PROVIDER_GOOGLE // Android always Google
+              : isIOSGoogleProviderAvailable
+              ? PROVIDER_GOOGLE // iOS Google SDK present
+              : undefined // fallback (prevents crash if SDK not linked)
+          }
           customMapStyle={[
             {
               featureType: 'poi',
@@ -1468,7 +1507,20 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
           scrollEnabled={true}
           showsUserLocation={true}
           zoomControlEnabled={true}
-          showsCompass={false}>
+          showsCompass={false}
+          onMapReady={() => {
+            console.log(
+              '🗺️ [MAP] MapView ready. Provider:',
+              Platform.OS === 'android'
+                ? 'google-android'
+                : isIOSGoogleProviderAvailable
+                ? 'google-ios'
+                : 'apple',
+            );
+          }}
+          onError={e => {
+            console.log('❌ [MAP] MapView error:', e?.nativeEvent || e);
+          }}>
           {selectedLocation && (
             <Marker
               coordinate={selectedLocation}

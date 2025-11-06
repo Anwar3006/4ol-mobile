@@ -545,34 +545,34 @@ const DirectionScreen: React.FC<DirectionScreenProps> = ({
       return;
     }
 
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${
-      destination.latitude
-    },${destination.longitude}&travelmode=${mode.toLowerCase()}`;
+    const destinationStr = `${destination.latitude},${destination.longitude}`;
+    const url =
+      Platform.OS === 'ios'
+        ? `http://maps.apple.com/?daddr=${destinationStr}&dirflg=${
+            mode === 'DRIVING' ? 'd' : mode === 'WALKING' ? 'w' : 't'
+          }`
+        : `https://www.google.com/maps/dir/?api=1&destination=${destinationStr}&travelmode=${mode.toLowerCase()}`;
 
-    Alert.alert(
-      'Open in Maps',
-      'Would you like to open this route in Google Maps?',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Open',
-          onPress: () => {
-            Linking.canOpenURL(url)
-              .then(supported => {
-                if (supported) {
-                  return Linking.openURL(url);
-                } else {
-                  Alert.alert('Error', 'Unable to open Google Maps');
-                }
-              })
-              .catch(err => {
-                console.error('Error opening maps:', err);
-                Alert.alert('Error', 'Failed to open Google Maps');
-              });
-          },
+    Alert.alert('Open in Maps', 'Would you like to open this route in Maps?', [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Open',
+        onPress: () => {
+          Linking.canOpenURL(url)
+            .then(supported => {
+              if (supported) {
+                return Linking.openURL(url);
+              } else {
+                Alert.alert('Error', 'Unable to open Maps application');
+              }
+            })
+            .catch(err => {
+              console.error('Error opening maps:', err);
+              Alert.alert('Error', 'Failed to open Maps application');
+            });
         },
-      ],
-    );
+      },
+    ]);
   };
 
   // State for API validation

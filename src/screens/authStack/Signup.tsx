@@ -54,7 +54,8 @@ const SignupScreen = ({route}: {route: any}) => {
       (successData: any) => {
         setLoading(false);
         dispatch(setUserData(successData));
-        navigation.navigate('Home');
+        // Route component will automatically switch to AppNavigation
+        // which shows BottomNavigation with Home tab as default
       },
 
       (error: any) => {

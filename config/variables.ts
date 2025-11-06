@@ -3,6 +3,7 @@ import {
   SUPABASE_KEY as envSupabaseKey,
   ENCRYPT_KEY as envEncryptKey,
 } from '@env';
+import {Platform} from 'react-native';
 
 // console.log(SUPABASE_KEY);
 
@@ -21,7 +22,15 @@ export const ENCRYPT_KEY: string = envEncryptKey;
 
 export const limit: number = 10;
 
-// Google Maps API Key - Set to empty string to disable APIs
+// Google Maps API Key - Platform specific
+// iOS uses different key, Android uses original key
+const iosKey = 'AIzaSyCweARjI2twXB4AxBOPI6vHJTer649bwJA';
+const androidKey = 'AIzaSyAVBr8MkTtwvQn_LH2hc77jJ1Y4bNumcZM';
+
 export const THIS_IS_MAP_KEY: string =
-  'AIzaSyAVBr8MkTtwvQn_LH2hc77jJ1Y4bNumcZM';
- 
+  Platform.OS === 'ios' ? iosKey : androidKey;
+
+// Console log which key is being used
+console.log(
+  `🗺️ [${Platform.OS.toUpperCase()}] Google Maps API Key being used: ${THIS_IS_MAP_KEY}`,
+);

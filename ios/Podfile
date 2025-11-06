@@ -38,5 +38,15 @@ target 'healthcare' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Fix Hermes dSYM generation for TestFlight
+    installer.pods_project.targets.each do |target|
+      if target.name == 'hermes-engine' || target.name.include?('hermes')
+        target.build_configurations.each do |config|
+          config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
+          config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
+        end
+      end
+    end
   end
 end

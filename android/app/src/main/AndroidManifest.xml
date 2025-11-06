@@ -32,7 +32,8 @@
       android:roundIcon="@mipmap/logo"
       android:allowBackup="false"
       android:theme="@style/AppTheme"
-      android:supportsRtl="true">
+      android:supportsRtl="true"
+      android:extractNativeLibs="true">
       <meta-data
         android:name="com.google.android.geo.API_KEY"
         android:value="AIzaSyAVBr8MkTtwvQn_LH2hc77jJ1Y4bNumcZM" />

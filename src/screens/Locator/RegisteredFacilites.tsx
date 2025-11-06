@@ -17,6 +17,7 @@ import {
   LayoutChangeEvent,
   Linking,
   Alert,
+  UIManager,
 } from 'react-native';
 import {Text} from 'react-native-paper';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
@@ -162,6 +163,56 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   // =========== REF HOOKS ============
   const mapRef = useRef<MapView>(null);
   const slideAnim = useRef(new Animated.Value(-200)).current;
+
+  // =========== iOS ZOOM CONTROLS ============
+  const zoomBy = async (delta: number) => {
+    try {
+      // @ts-ignore - RN Maps versions may differ in typings for getCamera
+      const camera = await mapRef.current?.getCamera?.();
+      if (!camera) return;
+      const currentZoom = typeof camera.zoom === 'number' ? camera.zoom : 10;
+      const nextZoom = Math.max(0, currentZoom + delta);
+      // @ts-ignore - animateCamera typing differences across versions
+      mapRef.current?.animateCamera?.(
+        {...camera, zoom: nextZoom},
+        {duration: 200},
+      );
+    } catch (e) {
+      console.log('Zoom error:', e);
+    }
+  };
+
+  const zoomIn = () => zoomBy(+1);
+  const zoomOut = () => zoomBy(-1);
+
+  // =========== MAP PROVIDER DIAGNOSTICS ============
+  // Detect if Google Maps provider for iOS is available
+  const isIOSGoogleProviderAvailable =
+    Platform.OS === 'ios' && !!UIManager.getViewManagerConfig('AIRGoogleMap');
+
+  // Log diagnostics on component mount
+  useEffect(() => {
+    console.log(
+      '🧭 [MAP DIAG] ===== RegisteredFacilites Map Diagnostics =====',
+    );
+    console.log(`🧭 [MAP DIAG] Platform: ${Platform.OS}`);
+    console.log(
+      `🧭 [MAP DIAG] iOS Google Provider Available: ${isIOSGoogleProviderAvailable}`,
+    );
+    console.log(`🧭 [MAP DIAG] API Key present: ${!!THIS_IS_MAP_KEY}`);
+    console.log(
+      `🧭 [MAP DIAG] API Key length: ${THIS_IS_MAP_KEY?.length || 0}`,
+    );
+    if (Platform.OS === 'ios') {
+      console.log(
+        `🧭 [MAP DIAG] iOS API Key: ${THIS_IS_MAP_KEY.substring(0, 20)}...`,
+      );
+    }
+    console.log('🧭 [MAP DIAG] ==============================================');
+  }, []);
+
+  // Note: we do NOT call any Google web APIs here; we only verify the
+  // iOS Google Maps provider is available for rendering via UIManager.
 
   // =========== CUSTOM HOOKS ============
   const {fetchGhanaPostAddress, addressData} = useGhanaPostGPS();
@@ -591,14 +642,17 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     }
 
     const destination = `${selectedMarker.latitude},${selectedMarker.longitude}`;
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+    const url =
+      Platform.OS === 'ios'
+        ? `http://maps.apple.com/?daddr=${destination}&dirflg=d`
+        : `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
 
     Linking.canOpenURL(url)
       .then(supported => {
         if (supported) {
           return Linking.openURL(url);
         } else {
-          Alert.alert('Error', 'Unable to open Google Maps');
+          Alert.alert('Error', 'Unable to open Maps application');
         }
       })
       .catch(err => {
@@ -2514,194 +2568,122 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
             </View>
           ) : (
             // Real mode: Show actual MapView
-            <MapView
-              ref={mapRef}
-              style={{
-                width: '100%',
-                height: '100%',
-                zIndex: 1,
-              }}
-              initialRegion={initialRegion}
-              provider={PROVIDER_GOOGLE}
-              zoomEnabled
-              scrollEnabled
-              showsUserLocation={true}
-              zoomControlEnabled
-              showsMyLocationButton={true}
-              showsCompass={false}
-              maxZoomLevel={16}
-              minZoomLevel={10}
-              onPress={handleMapPress}
-              onMapReady={async () => {
-                console.log('🗺️ [MAP] MapView is ready');
-                console.log('🗺️ [MAP] Initial region:', initialRegion);
-                console.log('🗺️ [MAP] API Key available:', !!THIS_IS_MAP_KEY);
-                console.log('🗺️ [MAP] Provider:', PROVIDER_GOOGLE);
-                console.log('🗺️ [MAP] Current location:', currentLocation);
-                console.log('🗺️ [MAP] showsUserLocation:', true);
-                console.log('🗺️ [MAP] showsMyLocationButton:', true);
+            <>
+              <MapView
+                ref={mapRef}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  zIndex: 1,
+                }}
+                initialRegion={initialRegion}
+                provider={PROVIDER_GOOGLE}
+                zoomEnabled
+                scrollEnabled
+                showsUserLocation={true}
+                zoomControlEnabled
+                showsMyLocationButton={true}
+                showsCompass={false}
+                maxZoomLevel={16}
+                minZoomLevel={10}
+                onPress={handleMapPress}
+                onMapReady={async () => {
+                  const providerName =
+                    Platform.OS === 'android'
+                      ? 'google-android'
+                      : isIOSGoogleProviderAvailable
+                      ? 'google-ios'
+                      : 'apple-default';
 
-                // Check API guard for map load
-                try {
+                  console.log('🗺️ [MAP] ===== MapView Ready =====');
+                  console.log('🗺️ [MAP] MapView is ready');
+                  console.log('🗺️ [MAP] Platform:', Platform.OS);
+                  console.log('🗺️ [MAP] Provider:', providerName);
                   console.log(
-                    '🔍 [MAP LOAD] Calling checkApiAllowed for AndroidMapHit',
+                    '🗺️ [MAP] iOS Google SDK Available:',
+                    isIOSGoogleProviderAvailable,
                   );
-                  await checkApiAllowed('AndroidMapHit');
-                  console.log(
-                    '✅ [MAP LOAD] checkApiAllowed passed - count should be incremented in Supabase',
-                  );
-                } catch (error) {
-                  console.log(
-                    '🚫 [MAP LOAD] Map load blocked by Supabase guard:',
-                    (error as Error).message,
-                  );
-                  return;
-                }
+                  console.log('🗺️ [MAP] Initial region:', initialRegion);
+                  console.log('🗺️ [MAP] API Key available:', !!THIS_IS_MAP_KEY);
+                  console.log('🗺️ [MAP] Current location:', currentLocation);
+                  console.log('🗺️ [MAP] showsUserLocation:', true);
+                  console.log('🗺️ [MAP] showsMyLocationButton:', true);
+                  console.log('🗺️ [MAP] =========================');
 
-                // Track Maps SDK for Android map load
-                // API tracking removed - keeping Supabase API guard
+                  // Check API guard for map load
+                  try {
+                    console.log(
+                      '🔍 [MAP LOAD] Calling checkApiAllowed for AndroidMapHit',
+                    );
+                    await checkApiAllowed('AndroidMapHit');
+                    console.log(
+                      '✅ [MAP LOAD] checkApiAllowed passed - count should be incremented in Supabase',
+                    );
+                  } catch (error) {
+                    console.log(
+                      '🚫 [MAP LOAD] Map load blocked by Supabase guard:',
+                      (error as Error).message,
+                    );
+                    return;
+                  }
 
-                // If we have current location, animate to it
-                if (currentLocation.latitude && currentLocation.longitude) {
-                  console.log(
-                    '📍 [MAP] Animating to user location:',
-                    currentLocation,
-                  );
-                  mapRef.current?.animateToRegion(
-                    {
+                  // Track Maps SDK for Android map load
+                  // API tracking removed - keeping Supabase API guard
+
+                  // If we have current location, animate to it
+                  if (currentLocation.latitude && currentLocation.longitude) {
+                    console.log(
+                      '📍 [MAP] Animating to user location:',
+                      currentLocation,
+                    );
+                    mapRef.current?.animateToRegion(
+                      {
+                        latitude: currentLocation.latitude,
+                        longitude: currentLocation.longitude,
+                        latitudeDelta: 0.009,
+                        longitudeDelta: 0.009,
+                      },
+                      1000,
+                    );
+                  }
+                }}
+                onRegionChangeComplete={region => {
+                  console.log('🗺️ [MAP] Region changed to:', region);
+                }}
+                onLayout={() => {
+                  console.log('🗺️ [MAP] Map layout completed');
+                }}>
+                {renderMarkers}
+                {/* Manual user location marker as fallback */}
+                {currentLocation.latitude && currentLocation.longitude && (
+                  <Marker
+                    coordinate={{
                       latitude: currentLocation.latitude,
                       longitude: currentLocation.longitude,
-                      latitudeDelta: 0.009,
-                      longitudeDelta: 0.009,
-                    },
-                    1000,
-                  );
-                }
-              }}
-              onRegionChangeComplete={region => {
-                console.log('🗺️ [MAP] Region changed to:', region);
-              }}
-              onLayout={() => {
-                console.log('🗺️ [MAP] Map layout completed');
-              }}>
-              {renderMarkers}
-              {selectedLocation && (
-                <Marker
-                  coordinate={selectedLocation}
-                  title="Searched Location"
-                  pinColor={themeColors.primary}
-                  onPress={() => {
-                    console.log(
-                      '🔍 [SEARCHED MARKER] Clicked on searched location marker',
-                    );
-                    console.log(
-                      '🔍 [SEARCHED MARKER] Selected location data:',
-                      selectedLocation,
-                    );
-
-                    // Clear previous marker info before setting new marker
-                    setMarkerInfo(null);
-                    setImage(null);
-                    setMarkModal(false);
-                    // Clear local facility modal data when switching to searched place
-                    setLocalFacilityModalData({});
-
-                    // Create a complete marker object using the stored place details
-                    const searchedMarker = {
-                      place_id:
-                        selectedLocation.placeDetails?.place_id ||
-                        'searched_location',
-                      id:
-                        selectedLocation.placeDetails?.place_id ||
-                        'searched_location',
-                      facility_name:
-                        selectedLocation.placeDetails?.name ||
-                        'Searched Location',
-                      name:
-                        selectedLocation.placeDetails?.name ||
-                        'Searched Location',
-                      gps_address:
-                        selectedLocation.placeDetails?.gps_address ||
-                        selectedLocation.placeDetails?.formatted_address ||
-                        'Unknown Address',
-                      vicinity:
-                        selectedLocation.placeDetails?.gps_address ||
-                        selectedLocation.placeDetails?.formatted_address ||
-                        'Unknown Address',
-                      address:
-                        selectedLocation.placeDetails?.gps_address ||
-                        selectedLocation.placeDetails?.formatted_address ||
-                        'Unknown Address',
-                      latitude: selectedLocation.latitude,
-                      longitude: selectedLocation.longitude,
-                      facility_type:
-                        selectedLocation.placeDetails?.facility_type ||
-                        'Searched Place',
-                      geometry: {
-                        location: {
-                          lat: selectedLocation.latitude,
-                          lng: selectedLocation.longitude,
-                        },
-                      },
-                      // Add all the additional details from place details
-                      phone:
-                        selectedLocation.placeDetails?.formatted_phone_number,
-                      website: selectedLocation.placeDetails?.website,
-                      rating:
-                        selectedLocation.placeDetails?.avg_rating ||
-                        selectedLocation.placeDetails?.rating,
-                      user_ratings_total:
-                        selectedLocation.placeDetails?.user_ratings_total,
-                      opening_hours:
-                        selectedLocation.placeDetails?.opening_hours,
-                      photos: selectedLocation.placeDetails?.photos,
-                      mediaUrls: selectedLocation.placeDetails?.mediaUrls,
-                      types: selectedLocation.placeDetails?.types,
-                      business_status:
-                        selectedLocation.placeDetails?.business_status,
-                      business_hours:
-                        selectedLocation.placeDetails?.business_hours || {},
-                      isSearchedFacility: true,
-                      // Use distance data from search results if available
-                      distance: selectedLocation.placeDetails?.distance || 0,
-                      distanceText:
-                        selectedLocation.placeDetails?.distanceText || 'N/A',
-                      duration:
-                        selectedLocation.placeDetails?.duration || 'N/A',
-                    };
-
-                    console.log(
-                      '🔍 [SEARCHED MARKER] Created searched marker object:',
-                      searchedMarker,
-                    );
-                    console.log(
-                      '🔍 [SEARCHED MARKER] Calling openMarkModal for enhanced data fetching',
-                    );
-
-                    setSelectedMarker(searchedMarker);
-                    openMarkModal(searchedMarker); // Call openMarkModal for searched places
-                  }}
-                />
+                    }}
+                    title="Your Location"
+                    description="Current location">
+                    <View style={styles.userLocationMarker}>
+                      <MaterialCommunityIcons
+                        name="crosshairs-gps"
+                        size={22}
+                        color="#007AFF"
+                      />
+                    </View>
+                  </Marker>
+                )}
+              </MapView>
+              {Platform.OS === 'ios' && (
+                <View style={styles.zoomControls}>
+                  <TouchableOpacity style={styles.zoomButton} onPress={zoomIn}>
+                    <Feather name="plus" size={20} color="#333" />
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.zoomButton} onPress={zoomOut}>
+                    <Feather name="minus" size={20} color="#333" />
+                  </TouchableOpacity>
+                </View>
               )}
-              {/* Manual user location marker as fallback */}
-              {currentLocation.latitude && currentLocation.longitude && (
-                <Marker
-                  coordinate={{
-                    latitude: currentLocation.latitude,
-                    longitude: currentLocation.longitude,
-                  }}
-                  title="Your Location"
-                  description="Current location">
-                  <View style={styles.userLocationMarker}>
-                    <MaterialCommunityIcons
-                      name="crosshairs-gps"
-                      size={22}
-                      color="#007AFF"
-                    />
-                  </View>
-                </Marker>
-              )}
-            </MapView>
+            </>
           )
         ) : (
           <View
@@ -3435,6 +3417,27 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
     zIndex: 1000,
+  },
+  zoomControls: {
+    position: 'absolute',
+    right: 20,
+    bottom: 180, // above myLocationButton
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 1000,
+  },
+  zoomButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   userLocationMarker: {
     // width: 24,

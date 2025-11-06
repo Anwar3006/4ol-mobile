@@ -1,15 +1,25 @@
-import UIKit
-import React
-import React_RCTAppDelegate
-import ReactAppDependencyProvider
 import Firebase
 import GoogleMaps
+import React
+import ReactAppDependencyProvider
+import React_RCTAppDelegate
+import UIKit
+
 // import notifee
 
 @main
 class AppDelegate: RCTAppDelegate {
-  override func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey : Any]? = nil) -> Bool {
-    GMSServices.provideAPIKey("") // Add your Google Maps API key here
+  override func application(
+    _ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+  ) -> Bool {
+    // Initialize Google Maps SDK FIRST (before React Native)
+    // This must be called before React Native initialization
+    let iosGoogleMapsKey = "AIzaSyCweARjI2twXB4AxBOPI6vHJTer649bwJA"
+    print("🗺️ [iOS] Initializing Google Maps SDK...")
+    print("🗺️ [iOS] Google Maps API Key being used: \(iosGoogleMapsKey)")
+    GMSServices.provideAPIKey(iosGoogleMapsKey)
+    print("✅ [iOS] Google Maps SDK initialized successfully")
 
     self.moduleName = "healthcare"
     self.dependencyProvider = RCTAppDependencyProvider()
@@ -28,10 +38,10 @@ class AppDelegate: RCTAppDelegate {
   }
 
   override func bundleURL() -> URL? {
-#if DEBUG
-    RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
-#else
-    Bundle.main.url(forResource: "main", withExtension: "jsbundle")
-#endif
+    #if DEBUG
+      RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
+    #else
+      Bundle.main.url(forResource: "main", withExtension: "jsbundle")
+    #endif
   }
 }

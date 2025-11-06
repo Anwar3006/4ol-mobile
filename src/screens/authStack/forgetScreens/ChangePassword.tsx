@@ -187,7 +187,8 @@ const ChangePasswordScreen = () => {
             console.error('Error logging password change activity:', error);
           },
         );
-        navigation.navigate('Home');
+        // Route component will automatically switch to AppNavigation
+        // which shows BottomNavigation with Home tab as default
       },
       (error: any) => {
         setLoading(false);

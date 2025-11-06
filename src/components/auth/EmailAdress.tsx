@@ -60,7 +60,8 @@ const EmailAddressComponent = ({
 
           console.log('successData.id :', successData.id);
 
-          navigation.navigate('Home');
+          // No need to navigate - Route component will automatically switch to AppNavigation
+          // which shows BottomNavigation with Home tab as default
         },
         (error: any) => {
           setLoading(false);

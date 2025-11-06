@@ -1,6 +1,7 @@
 package com.fourourlifeapppay.fourourlifeapppay
 
 import android.app.Application
+import android.util.Log
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
@@ -35,6 +36,17 @@ class MainApplication : Application(), ReactApplication {
 
   override fun onCreate() {
     super.onCreate()
+
+    // Log Google Maps API Key from AndroidManifest
+    try {
+      val appInfo = packageManager.getApplicationInfo(packageName, android.content.pm.PackageManager.GET_META_DATA)
+      val bundle = appInfo.metaData
+      val googleMapsKey = bundle?.getString("com.google.android.geo.API_KEY")
+      Log.d("GoogleMaps", "🗺️ [Android] Google Maps API Key being used: $googleMapsKey")
+    } catch (e: Exception) {
+      Log.e("GoogleMaps", "Error reading Google Maps API Key: ${e.message}")
+    }
+
     SoLoader.init(this, OpenSourceMergedSoMapping)
     if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
       // If you opted-in for the New Architecture, we load the native entry point for this app.

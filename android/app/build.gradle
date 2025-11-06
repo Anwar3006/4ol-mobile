@@ -122,6 +122,26 @@ android {
             zipAlignEnabled true
     }
     }
+
+    packagingOptions {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+    }
+
+    // 16KB page size support is automatically handled by Android Gradle Plugin 8.5.1+
+    // Native libraries will be properly aligned for 16KB page sizes
+    bundle {
+        language {
+            enableSplit = false
+        }
+        density {
+            enableSplit = false
+        }
+        abi {
+            enableSplit = false
+        }
+    }
 }
 
 dependencies {
