@@ -635,30 +635,31 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     }
   }, [currentLocation]);
 
-  const openInMaps = useCallback(() => {
+  const openInMaps = useCallback(async () => {
     if (!selectedMarker?.latitude || !selectedMarker?.longitude) {
       Alert.alert('Error', 'Location coordinates not available');
       return;
     }
 
     const destination = `${selectedMarker.latitude},${selectedMarker.longitude}`;
-    const url =
-      Platform.OS === 'ios'
-        ? `http://maps.apple.com/?daddr=${destination}&dirflg=d`
-        : `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+    const googleMapsWebUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+    const googleMapsAppUrl = `comgooglemaps://?daddr=${destination}&directionsmode=driving`;
 
-    Linking.canOpenURL(url)
-      .then(supported => {
-        if (supported) {
-          return Linking.openURL(url);
+    try {
+      if (Platform.OS === 'ios') {
+        const canOpenGoogleMaps = await Linking.canOpenURL('comgooglemaps://');
+        if (canOpenGoogleMaps) {
+          await Linking.openURL(googleMapsAppUrl);
         } else {
-          Alert.alert('Error', 'Unable to open Maps application');
+          await Linking.openURL(googleMapsWebUrl);
         }
-      })
-      .catch(err => {
-        console.error('Error opening maps:', err);
-        Alert.alert('Error', 'Failed to open Google Maps');
-      });
+      } else {
+        await Linking.openURL(googleMapsWebUrl);
+      }
+    } catch (err) {
+      console.error('Error opening Google Maps:', err);
+      Alert.alert('Error', 'Failed to open Google Maps');
+    }
   }, [selectedMarker]);
 
   // =========== OTHER FUNCTIONS ============

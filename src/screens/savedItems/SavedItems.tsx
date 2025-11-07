@@ -111,6 +111,36 @@ const SavedItemsScreen: React.FC<SavedItemsScreenProps> = ({navigation}) => {
     }
   };
 
+  const openFacilityInMaps = async (
+    latitude?: number | null,
+    longitude?: number | null,
+  ) => {
+    if (!latitude || !longitude) {
+      Alert.alert('Error', 'Location coordinates not available');
+      return;
+    }
+
+    const destination = `${latitude},${longitude}`;
+    const googleMapsWebUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+    const googleMapsAppUrl = `comgooglemaps://?daddr=${destination}&directionsmode=driving`;
+
+    try {
+      if (Platform.OS === 'ios') {
+        const canOpenGoogleMaps = await Linking.canOpenURL('comgooglemaps://');
+        if (canOpenGoogleMaps) {
+          await Linking.openURL(googleMapsAppUrl);
+        } else {
+          await Linking.openURL(googleMapsWebUrl);
+        }
+      } else {
+        await Linking.openURL(googleMapsWebUrl);
+      }
+    } catch (err) {
+      console.error('Error opening Google Maps:', err);
+      Alert.alert('Error', 'Failed to open Google Maps');
+    }
+  };
+
   const handleShare = async (item: any) => {
     try {
       const result = await Share.share({
@@ -350,14 +380,12 @@ const SavedItemsScreen: React.FC<SavedItemsScreenProps> = ({navigation}) => {
                         !item?.facility?.latitude ||
                         !item?.facility?.longitude) && {opacity: 0.5},
                     ]}
-                    onPress={() => {
-                      navigation?.navigate('DIRECTION', {
-                        destination: {
-                          latitude: item?.facility?.latitude || 0,
-                          longitude: item?.facility?.longitude || 0,
-                        },
-                      });
-                    }}>
+                    onPress={() =>
+                      openFacilityInMaps(
+                        item?.facility?.latitude,
+                        item?.facility?.longitude,
+                      )
+                    }>
                     <Icon
                       name="map-marker-alt"
                       size={15}

@@ -383,8 +383,8 @@ const Category = () => {
 
   const isSmall = containerWidth < 450;
   const itemsPerRow = getItemsPerRow(containerWidth);
-  const iWidth = isSmall ? 73 : 110;
-  const iHeight = isSmall ? 70 : 90;
+  const iWidth = isSmall ? 78 : 120;
+  const iHeight = isSmall ? 75 : 90;
 
   const {categories = []} = CategoryComponent() || {};
 

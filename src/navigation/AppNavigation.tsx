@@ -368,6 +368,8 @@ const AppNavigation = props => {
     <Stack.Navigator
       screenOptions={{
         animation: 'slide_from_right',
+        headerBackTitleVisible: false,
+        headerBackButtonDisplayMode: 'minimal',
       }}
       initialRouteName={'BottomNavigation'}>
       <Stack.Screen
@@ -475,6 +477,8 @@ const PeriodsTrackerNavigationStack = () => {
           animation: 'slide_from_right',
           gestureEnabled: true,
           gestureDirection: 'horizontal',
+          headerBackTitleVisible: false,
+          headerBackButtonDisplayMode: 'minimal',
         }}>
         {periodTrackerData && periodTrackerData.length > 0 ? (
           <>

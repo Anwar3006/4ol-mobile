@@ -661,7 +661,7 @@ const PillsReminderScreen = () => {
                   fontFamily: fonts.OpenSansBold,
                   marginRight: 10,
                 }}>
-                Add Note
+                Add Notes
               </Text>
               <View
                 style={{

@@ -325,7 +325,7 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
     }
   };
 
-  const openInMaps = () => {
+  const openInMaps = async () => {
     // Get destination coordinates
     const facilityLat =
       facilityDetails?.latitude || facilityDetails?.location?.lat;
@@ -341,23 +341,24 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
     }
 
     const destination = `${facilityLat},${facilityLng}`;
-    const url =
-      Platform.OS === 'ios'
-        ? `http://maps.apple.com/?daddr=${destination}&dirflg=d`
-        : `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+    const googleMapsWebUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
+    const googleMapsAppUrl = `comgooglemaps://?daddr=${destination}&directionsmode=driving`;
 
-    Linking.canOpenURL(url)
-      .then(supported => {
-        if (supported) {
-          return Linking.openURL(url);
+    try {
+      if (Platform.OS === 'ios') {
+        const canOpenGoogleMaps = await Linking.canOpenURL('comgooglemaps://');
+        if (canOpenGoogleMaps) {
+          await Linking.openURL(googleMapsAppUrl);
         } else {
-          Alert.alert('Error', 'Unable to open Maps application');
+          await Linking.openURL(googleMapsWebUrl);
         }
-      })
-      .catch(err => {
-        console.error('Error opening maps:', err);
-        Alert.alert('Error', 'Failed to open Maps application');
-      });
+      } else {
+        await Linking.openURL(googleMapsWebUrl);
+      }
+    } catch (err) {
+      console.error('Error opening Google Maps:', err);
+      Alert.alert('Error', 'Failed to open Google Maps');
+    }
   };
 
   useEffect(() => {
@@ -743,206 +744,204 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
 
   return (
     <View style={styles.container}>
-        {loading ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator color={themeColors.primary} size={'large'} />
-          </View>
-        ) : !facilityDetails ? (
-          <View style={styles.noDataContainer}>
-            <Text style={styles.noDataText}>No record found</Text>
-          </View>
-        ) : (
-          <>
-            <ScrollView
-              contentContainerStyle={[
-                styles.scrollViewContent,
-                {paddingBottom: bottomBarHeight},
-              ]}
-              showsVerticalScrollIndicator={false}
-              showsHorizontalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refresh}
-                  onRefresh={() => setRefresh(!refresh)}
+      {loading ? (
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator color={themeColors.primary} size={'large'} />
+        </View>
+      ) : !facilityDetails ? (
+        <View style={styles.noDataContainer}>
+          <Text style={styles.noDataText}>No record found</Text>
+        </View>
+      ) : (
+        <>
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollViewContent,
+              {paddingBottom: bottomBarHeight},
+            ]}
+            showsVerticalScrollIndicator={false}
+            showsHorizontalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refresh}
+                onRefresh={() => setRefresh(!refresh)}
+              />
+            }>
+            <View style={[styles.carouselContainer, {width: width}]}>
+              <Carousel
+                loop
+                autoPlay={!(facilityDetails?.mediaUrls?.length > 0)}
+                width={width}
+                height={isTablet ? width * 0.4 : width * 0.6}
+                data={
+                  facilityDetails?.mediaUrls?.length > 0
+                    ? facilityDetails?.mediaUrls
+                    : images
+                }
+                scrollAnimationDuration={1000}
+                enabled={
+                  (facilityDetails?.mediaUrls?.length > 0
+                    ? facilityDetails?.mediaUrls.length
+                    : images.length) > 1
+                } // 👈 This disables scroll when only one item
+                renderItem={({item}) => (
+                  <Image
+                    source={
+                      //@ts-ignore
+                      facilityDetails?.mediaUrls?.length > 0
+                        ? {uri: item}
+                        : item // item can be a local require()
+                    }
+                    style={[
+                      styles.image,
+                      {
+                        width: width,
+                        height: isTablet ? width * 0.4 : width * 0.6,
+                        resizeMode: isTablet ? 'stretch' : 'cover',
+                      },
+                    ]}
+                  />
+                )}
+                onSnapToItem={handleSnap}
+              />
+              <FacilityRating
+                userReview={userReview ? userReview : undefined}
+                facilityId={facilityDetails.id}
+                facilityName={facilityDetails.facility_name}
+              />
+
+              <TouchableOpacity
+                style={styles.favoritesIcon}
+                onPress={async () =>
+                  await handleToggleFacilityFavorite(facilityDetails?.id)
+                }>
+                <MaterialIcon
+                  name={isFavorited ? 'heart' : 'heart-outline'}
+                  size={isTablet ? 35 : 24}
+                  color={themeColors.primary}
                 />
-              }>
-              <View style={[styles.carouselContainer, {width: width}]}>
-                <Carousel
-                  loop
-                  autoPlay={!(facilityDetails?.mediaUrls?.length > 0)}
-                  width={width}
-                  height={isTablet ? width * 0.4 : width * 0.6}
-                  data={
-                    facilityDetails?.mediaUrls?.length > 0
-                      ? facilityDetails?.mediaUrls
-                      : images
-                  }
-                  scrollAnimationDuration={1000}
-                  enabled={
-                    (facilityDetails?.mediaUrls?.length > 0
-                      ? facilityDetails?.mediaUrls.length
-                      : images.length) > 1
-                  } // 👈 This disables scroll when only one item
-                  renderItem={({item}) => (
-                    <Image
-                      source={
-                        //@ts-ignore
-                        facilityDetails?.mediaUrls?.length > 0
-                          ? {uri: item}
-                          : item // item can be a local require()
-                      }
+              </TouchableOpacity>
+            </View>
+            <View style={styles.paginationContainer}>
+              {facilityDetails?.mediaUrls?.length
+                ? facilityDetails?.mediaUrls?.map((_, index: number) => (
+                    <View
+                      key={index}
                       style={[
-                        styles.image,
+                        styles.dot,
                         {
-                          width: width,
-                          height: isTablet ? width * 0.4 : width * 0.6,
-                          resizeMode: isTablet ? 'stretch' : 'cover',
+                          backgroundColor:
+                            index === currentIndex
+                              ? themeColors.primary
+                              : themeColors.white,
                         },
                       ]}
                     />
-                  )}
-                  onSnapToItem={handleSnap}
-                />
-                <FacilityRating
-                  userReview={userReview ? userReview : undefined}
-                  facilityId={facilityDetails.id}
-                  facilityName={facilityDetails.facility_name}
-                />
-
-                <TouchableOpacity
-                  style={styles.favoritesIcon}
-                  onPress={async () =>
-                    await handleToggleFacilityFavorite(facilityDetails?.id)
-                  }>
-                  <MaterialIcon
-                    name={isFavorited ? 'heart' : 'heart-outline'}
-                    size={isTablet ? 35 : 24}
-                    color={themeColors.primary}
-                  />
-                </TouchableOpacity>
-              </View>
-              <View style={styles.paginationContainer}>
-                {facilityDetails?.mediaUrls?.length
-                  ? facilityDetails?.mediaUrls?.map((_, index: number) => (
-                      <View
-                        key={index}
-                        style={[
-                          styles.dot,
-                          {
-                            backgroundColor:
-                              index === currentIndex
-                                ? themeColors.primary
-                                : themeColors.white,
-                          },
-                        ]}
-                      />
-                    ))
-                  : images.map((_, index: number) => (
-                      <View
-                        key={index}
-                        style={[
-                          styles.dot,
-                          {
-                            backgroundColor:
-                              index === currentIndex
-                                ? themeColors.primary
-                                : themeColors.white,
-                          },
-                        ]}
-                      />
-                    ))}
-              </View>
-              <View style={styles.facilityInfoContainer}>
-                <Text style={styles.facilityName}>
-                  {facilityDetails.facility_name}{' '}
-                  {facilityDetails?.ownership
-                    ? `(${facilityDetails?.ownership})`
-                    : ''}
-                </Text>
-                <Text style={styles.nhisAccredited}>
-                  <Text style={{fontFamily: fonts.OpenSansBold}}>
-                    NHIS Accredited:
-                  </Text>{' '}
-                  {facilityDetails?.hospital_services?.find((service: string) =>
-                    service.includes('NHIS Accepted'),
-                  )
-                    ? 'Yes'
-                    : 'No'}
-                </Text>
-                <View style={styles.addressContainer}>
-                  {/* <Icon
+                  ))
+                : images.map((_, index: number) => (
+                    <View
+                      key={index}
+                      style={[
+                        styles.dot,
+                        {
+                          backgroundColor:
+                            index === currentIndex
+                              ? themeColors.primary
+                              : themeColors.white,
+                        },
+                      ]}
+                    />
+                  ))}
+            </View>
+            <View style={styles.facilityInfoContainer}>
+              <Text style={styles.facilityName}>
+                {facilityDetails.facility_name}{' '}
+                {facilityDetails?.ownership
+                  ? `(${facilityDetails?.ownership})`
+                  : ''}
+              </Text>
+              <Text style={styles.nhisAccredited}>
+                <Text style={{fontFamily: fonts.OpenSansBold}}>
+                  NHIS Accredited:
+                </Text>{' '}
+                {facilityDetails?.hospital_services?.find((service: string) =>
+                  service.includes('NHIS Accepted'),
+                )
+                  ? 'Yes'
+                  : 'No'}
+              </Text>
+              <View style={styles.addressContainer}>
+                {/* <Icon
                   name="map-marker-alt"
                   size={15}
                   color={themeColors.primary}
                 /> */}
-                  <Text style={styles.facilityAddress}>
-                    <Text style={{fontFamily: fonts.OpenSansBold}}>
-                      Address:
-                    </Text>{' '}
-                    {facilityDetails?.gps_address || facilityDetails?.location}
-                  </Text>
-                </View>
-                <View style={styles.containerDistance}>
-                  <View style={styles.infoRow}>
-                    <View style={styles.infoItem}>
-                      <Icon name="road" size={20} color={themeColors.primary} />
-                      <Text style={styles.infoText}>
-                        {distance || (
-                          <ActivityIndicator size={'small'} color={'green'} />
-                        )}
-                      </Text>
-                    </View>
-                    <View style={styles.infoItem}>
-                      <Icon name="car" size={20} color={themeColors.primary} />
-                      <Text style={styles.infoText}>
-                        {duration || (
-                          <ActivityIndicator size={'small'} color={'green'} />
-                        )}
-                      </Text>
-                    </View>
+                <Text style={styles.facilityAddress}>
+                  <Text style={{fontFamily: fonts.OpenSansBold}}>Address:</Text>{' '}
+                  {facilityDetails?.gps_address || facilityDetails?.location}
+                </Text>
+              </View>
+              <View style={styles.containerDistance}>
+                <View style={styles.infoRow}>
+                  <View style={styles.infoItem}>
+                    <Icon name="road" size={20} color={themeColors.primary} />
+                    <Text style={styles.infoText}>
+                      {distance || (
+                        <ActivityIndicator size={'small'} color={'green'} />
+                      )}
+                    </Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <Icon name="car" size={20} color={themeColors.primary} />
+                    <Text style={styles.infoText}>
+                      {duration || (
+                        <ActivityIndicator size={'small'} color={'green'} />
+                      )}
+                    </Text>
                   </View>
                 </View>
               </View>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Services</Text>
-                <Text style={styles.sectionContent}>
-                  {facilityDetails?.hospital_amenities?.length
-                    ? facilityDetails?.hospital_amenities.join(', ')
-                    : 'N/A'}
-                </Text>
-              </View>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Facilities</Text>
-                <Text style={styles.sectionContent}>
-                  {facilityDetails?.hospital_amenities &&
-                    facilityDetails?.hospital_amenities.join(', ')}
-                </Text>
-              </View>
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Working Hours</Text>
-                {Object?.entries(facilityDetails?.business_hours)?.length ? (
-                  Object?.entries(facilityDetails?.business_hours)?.map(
-                    ([day, hours]: any) => (
-                      <Text
-                        key={day}
-                        style={[
-                          styles.sectionContent,
-                          day === currentDay
-                            ? {fontFamily: fonts.OpenSansBold}
-                            : null,
-                        ]}>
-                        {day.charAt(0).toUpperCase() + day.slice(1)}:{' '}
-                        {hours.opening} - {hours.closing}
-                      </Text>
-                    ),
-                  )
-                ) : (
-                  <Text style={styles.sectionContent}>N/A</Text>
-                )}
-              </View>
-              <View style={[styles.section, {paddingBottom: 0}]}>
-                <Text style={styles.sectionTitle}>Reviews</Text>
-                {/*{facilityData?.reviews?.length ? (
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Services</Text>
+              <Text style={styles.sectionContent}>
+                {facilityDetails?.hospital_amenities?.length
+                  ? facilityDetails?.hospital_amenities.join(', ')
+                  : 'N/A'}
+              </Text>
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Facilities</Text>
+              <Text style={styles.sectionContent}>
+                {facilityDetails?.hospital_amenities &&
+                  facilityDetails?.hospital_amenities.join(', ')}
+              </Text>
+            </View>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Working Hours</Text>
+              {Object?.entries(facilityDetails?.business_hours)?.length ? (
+                Object?.entries(facilityDetails?.business_hours)?.map(
+                  ([day, hours]: any) => (
+                    <Text
+                      key={day}
+                      style={[
+                        styles.sectionContent,
+                        day === currentDay
+                          ? {fontFamily: fonts.OpenSansBold}
+                          : null,
+                      ]}>
+                      {day.charAt(0).toUpperCase() + day.slice(1)}:{' '}
+                      {hours.opening} - {hours.closing}
+                    </Text>
+                  ),
+                )
+              ) : (
+                <Text style={styles.sectionContent}>N/A</Text>
+              )}
+            </View>
+            <View style={[styles.section, {paddingBottom: 0}]}>
+              <Text style={styles.sectionTitle}>Reviews</Text>
+              {/*{facilityData?.reviews?.length ? (
                   facilityData?.reviews?.map((review: any, index) => (
                     <View key={index} style={styles.reviewContainer}>
                       <View
@@ -975,240 +974,236 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
                 ) : (
                   <Text style={styles.sectionContent}>N/A</Text>
                 )} */}
-                <ScrollView
-                  style={{flex: 1}}
-                  horizontal
-                  // pagingEnabled
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={{
-                    paddingHorizontal: moderateScale(10),
-                    paddingBottom: moderateScale(10),
-                    gap: 15,
-                  }}>
-                  {reviewData.length > 0 &&
-                    reviewData.map((item, index) => (
-                      <View
-                        key={index}
-                        style={{
-                          width: Dimensions.get('window').width - 100,
-                          borderRadius: moderateScale(10),
-                          alignItems: 'center',
-                          gap: 5,
-                          justifyContent: 'flex-start',
-                          // backgroundColor: 'red',
-                        }}>
-                        <View style={{flexDirection: 'row'}}>
-                          {/* Avatar Image */}
-                          <Image
-                            source={{uri: item?.user_profiles?.avatar_url}}
-                            style={{
-                              height: verticalScale(50),
-                              width: verticalScale(50),
-                              borderRadius: moderateScale(25),
-                              marginRight: moderateScale(10),
-                            }}
-                          />
+              <ScrollView
+                style={{flex: 1}}
+                horizontal
+                // pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={{
+                  paddingHorizontal: moderateScale(10),
+                  paddingBottom: moderateScale(10),
+                  gap: 15,
+                }}>
+                {reviewData.length > 0 &&
+                  reviewData.map((item, index) => (
+                    <View
+                      key={index}
+                      style={{
+                        width: Dimensions.get('window').width - 100,
+                        borderRadius: moderateScale(10),
+                        alignItems: 'center',
+                        gap: 5,
+                        justifyContent: 'flex-start',
+                        // backgroundColor: 'red',
+                      }}>
+                      <View style={{flexDirection: 'row'}}>
+                        {/* Avatar Image */}
+                        <Image
+                          source={{uri: item?.user_profiles?.avatar_url}}
+                          style={{
+                            height: verticalScale(50),
+                            width: verticalScale(50),
+                            borderRadius: moderateScale(25),
+                            marginRight: moderateScale(10),
+                          }}
+                        />
 
-                          {/* User Info */}
-                          <View
-                            style={{
-                              flex: 1,
-                              justifyContent: 'center',
-                            }}>
-                            <Text
-                              style={{
-                                fontSize: moderateScale(16),
-                                fontWeight: 'bold',
-                                color: '#333',
-                              }}>
-                              {item?.user_profiles?.first_name}{' '}
-                              {item?.user_profiles?.last_name}
-                            </Text>
-                            <StarRating rating={item?.rating} />
-                          </View>
-                        </View>
+                        {/* User Info */}
                         <View
                           style={{
-                            backgroundColor: themeColors.primary,
-                            padding: 10,
-                            borderRadius: 20,
-                            borderTopLeftRadius: 0,
-                            alignSelf: 'flex-start',
-                            // maxWidth: '80%',
-                            width: '100%',
+                            flex: 1,
+                            justifyContent: 'center',
                           }}>
                           <Text
                             style={{
-                              fontSize: size.default,
-                              color: themeColors.white,
-                              textAlign: 'justify',
-                              fontStyle: 'italic',
+                              fontSize: moderateScale(16),
+                              fontWeight: 'bold',
+                              color: '#333',
                             }}>
-                            "
-                            {item.comment ||
-                              'No comment  No comment found No comment found No comment found No comment found '}
-                            "
+                            {item?.user_profiles?.first_name}{' '}
+                            {item?.user_profiles?.last_name}
                           </Text>
+                          <StarRating rating={item?.rating} />
                         </View>
                       </View>
-                    ))}
-                </ScrollView>
-              </View>
+                      <View
+                        style={{
+                          backgroundColor: themeColors.primary,
+                          padding: 10,
+                          borderRadius: 20,
+                          borderTopLeftRadius: 0,
+                          alignSelf: 'flex-start',
+                          // maxWidth: '80%',
+                          width: '100%',
+                        }}>
+                        <Text
+                          style={{
+                            fontSize: size.default,
+                            color: themeColors.white,
+                            textAlign: 'justify',
+                            fontStyle: 'italic',
+                          }}>
+                          "
+                          {item.comment ||
+                            'No comment  No comment found No comment found No comment found No comment found '}
+                          "
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+              </ScrollView>
+            </View>
 
-              {/* <View style={styles.section}>
+            {/* <View style={styles.section}>
               <Text style={styles.sectionTitle}>Comments</Text>
               <Text style={styles.sectionContent}>
                 {facilityDetails?.comments || 'N/A'}
               </Text>
             </View> */}
-              <Modal
-                transparent={true}
-                visible={isModalVisible}
-                animationType="slide"
-                onRequestClose={() => setIsModalVisible(false)}>
-                <View
-                  style={[styles.modalOverlay, {width: width, height: height}]}>
-                  <View style={styles.modalContainer}>
-                    {!actionType ? (
-                      <View style={{alignItems: 'center'}}>
-                        {getCallNumbers().length > 0 && (
-                          <TouchableOpacity
-                            style={[styles.button, {marginVertical: 15}]}
+            <Modal
+              transparent={true}
+              visible={isModalVisible}
+              animationType="slide"
+              onRequestClose={() => setIsModalVisible(false)}>
+              <View
+                style={[styles.modalOverlay, {width: width, height: height}]}>
+                <View style={styles.modalContainer}>
+                  {!actionType ? (
+                    <View style={{alignItems: 'center'}}>
+                      {getCallNumbers().length > 0 && (
+                        <TouchableOpacity
+                          style={[styles.button, {marginVertical: 15}]}
+                          onPress={() => handleActionPress('call')}>
+                          <Icon
+                            name="phone-alt"
+                            size={20}
+                            color={themeColors.primary}
+                          />
+                          <Text
+                            style={[
+                              styles.buttonText,
+                              {color: themeColors.primary},
+                            ]}
                             onPress={() => handleActionPress('call')}>
-                            <Icon
-                              name="phone-alt"
-                              size={20}
-                              color={themeColors.primary}
-                            />
-                            <Text
-                              style={[
-                                styles.buttonText,
-                                {color: themeColors.primary},
-                              ]}
-                              onPress={() => handleActionPress('call')}>
-                              Call
-                            </Text>
-                          </TouchableOpacity>
-                        )}
-                        {hasWhatsapp && (
-                          <TouchableOpacity
-                            style={[styles.button, {marginVertical: 15}]}
+                            Call
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                      {hasWhatsapp && (
+                        <TouchableOpacity
+                          style={[styles.button, {marginVertical: 15}]}
+                          onPress={() => handleActionPress('whatsapp')}>
+                          <Icon
+                            name="whatsapp"
+                            size={20}
+                            color={themeColors.primary}
+                          />
+                          <Text
+                            style={[
+                              styles.buttonText,
+                              {color: themeColors.primary},
+                            ]}
                             onPress={() => handleActionPress('whatsapp')}>
-                            <Icon
-                              name="whatsapp"
-                              size={20}
-                              color={themeColors.primary}
-                            />
+                            WhatsApp
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  ) : (
+                    <>
+                      <Text style={styles.modalTitle}>
+                        {actionType === 'call'
+                          ? 'Select a Number to Call'
+                          : 'Select a Number for WhatsApp'}
+                      </Text>
+                      {(actionType === 'call'
+                        ? getCallNumbers()
+                        : getWhatsappNumbers()
+                      ).map((number: string, index: number) => (
+                        <View key={index} style={styles.modalItemContainer}>
+                          <TouchableOpacity
+                            style={styles.modalItem}
+                            onPress={() => handleNumberSelect(number)}>
                             <Text
-                              style={[
-                                styles.buttonText,
-                                {color: themeColors.primary},
-                              ]}
-                              onPress={() => handleActionPress('whatsapp')}>
-                              WhatsApp
+                              style={styles.modalItemText}
+                              onPress={() => handleNumberSelect(number)}>
+                              {number}
                             </Text>
                           </TouchableOpacity>
-                        )}
-                      </View>
-                    ) : (
-                      <>
-                        <Text style={styles.modalTitle}>
-                          {actionType === 'call'
-                            ? 'Select a Number to Call'
-                            : 'Select a Number for WhatsApp'}
-                        </Text>
-                        {(actionType === 'call'
-                          ? getCallNumbers()
-                          : getWhatsappNumbers()
-                        ).map((number: string, index: number) => (
-                          <View key={index} style={styles.modalItemContainer}>
-                            <TouchableOpacity
-                              style={styles.modalItem}
-                              onPress={() => handleNumberSelect(number)}>
-                              <Text
-                                style={styles.modalItemText}
-                                onPress={() => handleNumberSelect(number)}>
-                                {number}
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        ))}
-                      </>
-                    )}
-                    <TouchableOpacity
-                      style={styles.modalCancel}
+                        </View>
+                      ))}
+                    </>
+                  )}
+                  <TouchableOpacity
+                    style={styles.modalCancel}
+                    onPress={() => {
+                      setIsModalVisible(false);
+                      if (hasWhatsapp) {
+                        setActionType(null);
+                      }
+                    }}>
+                    <Text
+                      style={styles.modalCancelText}
                       onPress={() => {
                         setIsModalVisible(false);
                         if (hasWhatsapp) {
                           setActionType(null);
                         }
                       }}>
-                      <Text
-                        style={styles.modalCancelText}
-                        onPress={() => {
-                          setIsModalVisible(false);
-                          if (hasWhatsapp) {
-                            setActionType(null);
-                          }
-                        }}>
-                        Cancel
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
                 </View>
-              </Modal>
-            </ScrollView>
+              </View>
+            </Modal>
+          </ScrollView>
+          <View
+            onLayout={e => {
+              setBottomBarHeight(e.nativeEvent.layout.height);
+            }}
+            style={styles.fixedButtonsContainer}>
+            <TouchableOpacity
+              style={styles.button}
+              onPress={() => setIsModalVisible(true)}>
+              <Icon name="phone-alt" size={20} color={themeColors.white} />
+              <Text style={styles.buttonText}>Contact</Text>
+            </TouchableOpacity>
             <View
-              onLayout={e => {
-                setBottomBarHeight(e.nativeEvent.layout.height);
-              }}
-              style={styles.fixedButtonsContainer}>
-              <TouchableOpacity
-                style={styles.button}
-                onPress={() => setIsModalVisible(true)}>
-                <Icon name="phone-alt" size={20} color={themeColors.white} />
-                <Text style={styles.buttonText}>Contact</Text>
-              </TouchableOpacity>
-              <View
-                style={{
-                  backgroundColor: 'white',
-                  height: 30,
-                  width: 2,
-                }}>
-                <Text></Text>
-              </View>
-              <TouchableOpacity
-                disabled={!distance}
-                style={styles.button}
-                onPress={openInMaps}>
-                <Icon
-                  name="map-marker-alt"
-                  size={20}
-                  color={themeColors.white}
-                />
-                <Text style={styles.buttonText}>
-                  Direction{' '}
-                  {distance || (
-                    <ActivityIndicator size={'small'} color={'#fff'} />
-                  )}
-                </Text>
-              </TouchableOpacity>
-              <View
-                style={{
-                  backgroundColor: 'white',
-                  height: 30,
-                  width: 2,
-                }}>
-                <Text></Text>
-              </View>
-              <TouchableOpacity style={styles.button} onPress={handleShare}>
-                <Icon name="share-alt" size={20} color={themeColors.white} />
-                <Text style={styles.buttonText}>Share</Text>
-              </TouchableOpacity>
+              style={{
+                backgroundColor: 'white',
+                height: 40,
+                width: 2,
+              }}>
+              <Text></Text>
             </View>
-          </>
-        )}
-      </View>
+            <TouchableOpacity
+              disabled={!distance}
+              style={[styles.button]}
+              onPress={openInMaps}>
+              <Icon name="map-marker-alt" size={20} color={themeColors.white} />
+              <Text style={styles.buttonText}>
+                Direction{' '}
+                {distance || (
+                  <ActivityIndicator size={'small'} color={'#fff'} />
+                )}
+              </Text>
+            </TouchableOpacity>
+            <View
+              style={{
+                backgroundColor: 'white',
+                height: 40,
+                width: 2,
+              }}>
+              <Text></Text>
+            </View>
+            <TouchableOpacity style={styles.button} onPress={handleShare}>
+              <Icon name="share-alt" size={20} color={themeColors.white} />
+              <Text style={styles.buttonText}>Share</Text>
+            </TouchableOpacity>
+          </View>
+        </>
+      )}
+    </View>
   );
 };
 
@@ -1340,9 +1335,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     backgroundColor: themeColors.primary,
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 10,
     borderTopWidth: 1,
     borderTopColor: themeColors.white,
+    height: 70,
+    width: '100%',
   },
   button: {
     flexDirection: 'row',

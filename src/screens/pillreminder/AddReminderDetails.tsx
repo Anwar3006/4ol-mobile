@@ -246,8 +246,10 @@ export default function AddReminderDetails({route}) {
   // Temporary state for iOS pickers (to prevent auto-close)
   const [tempStartDate, setTempStartDate] = useState(startDate);
   const [tempEndDate, setTempEndDate] = useState(endDate);
-  const [tempScheduledTimes, setTempScheduledTimes] = useState<Date[]>(scheduledTimes);
-  const [tempFirstIntakeTime, setTempFirstIntakeTime] = useState(firstIntakeTime);
+  const [tempScheduledTimes, setTempScheduledTimes] =
+    useState<Date[]>(scheduledTimes);
+  const [tempFirstIntakeTime, setTempFirstIntakeTime] =
+    useState(firstIntakeTime);
 
   // Calculate interval if notification type is Interval
   useEffect(() => {
@@ -1291,7 +1293,9 @@ export default function AddReminderDetails({route}) {
                 </View>
                 <DateTimePicker
                   value={
-                    Platform.OS === 'ios' ? tempFirstIntakeTime : firstIntakeTime
+                    Platform.OS === 'ios'
+                      ? tempFirstIntakeTime
+                      : firstIntakeTime
                   }
                   mode="time"
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
@@ -1409,14 +1413,16 @@ export default function AddReminderDetails({route}) {
         onPress={onSubmit}
         style={{
           position: 'absolute',
-          bottom: 10,
+          bottom: 40,
           left: 10,
           right: 10,
           backgroundColor: themeColors.primary,
           padding: 12,
+          justifyContent: 'center',
           alignItems: 'center',
-          borderRadius: 4,
-          marginTop: 16,
+          borderRadius: 8,
+          marginTop: 6,
+          height: 50,
         }}>
         <Text style={{color: '#fff', fontWeight: '700'}}>
           {medication ? 'Update Reminder' : 'Set Reminder'}

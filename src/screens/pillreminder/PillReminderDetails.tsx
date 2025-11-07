@@ -1367,7 +1367,7 @@ const styles = StyleSheet.create({
   },
   fabItem: {
     // position: 'absolute',
-    width: 48,
+    width: 38,
     height: 68,
     right: 6,
     bottom: 30, // Position above the main FAB
@@ -1377,9 +1377,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   fabItemInner: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 52,
+    height: 52,
+    borderRadius: 25,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'white', // Default color, overridden inline
@@ -1388,6 +1388,7 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 1},
     shadowOpacity: 0.2,
     shadowRadius: 1.41,
+    marginLeft: 10,
   },
   fabLabel: {
     position: 'absolute',
@@ -1399,7 +1400,8 @@ const styles = StyleSheet.create({
   },
   fabLabelText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '600',
   },
   // Modal styles
   modalOverlay: {

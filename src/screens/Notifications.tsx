@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   },
   supportButtonView: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 20,
     height: verticalScale(65),
     width: '100%',
     justifyContent: 'center',

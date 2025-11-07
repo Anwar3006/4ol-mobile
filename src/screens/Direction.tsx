@@ -546,30 +546,36 @@ const DirectionScreen: React.FC<DirectionScreenProps> = ({
     }
 
     const destinationStr = `${destination.latitude},${destination.longitude}`;
-    const url =
-      Platform.OS === 'ios'
-        ? `http://maps.apple.com/?daddr=${destinationStr}&dirflg=${
-            mode === 'DRIVING' ? 'd' : mode === 'WALKING' ? 'w' : 't'
-          }`
-        : `https://www.google.com/maps/dir/?api=1&destination=${destinationStr}&travelmode=${mode.toLowerCase()}`;
+    const travelMode = mode.toLowerCase();
+    const googleMapsWebUrl = `https://www.google.com/maps/dir/?api=1&destination=${destinationStr}&travelmode=${travelMode}`;
+    const googleMapsAppUrl = `comgooglemaps://?daddr=${destinationStr}&directionsmode=${travelMode}`;
+
+    const handleOpen = async () => {
+      try {
+        if (Platform.OS === 'ios') {
+          const canOpenGoogleMaps = await Linking.canOpenURL(
+            'comgooglemaps://',
+          );
+          if (canOpenGoogleMaps) {
+            await Linking.openURL(googleMapsAppUrl);
+          } else {
+            await Linking.openURL(googleMapsWebUrl);
+          }
+        } else {
+          await Linking.openURL(googleMapsWebUrl);
+        }
+      } catch (err) {
+        console.error('Error opening Google Maps:', err);
+        Alert.alert('Error', 'Failed to open Google Maps');
+      }
+    };
 
     Alert.alert('Open in Maps', 'Would you like to open this route in Maps?', [
       {text: 'Cancel', style: 'cancel'},
       {
         text: 'Open',
         onPress: () => {
-          Linking.canOpenURL(url)
-            .then(supported => {
-              if (supported) {
-                return Linking.openURL(url);
-              } else {
-                Alert.alert('Error', 'Unable to open Maps application');
-              }
-            })
-            .catch(err => {
-              console.error('Error opening maps:', err);
-              Alert.alert('Error', 'Failed to open Maps application');
-            });
+          handleOpen();
         },
       },
     ]);

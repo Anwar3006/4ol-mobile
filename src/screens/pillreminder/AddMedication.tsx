@@ -658,6 +658,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
+    height: 100,
   },
   nextButton: {
     backgroundColor: themeColors.primary,
