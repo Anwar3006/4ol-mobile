@@ -761,7 +761,7 @@ const DashboardPeriods = ({route}: FlowTypeDates) => {
     <View style={styles.date_of_period_container}>
       {isLoading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size={30} color={themeColors.primary} />
+          <ActivityIndicator size={'large'} color={themeColors.primary} />
         </View>
       ) : (
         <>

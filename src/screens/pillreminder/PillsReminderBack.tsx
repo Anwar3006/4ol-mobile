@@ -501,7 +501,7 @@ const PillsReminderScreen = () => {
           alignItems: 'center',
         }}>
         {isLoading ? (
-          <ActivityIndicator size={22} color={themeColors.primary} />
+          <ActivityIndicator size="small" color={themeColors.primary} />
         ) : medicationsData && medicationsData.length > 0 ? (
           <FlatList
             data={medicationsData}

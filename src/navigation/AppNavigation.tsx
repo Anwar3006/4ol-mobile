@@ -44,6 +44,7 @@ import {setPeriodTracker} from '../store/slices/periodTracker';
 import TrackAge from '../screens/periodsTrackerScreens/TrackAge';
 import DashboardCalenderView from '../screens/periodsTrackerScreens/DashboardCalenderView';
 import Notifications from '../screens/Notifications';
+import {themeColors} from '../theme/colors';
 import SearchScreen from '../screens/SearchScreen';
 import CategoryResultsScreen from '../screens/CategoryResultsScreen';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
@@ -366,11 +367,19 @@ const AppNavigation = props => {
 
   return (
     <Stack.Navigator
-      screenOptions={{
+      screenOptions={({navigation}) => ({
         animation: 'slide_from_right',
-        headerBackTitleVisible: false,
-        headerBackButtonDisplayMode: 'minimal',
-      }}
+        headerBackTitle: '',
+        headerTitleAlign: 'center',
+        headerLeft: () =>
+          navigation.canGoBack() ? (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}>
+              <FontAwesome5Icon name="chevron-left" size={18} color={'black'} />
+            </TouchableOpacity>
+          ) : null,
+      })}
       initialRouteName={'BottomNavigation'}>
       <Stack.Screen
         name={'BottomNavigation'}
@@ -483,46 +492,25 @@ const PeriodsTrackerNavigationStack = () => {
         {periodTrackerData && periodTrackerData.length > 0 ? (
           <>
             <Stack.Screen
-              options={{
+              options={({navigation}) => ({
                 title: 'Period & Ovulation',
-                // header: props => (
-                //   <View
-                //     style={{
-                //       flexDirection: 'row',
-                //       alignItems: 'center',
-                //       paddingVertical: 20,
-                //       paddingHorizontal: 15,
-                //       backgroundColor: 'white',
-                //       elevation: 5,
-                //       gap: 15,
-                //     }}>
-                //     <TouchableOpacity onPress={() => props.navigation.goBack()}>
-                //       <FontAwesome5Icon
-                //         name="chevron-left"
-                //         size={20}
-                //         color="black"
-                //       />
-                //     </TouchableOpacity>
-                //     <Text
-                //       style={{
-                //         fontSize: 18,
-                //         fontWeight: '600',
-                //         color: 'black',
-                //       }}>
-                //       Period & Ovulation
-                //     </Text>
-                //     <Image
-                //       style={{
-                //         height: 20,
-                //         width: 20,
-                //         resizeMode: 'contain',
-                //         alignSelf: 'center',
-                //       }}
-                //       source={require('../../assets/images/periodIcon.png')}
-                //     />
-                //   </View>
-                // ),
-              }}
+                headerLeft: () => (
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                    }}
+                    onPress={() => navigation.goBack()}>
+                    <FontAwesome5Icon
+                      name="chevron-left"
+                      size={18}
+                      color="black"
+                    />
+                  </TouchableOpacity>
+                ),
+              })}
               name={'DashboardPeriods'}
               component={DashboardPeriods}
             />
@@ -614,6 +602,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  backButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
 });
 

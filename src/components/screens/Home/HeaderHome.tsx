@@ -120,7 +120,7 @@ const HeaderHome = () => {
         <View style={styles.headerSide}>
           <Icon
             name="bell"
-            size={24}
+            size={22}
             color={themeColors.darkGray}
             style={styles.bellIcon}
           />

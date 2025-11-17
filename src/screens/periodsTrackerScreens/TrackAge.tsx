@@ -77,7 +77,7 @@ const TrackAge = ({route}: HealthGoalRoutes) => {
                 })
               }>
               {/* {isLoading ? (
-          <ActivityIndicator size={20} color={themeColors.white} />
+          <ActivityIndicator size="small" color={themeColors.white} />
         ) : ( */}
               <Text style={styles.donetext}>{'Next'}</Text>
               {/* )} */}

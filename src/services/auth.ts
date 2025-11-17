@@ -269,12 +269,13 @@ export const getUserProfile = async (
       .eq('id', id);
 
     if (fetchErrorFcm) {
-      console.error('Error while updating FCM token:', fetchErrorFcm);
-      errorCallback(new Error('Failed to update FCM token'));
-      return;
+      console.error(
+        'Error while updating FCM token (continuing to fetch profile):',
+        fetchErrorFcm,
+      );
+    } else {
+      console.log('~ updateUserFcm:', updateUserFcm);
     }
-
-    console.log('~ updateUserFcm:', updateUserFcm);
 
     // User profile ko fetch kar rahe hain
     const {data: userProfile, error: fetchError} = await supabase

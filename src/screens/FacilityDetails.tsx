@@ -681,9 +681,12 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
 
   useEffect(() => {
     const fetchReviewData = async () => {
+      if (!facilityDetails?.id) {
+        return;
+      }
       try {
         setLoading(true);
-        const data = await getFacilityRatingReview(facilityDetails?.id);
+        const data = await getFacilityRatingReview(facilityDetails.id);
         setReviewData(data);
         setRefresh(false);
       } catch (error) {
@@ -1338,12 +1341,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderTopWidth: 1,
     borderTopColor: themeColors.white,
-    height: 70,
+    height: 90,
     width: '100%',
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 25,
   },
   buttonText: {
     marginLeft: 5,

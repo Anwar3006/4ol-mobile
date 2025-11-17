@@ -1,5 +1,6 @@
 import axios from 'axios';
 import moment from 'moment';
+import {Platform} from 'react-native';
 import DeviceInfo from 'react-native-device-info';
 import {supabase} from '../utils/supabaseClient';
 
@@ -19,7 +20,12 @@ export const logActivity = async (
 ) => {
   try {
     loadCallback();
-    activity.timestamp = moment().format('DD-MM-YYYY HH:mm:ss');
+    const formattedTimestamp =
+      Platform.OS === 'ios'
+        ? moment().toISOString()
+        : moment().format('DD-MM-YYYY HH:mm:ss');
+
+    activity.timestamp = formattedTimestamp;
     const deviceInfo = {
       deviceId: DeviceInfo.getDeviceId() || '',
       deviceName: (await DeviceInfo.getDeviceName()) || '',
@@ -43,9 +49,12 @@ export const logActivity = async (
     };
     const {data, error} = await supabase
       .from('activity_logs')
-      .insert([activityLog]);
+      .insert([activityLog])
+      .select()
+      .single();
     if (error) {
-      errorCallback(new Error('Failed to log activity'));
+      console.error('Supabase activity log insert failed', error);
+      errorCallback(error);
       return;
     }
     successCallback(data);

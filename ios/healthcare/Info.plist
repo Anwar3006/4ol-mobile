@@ -35,14 +35,28 @@
 	<string>We need access to your location to show nearby healthcare facilities and provide accurate directions to your selected providers.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>We need access to your location to show nearby healthcare facilities and provide accurate directions to your selected providers, even when the app is in the background.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>We need access to your location to show nearby healthcare facilities and provide accurate directions to your selected providers, even when the app is running in the background.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>We need access to your camera to take photos for your medication reminders and profile pictures.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>We need access to your photo library to select images for your medication reminders and profile pictures.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>We need permission to save photos to your library when you capture or edit images for your medication reminders and profile.</string>
+	<key>NSRemindersUsageDescription</key>
+	<string>We use reminders to schedule medication alerts so that you never miss a dose.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>We use your calendar to ensure medication reminders align with your schedule.</string>
 	<key>LSApplicationQueriesSchemes</key>
 	<array>
 		<string>comgooglemaps</string>
 	</array>
+	<key>NSFaceIDUsageDescription</key>
+	<string>We use Face ID to quickly and securely unlock your account.</string>
+	<key>NSBiometricsUsageDescription</key>
+	<string>We use Touch ID to quickly and securely unlock your account.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>We use Face ID to quickly and securely unlock your account.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>OpenSans-Bold.ttf</string>

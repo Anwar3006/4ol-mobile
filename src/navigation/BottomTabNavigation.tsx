@@ -68,7 +68,7 @@ const BottomTabNavigation: React.FC = () => {
       <Tab.Navigator
         screenOptions={({route}) => ({
           tabBarHideOnKeyboard: true,
-          // tabBarStyle: {height: 70},
+          tabBarStyle: {height: 80},
           headerStyle: {
             backgroundColor: themeColors.white,
             elevation: 5,
@@ -180,18 +180,18 @@ const BottomTabNavigation: React.FC = () => {
                 {iconName == 'favorite' ? (
                   <MaterialIcon
                     name={iconName}
-                    size={20}
+                    size={28}
                     color={focused ? themeColors.white : themeColors.darkGray}
                   />
                 ) : iconName == 'medkit' ? (
                   <Image
                     source={require('../../assets/images/pillsReminderIcon2.png')}
-                    style={{width: 22, height: 22}}
+                    style={{width: 25, height: 25}}
                   />
                 ) : (
                   <Icon
                     name={iconName}
-                    size={20}
+                    size={25}
                     color={focused ? themeColors.white : themeColors.darkGray}
                   />
                 )}

@@ -494,135 +494,140 @@ const PillReminderDetails = ({navigation, route}) => {
       item.reminder_timestamps.length > 0;
 
     return (
-      <View
-        style={[
-          styles.medicationCard,
-          {borderLeftColor: item.color || themeColors.primary},
-          highlightedId === item.id && styles.highlightedCard,
-        ]}>
+      <TouchableOpacity
+        onPress={() =>
+          navigation.navigate('MedicationDetailsView', {medication: item})
+        }>
         <View
           style={[
-            styles.iconContainer,
-            {backgroundColor: item.color || themeColors.primary},
+            styles.medicationCard,
+            {borderLeftColor: item.color || themeColors.primary},
+            highlightedId === item.id && styles.highlightedCard,
           ]}>
-          {getMedicationIcon(item.medication_type)}
-        </View>
-        <View style={styles.medicationInfo}>
-          <Text style={styles.medicationName}>
-            {item.medication_name || 'Unnamed Medication'}
-          </Text>
-          <Text style={styles.medicationDosage}>
-            {medicationDose > 0 ? `${medicationDose}mg • ` : ''}
-            {medicationAmount > 0
-              ? `${medicationAmount} ${getMedicationTypeLabel(
-                  item.medication_type,
-                  medicationAmount,
-                )}`
-              : ''}
-            {intakeAmount > 0 ? ` • ${intakeAmount}x daily` : ''}
-          </Text>
-          <View style={styles.reminderInfoContainer}>
-            <View style={styles.reminderInfoItem}>
-              <Icon
-                name="event"
-                size={14}
-                color="#666"
-                style={styles.infoIcon}
-              />
-              <Text style={styles.reminderInfoText}>
-                {formatReminderType(item.reminder_type, item.gap_days)}
-              </Text>
-            </View>
+          <View
+            style={[
+              styles.iconContainer,
+              {backgroundColor: item.color || themeColors.primary},
+            ]}>
+            {getMedicationIcon(item.medication_type)}
+          </View>
+          <View style={styles.medicationInfo}>
+            <Text style={styles.medicationName}>
+              {item.medication_name || 'Unnamed Medication'}
+            </Text>
+            <Text style={styles.medicationDosage}>
+              {medicationDose > 0 ? `${medicationDose}mg • ` : ''}
+              {medicationAmount > 0
+                ? `${medicationAmount} ${getMedicationTypeLabel(
+                    item.medication_type,
+                    medicationAmount,
+                  )}`
+                : ''}
+              {intakeAmount > 0 ? ` • ${intakeAmount}x daily` : ''}
+            </Text>
+            <View style={styles.reminderInfoContainer}>
+              <View style={styles.reminderInfoItem}>
+                <Icon
+                  name="event"
+                  size={14}
+                  color="#666"
+                  style={styles.infoIcon}
+                />
+                <Text style={styles.reminderInfoText}>
+                  {formatReminderType(item.reminder_type, item.gap_days)}
+                </Text>
+              </View>
 
-            <View style={[styles.reminderInfoItem]}>
-              <Icon
-                name="date-range"
-                size={14}
-                color="#666"
-                style={styles.infoIcon}
-              />
-              <Text style={styles.reminderInfoText}>
-                {formatDateRange(item.start_date, item.end_date)}
-              </Text>
+              <View style={[styles.reminderInfoItem]}>
+                <Icon
+                  name="date-range"
+                  size={14}
+                  color="#666"
+                  style={styles.infoIcon}
+                />
+                <Text style={styles.reminderInfoText}>
+                  {formatDateRange(item.start_date, item.end_date)}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
-        {/*<View style={styles.chevronContainer}>
+          {/*<View style={styles.chevronContainer}>
           <Icon name="chevron-right" size={24} color="#AAA" />
-        </View>*/}
-        {hasTimestamps && (
-          <View style={styles.menuTopRight}>
-            <Menu>
-              <MenuTrigger>
-                <View style={styles.infoButtonPopup}>
-                  <Icon name="more-vert" size={20} color="#000" />
-                </View>
-              </MenuTrigger>
-
-              <MenuOptions
-                customStyles={{optionsContainer: styles.menuOptions}}>
-                <MenuOption
-                  onSelect={() =>
-                    navigation.navigate('MedicationDetailsView', {
-                      medication: item,
-                    })
-                  }>
-                  <View style={styles.menuOptionRow}>
-                    <Icon
-                      name="visibility"
-                      size={18}
-                      color="#333"
-                      style={styles.menuOptionIcon}
-                    />
-                    <Text style={styles.menuOptionText}>View</Text>
+          </View>*/}
+          {hasTimestamps && (
+            <View style={styles.menuTopRight}>
+              <Menu>
+                <MenuTrigger>
+                  <View style={styles.infoButtonPopup}>
+                    <Icon name="more-vert" size={20} color="#000" />
                   </View>
-                </MenuOption>
+                </MenuTrigger>
 
-                <MenuOption
-                  onSelect={() => {
-                    navigation.navigate('AddMedication', {
-                      title: 'Edit Medication Reminder',
-                      medication: item,
-                    });
-                  }}>
-                  <View style={styles.menuOptionRow}>
-                    <Icon
-                      name="edit"
-                      size={18}
-                      color="#333"
-                      style={styles.menuOptionIcon}
-                    />
-                    <Text style={styles.menuOptionText}>Edit</Text>
-                  </View>
-                </MenuOption>
+                <MenuOptions
+                  customStyles={{optionsContainer: styles.menuOptions}}>
+                  <MenuOption
+                    onSelect={() =>
+                      navigation.navigate('MedicationDetailsView', {
+                        medication: item,
+                      })
+                    }>
+                    <View style={styles.menuOptionRow}>
+                      <Icon
+                        name="visibility"
+                        size={18}
+                        color="#333"
+                        style={styles.menuOptionIcon}
+                      />
+                      <Text style={styles.menuOptionText}>View</Text>
+                    </View>
+                  </MenuOption>
 
-                <MenuOption
-                  onSelect={() => {
-                    setSelectedReminder(item); // store selected medication/reminder
-                    setDeleteModalVisible(true); // open modal
-                  }}>
-                  <View style={styles.menuOptionRow}>
-                    <Icon
-                      name="delete"
-                      size={18}
-                      color="red"
-                      style={styles.menuOptionIcon}
-                    />
-                    <Text style={[styles.menuOptionText, {color: 'red'}]}>
-                      Delete
-                    </Text>
-                  </View>
-                </MenuOption>
-              </MenuOptions>
-            </Menu>
-          </View>
-        )}
-        {/* <TouchableOpacity
+                  <MenuOption
+                    onSelect={() => {
+                      navigation.navigate('AddMedication', {
+                        title: 'Edit Medication Reminder',
+                        medication: item,
+                      });
+                    }}>
+                    <View style={styles.menuOptionRow}>
+                      <Icon
+                        name="edit"
+                        size={18}
+                        color="#333"
+                        style={styles.menuOptionIcon}
+                      />
+                      <Text style={styles.menuOptionText}>Edit</Text>
+                    </View>
+                  </MenuOption>
+
+                  <MenuOption
+                    onSelect={() => {
+                      setSelectedReminder(item); // store selected medication/reminder
+                      setDeleteModalVisible(true); // open modal
+                    }}>
+                    <View style={styles.menuOptionRow}>
+                      <Icon
+                        name="delete"
+                        size={18}
+                        color="red"
+                        style={styles.menuOptionIcon}
+                      />
+                      <Text style={[styles.menuOptionText, {color: 'red'}]}>
+                        Delete
+                      </Text>
+                    </View>
+                  </MenuOption>
+                </MenuOptions>
+              </Menu>
+            </View>
+          )}
+          {/* <TouchableOpacity
           style={styles.menuButton}
           onPress={() => setShowOptionsModal(true)}>
           <Icon name="more-vert" size={20} color="#666" />
-        </TouchableOpacity> */}
-      </View>
+          </TouchableOpacity> */}
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -722,24 +727,30 @@ const PillReminderDetails = ({navigation, route}) => {
       () => setDeleteLoading(true),
       () => {
         setDeleteLoading(false);
-        setDeleteModalVisible(false);
         Toast.show('Medication reminder deleted successfully!', {
           type: 'success',
           placement: 'top',
           duration: 4000,
           animationType: 'slide-in',
         });
-        loadMedicationData();
+        setTimeout(() => {
+          setDeleteModalVisible(false);
+          setSelectedReminder(null);
+          loadMedicationData();
+        }, 0);
       },
       (error: any) => {
         setDeleteLoading(false);
-        setDeleteModalVisible(false);
         Toast.show(`Failed to delete reminder: ${error.message}`, {
           type: 'danger',
           placement: 'top',
           duration: 4000,
           animationType: 'slide-in',
         });
+        setTimeout(() => {
+          setDeleteModalVisible(false);
+          setSelectedReminder(null);
+        }, 0);
       },
     );
   };

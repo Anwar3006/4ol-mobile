@@ -21,7 +21,7 @@ import {SCREENS} from '../../constants/screens';
 import {fonts} from '../../theme/fonts';
 import {getUserProfile, login} from '../../services/auth';
 import {useToast} from 'react-native-toast-notifications';
-import {useDispatch} from 'react-redux';
+import {useDispatch, useSelector} from 'react-redux';
 import {isBiometricUser, setUserData} from '../../store/slices/User';
 import DeviceCountry from 'react-native-device-country';
 import TouchID from 'react-native-touch-id';
@@ -43,6 +43,9 @@ import {useKeyboard} from '../../hooks/keyboard';
 const LoginScreen = () => {
   const dispatch = useDispatch<Dispatch<UnknownAction>>();
   const navigation = useNavigation<NavigationProp<NavigationStackParams>>();
+  const {isBiometricUserAvailable} = useSelector(
+    (state: any) => state.userData,
+  );
 
   const toast = useToast();
   const phoneInput = useRef<any>(null);
@@ -55,11 +58,13 @@ const LoginScreen = () => {
   const [countryCode, setCountryCode] = useState<any>();
   const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
   const [showTerms, setShowTerms] = useState(false);
+  const biometricAttemptedRef = useRef(false);
 
   useEffect(() => {
     const loadSettings = async () => {
       try {
         const value = await AsyncStorage.getItem('biometricEnabled');
+        console.log('Biometric settings loaded from storage:', value);
         setIsBiometricEnabled(value ? JSON.parse(value) : false);
       } catch (error) {
         console.error('Failed to load settings', error);
@@ -96,6 +101,7 @@ const LoginScreen = () => {
 
   const handleLoginWithTouchId = async () => {
     const userId = await AsyncStorage.getItem('user_id');
+    console.log('Biometric login - retrieved user_id:', userId);
 
     const getFcmToken = async () => {
       try {
@@ -108,11 +114,16 @@ const LoginScreen = () => {
       }
     };
 
-    // const authStatus = await messaging().requestPermission();
-    // const enabled =
-    //   authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-    //   authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-    //
+    try {
+      await TouchID.isSupported();
+    } catch (err) {
+      console.log('Biometric authentication not supported:', err);
+      setError(
+        'Biometric authentication is not available or has not been set up on this device.',
+      );
+      dispatch(isBiometricUser(false));
+      return;
+    }
 
     const fcm_token = await getFcmToken();
     console.log('~ fcm token in Login TouchId:', fcm_token);
@@ -121,6 +132,10 @@ const LoginScreen = () => {
 
     TouchID.authenticate('', optionalConfigObject)
       .then((success: any) => {
+        console.log(
+          'Biometric authentication success, fetching profile for user:',
+          userId,
+        );
         if (userId) {
           getUserProfile(
             //@ts-ignore
@@ -139,12 +154,21 @@ const LoginScreen = () => {
 
               dispatch(setUserData(successData));
               setLoading(false);
-              navigation.navigate('BottomNavigation');
+              // Ensure Route switches from LoginScreen to the main app navigator
+              dispatch(isBiometricUser(false));
             },
             (error: any) => {
+              console.log(
+                'Error while fetching user after biometric success:',
+                error,
+              );
               console.log('Error while fetching user:', error);
               setLoading(false);
             },
+          );
+        } else {
+          console.log(
+            'Biometric authentication succeeded but no user_id found in storage.',
           );
         }
       })
@@ -153,11 +177,25 @@ const LoginScreen = () => {
           'Biometric authentication is not available or has not been set up on this device.',
         );
         console.log('errorBioMetric', error);
+        dispatch(isBiometricUser(false));
       });
     // }
   };
 
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
+
+  useEffect(() => {
+    if (
+      isBiometricUserAvailable &&
+      isBiometricEnabled &&
+      !biometricAttemptedRef.current
+    ) {
+      biometricAttemptedRef.current = true;
+      handleLoginWithTouchId();
+    } else if (!isBiometricUserAvailable) {
+      biometricAttemptedRef.current = false;
+    }
+  }, [isBiometricUserAvailable, isBiometricEnabled]);
 
   const ReusableModal = ({visible, onClose, title, children}: any) => {
     return (

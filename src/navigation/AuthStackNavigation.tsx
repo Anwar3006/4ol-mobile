@@ -64,7 +64,7 @@ const AuthStackNavigation = () => {
   if (isUserLoginLoading) {
     return (
       <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}>
-        <ActivityIndicator color={themeColors.primary} size={30} />
+        <ActivityIndicator color={themeColors.primary} size={'large'} />
       </View>
     );
   }

@@ -661,7 +661,9 @@ const EditMedications = ({route}: MedicationTimeSlotsProps) => {
           duration: 4000,
           animationType: 'slide-in',
         });
-        navigation.navigate('PillsReminder');
+        setTimeout(() => {
+          navigation.navigate('PillsReminder');
+        }, 0);
       },
       (error: any) => {
         toast.show(`you're unabel to upload medication details`, {
@@ -977,7 +979,7 @@ const EditMedications = ({route}: MedicationTimeSlotsProps) => {
           callMedicationUpdated();
         }}>
         {isLoading ? (
-          <ActivityIndicator size={20} color={themeColors.white} />
+          <ActivityIndicator size={'small'} color={themeColors.white} />
         ) : (
           <Text style={styles.donetext}>{'Continue'}</Text>
         )}
@@ -1041,7 +1043,7 @@ const EditMedications = ({route}: MedicationTimeSlotsProps) => {
         />
       </View> */}
 
-      {/* 
+      {/*
       <TouchableOpacity
         activeOpacity={0.7}
         disabled={isLoading ? true : false}
@@ -1050,7 +1052,9 @@ const EditMedications = ({route}: MedicationTimeSlotsProps) => {
           callMedicationScheduled();
         }}>
         {isLoading ? (
-          <ActivityIndicator size={20} color={themeColors.white} />
+          <View style={styles.loaderWrapper}>
+            <ActivityIndicator size="small" color={themeColors.white} />
+          </View>
         ) : (
           <Text style={styles.donetext}>{'Done'}</Text>
         )}
@@ -1461,6 +1465,11 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 15,
     backgroundColor: themeColors.lightGray,
+  },
+  loaderWrapper: {
+    height: verticalScale(24),
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   inputContainer: {},
   label: {

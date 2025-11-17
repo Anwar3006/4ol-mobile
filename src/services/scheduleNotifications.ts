@@ -7,6 +7,7 @@ import notifee, {
 import moment from 'moment';
 import {themeColors} from '../../src/theme/colors';
 import {SCREENS} from '../constants/screens';
+import {ensureNotificationPermission} from '../utils/permissions';
 
 export const clearAllNotifications = async () => {
   try {
@@ -221,6 +222,14 @@ const getTypeLabel = (type: string, count: number): string => {
 export const scheduleMedicationReminders = async medication => {
   if (!medication || !medication.id || !medication.medication_name) {
     console.error('Invalid medication data');
+    return [];
+  }
+
+  const hasPermission = await ensureNotificationPermission();
+  if (!hasPermission) {
+    console.warn(
+      `Notification permission denied. Skipping scheduling for ${medication.medication_name}`,
+    );
     return [];
   }
 

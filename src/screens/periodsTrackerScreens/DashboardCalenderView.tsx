@@ -268,7 +268,7 @@ const DashboardCalenderView = ({route}: any) => {
     <View style={styles.dashboardCalenderView}>
       {isLoading ? (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size={30} color={themeColors.primary} />
+          <ActivityIndicator size={'large'} color={themeColors.primary} />
         </View>
       ) : (
         <>

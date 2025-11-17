@@ -61,11 +61,15 @@ const SearchBar: React.FC<SearchBarProps> = ({
         />
       </View>
       {showBtn && (
-        <TouchableOpacity onPress={handleSearch}>
+        <TouchableOpacity onPress={handleSearch} style={styles.searchBtn}>
           <Text
             style={[
-              styles.searchBtn,
-              {height: searchHeight, fontSize: isTablet ? 25 : 15},
+              {
+                // height: searchHeight,
+                fontSize: isTablet ? 25 : 17,
+                color: themeColors.white,
+                fontFamily: fonts.QuincyCFBold,
+              },
             ]}>
             Search
           </Text>
@@ -122,5 +126,8 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     textAlign: 'center',
     textAlignVertical: 'center',
+    height: 43,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
   },
 });

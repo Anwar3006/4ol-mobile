@@ -117,7 +117,7 @@ const HomeScreen = () => {
             backgroundColor: 'rgba(0,0,0,0.5)',
             gap: 15,
           }}>
-          <ActivityIndicator size={70} color={themeColors.primary} />
+          <ActivityIndicator size={'large'} color={themeColors.primary} />
           <Text style={{fontFamily: fonts.OpenSansBold, fontSize: 20}}>
             searching...
           </Text>
@@ -200,7 +200,10 @@ const HomeScreen = () => {
                     elevation: 2,
                   }}>
                   {keywordLoading ? (
-                    <ActivityIndicator size={30} color={themeColors.primary} />
+                    <ActivityIndicator
+                      size={'large'}
+                      color={themeColors.primary}
+                    />
                   ) : (
                     <>
                       <Text style={{color: 'gray'}}>Results</Text>

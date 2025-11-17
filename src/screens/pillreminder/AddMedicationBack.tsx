@@ -9,9 +9,6 @@ import {
   Modal,
   Pressable,
   Image,
-  Alert,
-  Platform,
-  Linking,
 } from 'react-native';
 import {themeColors} from '../../theme/colors';
 import Icon from 'react-native-vector-icons/FontAwesome5';
@@ -21,7 +18,7 @@ import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIc
 import EntypoIcon from 'react-native-vector-icons/Entypo';
 import {size} from '../../theme/fontStyle';
 import {fonts} from '../../theme/fonts';
-import {PERMISSIONS, request} from 'react-native-permissions';
+import {ensureCameraPermission, ensurePhotoLibraryPermission} from '../../utils/permissions';
 import {Image as compressImage} from 'react-native-compressor';
 import ImageCropPicker from 'react-native-image-crop-picker';
 import {Formik} from 'formik';
@@ -60,8 +57,6 @@ const AddMedication = () => {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [imageModalVisible, setImageModalVisible] = useState(false);
-  const [cameraPermission, setCameraPermission] = React.useState<string>('');
-  const [galleryPermission, setGalleryPermission] = React.useState<string>('');
 
   const medicationTypes = [
     {
@@ -213,118 +208,58 @@ const AddMedication = () => {
     // requestGalleryPermission();
   }, []);
 
-  const requestCameraPermission = async () => {
-    try {
-      const result = await request(
-        Platform.OS === 'ios'
-          ? PERMISSIONS.IOS.CAMERA
-          : PERMISSIONS.ANDROID.CAMERA,
-      );
-      if (result === 'granted') {
-        setCameraPermission(result);
-      } else {
-        console.log('Permission camera granted', result);
-      }
-    } catch (error) {
-      console.error('Error requesting camera permission:', error);
-    }
-  };
-
-  const requestGalleryPermission = async () => {
-    try {
-      const result = await request(
-        Platform.OS === 'ios'
-          ? PERMISSIONS.IOS.PHOTO_LIBRARY
-          : PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE,
-      );
-      if (result === 'granted') {
-        setGalleryPermission(result);
-      } else {
-        console.log('Permission granted', result);
-      }
-    } catch (error) {
-      console.error('Error requesting camera permission:', error);
-    }
-  };
-
   const handleCameraOpen = () => {
-    try {
-      setImageModalVisible(false);
-      if (cameraPermission === 'granted') {
-        ImageCropPicker.openCamera({
+    const openCameraPicker = async () => {
+      try {
+        const allowed = await ensureCameraPermission();
+        if (!allowed) {
+          return;
+        }
+
+        const image = await ImageCropPicker.openCamera({
           multiple: false,
           mediaType: 'photo',
           compressImageQuality: 0.3,
-        })
-          .then(async (images: any) => {
-            const result = await compressImage.compress(images?.path);
-            setMedication(prev => ({...prev, image: result}));
-          })
-          .catch(error => {
-            console.log(error, 'error');
-          });
-      } else {
-        Alert.alert(
-          'Permission Required',
-          'Please grant permission to access the camera to proceed.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                if (Platform.OS === 'ios') {
-                  Linking.openURL('app-settings:');
-                }
-                if (Platform.OS === 'android') {
-                  Linking.openSettings();
-                }
-              },
-            },
-          ],
-        );
+        });
+        const result = await compressImage.compress(image?.path);
+        setMedication(prev => ({...prev, image: result}));
+      } catch (error) {
+        if (error?.message === 'User cancelled image selection') {
+          return;
+        }
+        console.log(error, 'error');
       }
-    } catch (error) {
-      console.log(error, 'error');
-    }
+    };
+
+    setImageModalVisible(false);
+    openCameraPicker();
   };
 
   const handleGalleryOpen = () => {
-    try {
-      setImageModalVisible(false);
-      if (galleryPermission === 'granted') {
-        ImageCropPicker.openPicker({
+    const openPicker = async () => {
+      try {
+        const allowed = await ensurePhotoLibraryPermission();
+        if (!allowed) {
+          return;
+        }
+
+        const image = await ImageCropPicker.openPicker({
           multiple: false,
           mediaType: 'photo',
           compressImageQuality: 0.3,
-        })
-          .then(async (images: any) => {
-            const result = await compressImage.compress(images?.path);
-            setMedication(prev => ({...prev, image: result}));
-          })
-          .catch(error => {
-            console.log(error, 'error');
-          });
-      } else {
-        Alert.alert(
-          'Permission Required',
-          'Please grant permission to access the gallery to proceed.',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                if (Platform.OS === 'ios') {
-                  Linking.openURL('app-settings:');
-                }
-                if (Platform.OS === 'android') {
-                  Linking.openSettings();
-                }
-              },
-            },
-          ],
-        );
+        });
+        const result = await compressImage.compress(image?.path);
+        setMedication(prev => ({...prev, image: result}));
+      } catch (error) {
+        if (error?.message === 'User cancelled image selection') {
+          return;
+        }
+        console.log(error, 'error');
       }
-    } catch (error) {
-      console.log(error, 'error');
-    }
+    };
+
+    setImageModalVisible(false);
+    openPicker();
   };
 
   // const handleSubmit = () => {
@@ -571,7 +506,7 @@ const AddMedication = () => {
           </Modal>
 
           {/* Image Picker Modal */}
-          {/* 
+          {/*
           <Modal
             visible={imageModalVisible}
             transparent

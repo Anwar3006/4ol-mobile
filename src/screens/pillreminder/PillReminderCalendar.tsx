@@ -420,7 +420,10 @@ const PillsReminderCalendarScreen = () => {
                       justifyContent: 'center',
                       gap: 10,
                     }}>
-                    <ActivityIndicator size={30} color={themeColors.primary} />
+                    <ActivityIndicator
+                      size="large"
+                      color={themeColors.primary}
+                    />
                     <Text style={styles.emptyText}>
                       Loading medication reminder...
                     </Text>

@@ -1363,7 +1363,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-maps/Generated (1.26.18):
+  - react-native-maps/Generated (1.26.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1384,7 +1384,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-maps/Google (1.26.18):
+  - react-native-maps/Google (1.26.0):
     - DoubleConversion
     - glog
     - Google-Maps-iOS-Utils (= 6.1.0)
@@ -1409,7 +1409,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - react-native-maps/Maps (1.26.18):
+  - react-native-maps/Maps (1.26.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -2560,7 +2560,7 @@ SPEC CHECKSUMS:
   react-native-device-country: d13b0340f87c6ea522c5822d285ec5175bdc0294
   react-native-geolocation: 57a4a35c149d8613f81b89ff155e6ae28e76aea0
   react-native-image-picker: 5f9867b6a223594dbfdb456428638daef42e6e6c
-  react-native-maps: 9902670ae35c180a536b0af16d89c71dbf9fc91f
+  react-native-maps: eb43ec660ec0882a257b7ce1d6a3943e8c490aab
   react-native-pager-view: 9f70b7e25421b00907ae50a82906d9201d8c3bba
   react-native-restart: 0bc732f4461709022a742bb29bcccf6bbc5b4863
   react-native-safe-area-context: afc464441362333ffe4cd96f3e623e374362a2f6
@@ -2605,7 +2605,7 @@ SPEC CHECKSUMS:
   RNGestureHandler: e986a1c140d854f5365945aec56dc95e282ce58b
   RNImageCropPicker: b0afedeefd8655254a15c34103718455fde6ce59
   RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
-  RNPermissions: 34a056b3e81da28fafb55fb8f895acf4ac9504a1
+  RNPermissions: e4389b21f239ce0599cf404e2777ad891a933ca0
   RNReanimated: 827e7ffa1b416a84a659cfb2394779453054e351
   RNScreens: b54497b366e39eacadc175aa2d45881b578bdaa2
   RNSentry: f6698a6343af3e31ba953707d25b0dfc08592290
@@ -2616,6 +2616,6 @@ SPEC CHECKSUMS:
   TouchID: 6d9af299007675845fe9e23bd2701f4354613366
   Yoga: fdc0542faa3ba87e56f2030b3f3f2e21bc3ba01c
 
-PODFILE CHECKSUM: 299ad2ba492f7742bfa21c3e5df2a8288ec42ca5
+PODFILE CHECKSUM: b6e3c44c8b9b2d103e67068bdc35518b546bc288
 
 COCOAPODS: 1.16.2

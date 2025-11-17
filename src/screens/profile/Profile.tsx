@@ -15,6 +15,10 @@ import RawBottomSheet from '../../components/shared-components/RawBottomSheet';
 import {useDispatch, useSelector} from 'react-redux';
 import {user} from '../../store/selectors';
 import ImageCropPicker from 'react-native-image-crop-picker';
+import {
+  ensureCameraPermission,
+  ensurePhotoLibraryPermission,
+} from '../../utils/permissions';
 import {horizontalScale, verticalScale} from '../../utils/metrics';
 import CameraIcon from 'react-native-vector-icons/FontAwesome5';
 import CustomInput from '../../components/common/CustomInput';
@@ -73,25 +77,49 @@ const Profile = () => {
   }, []);
 
   const openGallery = async () => {
-    const galleryImage = await ImageCropPicker.openPicker({
-      width: 300,
-      height: 400,
-      cropping: true,
-    });
-    setimagePath(galleryImage.path);
-    handleimageUpload(galleryImage.path);
-    refRBSheet.current.close();
+    try {
+      const allowed = await ensurePhotoLibraryPermission();
+      if (!allowed) {
+        return;
+      }
+
+      const galleryImage = await ImageCropPicker.openPicker({
+        width: 300,
+        height: 400,
+        cropping: true,
+      });
+      setimagePath(galleryImage.path);
+      handleimageUpload(galleryImage.path);
+      refRBSheet.current.close();
+    } catch (error) {
+      if (error?.message === 'User cancelled image selection') {
+        return;
+      }
+      console.log('openGallery error', error);
+    }
   };
 
   const openCamera = async () => {
-    const cameraImage = await ImageCropPicker.openCamera({
-      width: 300,
-      height: 400,
-      cropping: true,
-    });
-    setimagePath(cameraImage.path);
-    handleimageUpload(cameraImage.path);
-    refRBSheet.current.close();
+    try {
+      const allowed = await ensureCameraPermission();
+      if (!allowed) {
+        return;
+      }
+
+      const cameraImage = await ImageCropPicker.openCamera({
+        width: 300,
+        height: 400,
+        cropping: true,
+      });
+      setimagePath(cameraImage.path);
+      handleimageUpload(cameraImage.path);
+      refRBSheet.current.close();
+    } catch (error) {
+      if (error?.message === 'User cancelled image selection') {
+        return;
+      }
+      console.log('openCamera error', error);
+    }
   };
 
   console.log('~save iamge url-', saveimageUrl);
