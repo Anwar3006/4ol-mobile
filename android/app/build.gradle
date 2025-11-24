@@ -160,7 +160,12 @@ dependencies {
         implementation jscFlavor
     }
 }
-
+configurations.all {
+    resolutionStrategy.dependencySubstitution {
+        substitute(module('com.github.banketree:AndroidLame-kotlin'))
+                .using(module('com.github.kaushik-naik:TAndroidLame:a485052f28'))
+    }
+}
 
 
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")
