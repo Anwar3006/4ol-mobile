@@ -345,7 +345,7 @@
 //
 //
 
-import React, {useState, useCallback} from 'react';
+import React, {useState, useCallback, useEffect} from 'react';
 import {StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {themeColors} from '../../../theme/colors';
 import {size} from '../../../theme/fontStyle';
@@ -364,7 +364,8 @@ const Category = () => {
 
   // This state will ALWAYS reflect the true width of the container
   const [containerWidth, setContainerWidth] = useState<number>(0);
-
+  const [iWidth, setIWidth] = useState<number>(0);
+  const [iHeight, setIHeight] = useState<number>(0);
   const handleLayout = useCallback((event: any) => {
     const {width} = event.nativeEvent.layout;
     setContainerWidth(width);
@@ -381,10 +382,17 @@ const Category = () => {
     return 4;
   };
 
-  const isSmall = containerWidth < 450;
   const itemsPerRow = getItemsPerRow(containerWidth);
-  const iWidth = isSmall ? 88 : 120;
-  const iHeight = isSmall ? 80 : 90;
+  useEffect(() => {
+    const isSmall = containerWidth < 450;
+    if (containerWidth <= 380) {
+      setIWidth(75);
+      setIHeight(75);
+    } else {
+      setIWidth(isSmall ? 88 : 120);
+      setIHeight(isSmall ? 80 : 90);
+    }
+  }, [containerWidth]);
 
   const {categories = []} = CategoryComponent() || {};
 

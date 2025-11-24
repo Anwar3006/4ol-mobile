@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useMemo, useState} from 'react';
 import {
   View,
   Modal,
@@ -12,6 +12,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   FlatList,
+  useWindowDimensions,
+  SafeAreaView,
 } from 'react-native';
 import {RadioButton} from 'react-native-paper';
 import {themeColors} from '../../theme/colors';
@@ -40,15 +42,46 @@ interface ChatModalProps {
   visible: boolean;
   togglemodal: () => void;
 }
+
+type VisibleUser = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  avatar_url?: string;
+};
+
+type DirectMessage = {
+  sender_id: string;
+  receiver_id: string;
+  message: string;
+  created_at: string | number;
+};
+
 export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
   const userData: any = useSelector(user);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'support' | 'direct'>('support');
-  const [visibleUsers, setVisibleUsers] = useState([]);
-  const [userChats, setUserChats] = useState([]);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [directMessages, setDirectMessages] = useState([]);
+  const [visibleUsers, setVisibleUsers] = useState<VisibleUser[]>([]);
+  const [userChats, setUserChats] = useState<any[]>([]);
+  const [selectedUser, setSelectedUser] = useState<VisibleUser | null>(null);
+  const [directMessages, setDirectMessages] = useState<DirectMessage[]>([]);
   const [directMessageText, setDirectMessageText] = useState('');
+  const {width, height} = useWindowDimensions();
+
+  const modalDimensions = useMemo(() => {
+    const horizontalPadding = horizontalScale(24);
+    const modalWidth = Math.min(
+      width - horizontalPadding,
+      horizontalScale(360),
+    );
+    const modalHeight = Math.min(
+      height - verticalScale(80),
+      verticalScale(640),
+    );
+
+    return {modalWidth, modalHeight};
+  }, [width, height]);
 
   // Load data when modal opens
   useEffect(() => {
@@ -79,7 +112,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
     }
   };
 
-  const handleUserSelect = async user => {
+  const handleUserSelect = async (user: VisibleUser) => {
     setSelectedUser(user);
     try {
       const messages = await getDirectMessages(userData?.id, user.id);
@@ -99,14 +132,14 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
         selectedUser.id,
         directMessageText,
         () => setLoading(true),
-        successData => {
+        (successData: any) => {
           setLoading(false);
           setDirectMessageText('');
           // Reload messages
           handleUserSelect(selectedUser);
           loadChatData(); // Refresh chat list
         },
-        error => {
+        (error: any) => {
           setLoading(false);
           Alert.alert('Error', 'Failed to send message');
         },
@@ -117,7 +150,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
     }
   };
 
-  const getRoleColor = role => {
+  const getRoleColor = (role: string) => {
     switch (role) {
       case USER_ROLES.MANAGER:
         return '#FF6B6B';
@@ -130,7 +163,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
     }
   };
 
-  const getRoleIcon = role => {
+  const getRoleIcon = (role: string) => {
     switch (role) {
       case USER_ROLES.MANAGER:
         return 'user';
@@ -175,7 +208,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
           togglemodal();
           console.log('Message sent successfully:', successData);
         },
-        error => {
+        (error: any) => {
           setLoading(false);
           console.error('Error sending message:', error);
           Alert.alert(
@@ -194,8 +227,15 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
       onRequestClose={togglemodal}
       transparent={true}>
       <View style={[styles.modalBackground]}>
-        <View
-          style={[styles.modalContainer, {backgroundColor: themeColors.white}]}>
+        <SafeAreaView
+          style={[
+            styles.modalContainer,
+            {
+              backgroundColor: themeColors.white,
+              width: modalDimensions.modalWidth,
+              height: modalDimensions.modalHeight,
+            },
+          ]}>
           <View
             style={[
               styles.modalHeader,
@@ -243,112 +283,97 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
             </TouchableOpacity>
           </View>
           {activeTab === 'support' ? (
-            <ScrollView
-              style={{padding: 15}}
-              contentContainerStyle={{paddingBottom: 100}}>
-              <Text style={{color: themeColors.black}}>
-                Sorry, we aren't online at the moment. Leave a message and we
-                will get back to you
-              </Text>
-              <Text
-                style={{
-                  marginTop: 7,
-                  fontSize: fontSize(15),
-                  fontWeight: 'bold',
-                  color: themeColors.black,
-                }}>
-                Name
-              </Text>
-              <TextInput
-                style={[
-                  styles.input,
-                  {
-                    borderColor: formik.errors.name
-                      ? 'red'
-                      : themeColors.darkGray,
-                  },
-                ]}
-                value={formik.values.name}
-                onChangeText={formik.handleChange('name')}
-                onBlur={formik.handleBlur('name')}
-              />
-              {formik.touched.name && formik.errors.name && (
-                <Text style={{fontSize: fontSize(13), color: 'red'}}>
-                  {formik.errors.name}
+            <KeyboardAvoidingView
+              style={{flex: 1}}
+              behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+              <ScrollView
+                style={{padding: 15}}
+                bounces={false}
+                contentContainerStyle={{paddingBottom: 120}}>
+                <Text style={{color: themeColors.black}}>
+                  Sorry, we aren't online at the moment. Leave a message and we
+                  will get back to you
                 </Text>
-              )}
-              <Text
-                style={{
-                  marginTop: 10,
-                  fontSize: fontSize(15),
-                  fontWeight: 'bold',
-                  color: themeColors.black,
-                }}>
-                What can we help you with today?
-              </Text>
-              <RadioButton.Group
-                onValueChange={value =>
-                  formik.setFieldValue('selectedOption', value)
-                }
-                value={formik.values.selectedOption}>
-                {[
-                  'General question',
-                  'Feature request',
-                  'Bug report',
-                  'My account',
-                  'Other',
-                ].map(option => (
-                  <View style={styles.radioItem} key={option}>
-                    <RadioButton value={option} />
-                    <Text
-                      style={[styles.radioText, {color: themeColors.black}]}>
-                      {option}
-                    </Text>
-                  </View>
-                ))}
-              </RadioButton.Group>
-              {formik.touched.selectedOption &&
-                formik.errors.selectedOption && (
-                  <Text
-                    style={{
-                      fontSize: fontSize(13),
-                      color: 'red',
-                      marginBottom: moderateScale(10),
-                    }}>
-                    {formik.errors.selectedOption}
-                  </Text>
+                <Text style={styles.inputLabel}>Name</Text>
+                <TextInput
+                  style={[
+                    styles.input,
+                    {
+                      borderColor: formik.errors.name
+                        ? themeColors.red
+                        : themeColors.darkGray,
+                    },
+                  ]}
+                  placeholder="Enter your full name"
+                  placeholderTextColor={themeColors.darkGray}
+                  value={formik.values.name}
+                  onChangeText={formik.handleChange('name')}
+                  onBlur={formik.handleBlur('name')}
+                />
+                {formik.touched.name && formik.errors.name && (
+                  <Text style={styles.errorText}>{formik.errors.name}</Text>
                 )}
-              <Text
-                style={{
-                  fontSize: fontSize(15),
-                  fontWeight: 'bold',
-                  color: themeColors.black,
-                  marginTop: -5,
-                  marginBottom: 7,
-                }}>
-                Message
-              </Text>
-              <TextInput
-                style={[
-                  styles.messageInput,
-                  {
-                    borderColor: formik.errors.message
-                      ? 'red'
-                      : themeColors.darkGray,
-                  },
-                ]}
-                multiline={true}
-                textAlignVertical="top"
-                value={formik.values.message}
-                onChangeText={formik.handleChange('message')}
-                onBlur={formik.handleBlur('message')}
-              />
-              {formik.touched.message && formik.errors.message && (
-                <Text style={{color: 'red', fontSize: fontSize(13)}}>
-                  {formik.errors.message}
+                <Text style={styles.inputLabel}>
+                  What can we help you with today?
                 </Text>
-              )}
-            </ScrollView>
+                <RadioButton.Group
+                  onValueChange={value =>
+                    formik.setFieldValue('selectedOption', value)
+                  }
+                  value={formik.values.selectedOption}>
+                  {[
+                    'General question',
+                    'Feature request',
+                    'Bug report',
+                    'My account',
+                    'Other',
+                  ].map(option => (
+                    <View style={styles.radioItem} key={option}>
+                      <View
+                        style={{
+                          borderColor: 'black',
+                          borderWidth: 1,
+                          borderRadius: 50,
+                          marginVertical: 5,
+                          marginHorizontal: 5,
+                        }}>
+                        <RadioButton value={option} />
+                      </View>
+                      <Text style={[styles.radioText, {color: 'black'}]}>
+                        {option}
+                      </Text>
+                    </View>
+                  ))}
+                </RadioButton.Group>
+                {formik.touched.selectedOption &&
+                  formik.errors.selectedOption && (
+                    <Text style={styles.errorText}>
+                      {formik.errors.selectedOption}
+                    </Text>
+                  )}
+                <Text style={styles.inputLabel}>Message</Text>
+                <TextInput
+                  style={[
+                    styles.messageInput,
+                    {
+                      borderColor: formik.errors.message
+                        ? themeColors.red
+                        : themeColors.darkGray,
+                    },
+                  ]}
+                  placeholder="Share details so our team can assist you"
+                  placeholderTextColor={themeColors.darkGray}
+                  multiline={true}
+                  textAlignVertical="top"
+                  value={formik.values.message}
+                  onChangeText={formik.handleChange('message')}
+                  onBlur={formik.handleBlur('message')}
+                />
+                {formik.touched.message && formik.errors.message && (
+                  <Text style={styles.errorText}>{formik.errors.message}</Text>
+                )}
+              </ScrollView>
+            </KeyboardAvoidingView>
           ) : (
             <View style={{flex: 1, padding: 15}}>
               {!selectedUser ? (
@@ -401,7 +426,15 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
                   />
                 </View>
               ) : (
-                <View style={{flex: 1}}>
+                <View
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: themeColors.lightGray,
+                    borderRadius: 10,
+                    margin: 10,
+                    width: moderateScale(300),
+                  }}>
                   {/* Chat Header */}
                   <View style={styles.chatHeader}>
                     <TouchableOpacity onPress={() => setSelectedUser(null)}>
@@ -409,6 +442,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
                         name="arrow-left"
                         size={20}
                         color={themeColors.primary}
+                        style={{marginRight: 10}}
                       />
                     </TouchableOpacity>
                     <View
@@ -519,7 +553,7 @@ export const ChatModal: React.FC<ChatModalProps> = ({visible, togglemodal}) => {
               )}
             </View>
           )}
-        </View>
+        </SafeAreaView>
       </View>
     </Modal>
   );
@@ -530,10 +564,11 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: horizontalScale(12),
+    paddingVertical: verticalScale(20),
   },
   modalContainer: {
-    height: verticalScale(600),
-    width: horizontalScale(300),
     borderRadius: 10,
     alignItems: 'center',
     shadowColor: '#000',
@@ -553,16 +588,19 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 10,
   },
   modalHeaderText: {
+    flex: 1,
     fontSize: fontSize(20),
     fontWeight: 'bold',
     textAlign: 'center',
     color: '#fff',
-    paddingLeft: horizontalScale(70),
   },
   input: {
     borderWidth: 1,
     marginTop: 10,
-    borderRadius: 5,
+    borderRadius: 8,
+    paddingHorizontal: moderateScale(12),
+    paddingVertical: moderateScale(10),
+    backgroundColor: themeColors.white,
   },
   radioItem: {
     flexDirection: 'row',
@@ -571,10 +609,24 @@ const styles = StyleSheet.create({
   radioText: {
     fontSize: fontSize(18),
   },
+  inputLabel: {
+    marginTop: moderateScale(12),
+    fontSize: fontSize(15),
+    fontWeight: 'bold',
+    color: themeColors.black,
+  },
   messageInput: {
     borderWidth: 1,
     height: verticalScale(155),
-    borderRadius: 5,
+    borderRadius: 8,
+    paddingHorizontal: moderateScale(12),
+    paddingVertical: moderateScale(12),
+    backgroundColor: themeColors.white,
+  },
+  errorText: {
+    fontSize: fontSize(13),
+    color: themeColors.red,
+    marginTop: moderateScale(4),
   },
   modalBottomView: {
     flexDirection: 'row',
@@ -649,7 +701,7 @@ const styles = StyleSheet.create({
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: moderateScale(15),
+    padding: moderateScale(30),
     borderBottomWidth: 1,
     borderBottomColor: themeColors.lightGray,
     backgroundColor: themeColors.lightGray,
@@ -668,6 +720,8 @@ const styles = StyleSheet.create({
   messagesContainer: {
     flex: 1,
     padding: moderateScale(10),
+    borderBottomWidth: 1,
+    borderBottomColor: themeColors.lightGray,
   },
   messageBubble: {
     maxWidth: '80%',

@@ -88,8 +88,8 @@ android {
         applicationId "com.fourourlifeapppay.fourourlifeapppay"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 7
-        versionName "7.0"
+        versionCode 8
+        versionName "8.0"
     }
     signingConfigs {
         debug {
@@ -160,5 +160,7 @@ dependencies {
         implementation jscFlavor
     }
 }
+
+
 
 apply from: file("../../node_modules/react-native-vector-icons/fonts.gradle")

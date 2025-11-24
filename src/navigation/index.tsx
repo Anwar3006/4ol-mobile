@@ -46,6 +46,7 @@ const Route = () => {
   //console.log('user-data-----', userData);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [routeHandlingBiometric, setRouteHandlingBiometric] = useState(false); // Track if Route is handling biometric
 
   const appState = useRef(AppState.currentState);
   const biometricInProgressRef = useRef(false);
@@ -136,13 +137,57 @@ const Route = () => {
       const isAuthenticated = isAuthenticatedJSON
         ? JSON.parse(isAuthenticatedJSON)
         : false;
+
+      // Detect cold start - if no lastMinimizedTime OR it's very old (>5 minutes),
+      // it means app was completely closed/killed
+      const isColdStart =
+        !lastMinimizedTime ||
+        (lastMinimizedTime &&
+          currentTime - parseInt(lastMinimizedTime) > 300000); // 5 minutes
+
+      if (isColdStart) {
+        // On cold start, always reset auth state so LoginScreen can request biometric
+        await AsyncStorage.setItem('isAuthenticated', JSON.stringify(false));
+        await AsyncStorage.removeItem('routeBiometricInProgress').catch(
+          () => {},
+        );
+        // Clear old lastMinimizedTime to ensure next cold start is detected
+        if (lastMinimizedTime) {
+          await AsyncStorage.removeItem('lastMinimizedTime');
+        }
+        // Check if user is logged in with biometric enabled
+        const userId = await AsyncStorage.getItem('user_id');
+        const isLoggedInJSON = await AsyncStorage.getItem('isLoggedIn');
+        const isLoggedIn = isLoggedInJSON ? JSON.parse(isLoggedInJSON) : false;
+        const biometricEnabledJSON = await AsyncStorage.getItem(
+          'biometricEnabled',
+        );
+        const biometricEnabled = biometricEnabledJSON
+          ? JSON.parse(biometricEnabledJSON)
+          : false;
+
+        // If user is logged in with biometric enabled, show LoginScreen
+        if (userId && isLoggedIn && biometricEnabled) {
+          dispatch(isBiometricUser(true));
+        } else {
+          dispatch(isBiometricUser(false));
+        }
+        return; // Exit early on cold start - don't trigger biometric in Route
+      }
+
+      // Only trigger biometric on app resume (not cold start)
       if (
         (lastMinimizedTime &&
           currentTime - parseInt(lastMinimizedTime) >= 30000) || // Check if 30 seconds have passed
         !isAuthenticated
       ) {
-        dispatch(isBiometricUser(true));
-
+        // Route will handle biometric - set flag immediately to prevent LoginScreen from triggering
+        setRouteHandlingBiometric(true);
+        AsyncStorage.setItem(
+          'routeBiometricInProgress',
+          JSON.stringify(true),
+        ).catch(() => {});
+        // Don't set isBiometricUser(true) - Route handles biometric directly, LoginScreen only shows if needed for retry
         triggerBiometricLogin();
       }
     };
@@ -158,6 +203,12 @@ const Route = () => {
       });
 
       await AsyncStorage.setItem('isAuthenticated', JSON.stringify(false));
+      // Set flag to indicate Route is handling biometric (prevent LoginScreen from triggering)
+      await AsyncStorage.setItem(
+        'routeBiometricInProgress',
+        JSON.stringify(true),
+      );
+
       const userId = await AsyncStorage.getItem('user_id');
       const isLoggedInJSON = await AsyncStorage.getItem('isLoggedIn');
       const isLoggedIn = isLoggedInJSON ? JSON.parse(isLoggedInJSON) : false;
@@ -182,6 +233,9 @@ const Route = () => {
             console.log('Biometric authentication success');
             setIsModalVisible(false);
             await AsyncStorage.setItem('isAuthenticated', JSON.stringify(true));
+            // Clear the flag after successful authentication
+            setRouteHandlingBiometric(false);
+            await AsyncStorage.removeItem('routeBiometricInProgress');
             dispatch(isBiometricUser(false));
           })
           .catch(async (error: any) => {
@@ -200,15 +254,31 @@ const Route = () => {
               },
             });
             await AsyncStorage.removeItem('isAuthenticated');
+            // Clear the flag on error - but wait a moment before allowing LoginScreen to trigger
+            // This prevents double triggering if Route's modal retry is used
+            setTimeout(() => {
+              setRouteHandlingBiometric(false);
+              AsyncStorage.removeItem('routeBiometricInProgress').catch(
+                () => {},
+              );
+            }, 500);
             // await AsyncStorage.removeItem('isLoggedIn');
             dispatch(setUserData(''));
             console.log('Biometric authentication failed', error);
             setIsModalVisible(true);
+            // Don't set isBiometricUser(true) here - let user use modal retry first
+            // Only show LoginScreen if user navigates there manually or modal retry fails multiple times
           });
       } else {
+        // Clear the flag if conditions aren't met
+        setRouteHandlingBiometric(false);
+        await AsyncStorage.removeItem('routeBiometricInProgress');
         dispatch(isBiometricUser(false));
       }
     } catch (error) {
+      // Clear the flag on exception
+      setRouteHandlingBiometric(false);
+      await AsyncStorage.removeItem('routeBiometricInProgress').catch(() => {});
       Sentry.captureException(error, {
         tags: {component: 'biometric-flow'},
       });
@@ -217,8 +287,8 @@ const Route = () => {
 
   const handleRetryAuthentication = () => {
     setIsModalVisible(false);
-    dispatch(isBiometricUser(true));
-
+    // Don't set isBiometricUser(true) here - Route will handle the retry
+    // LoginScreen will only show if biometric fails multiple times
     triggerBiometricLogin(); // Retry biometric authentication
   };
 
@@ -368,8 +438,13 @@ const Route = () => {
     <NavigationContainer
       ref={navigationRef}
       onReady={() => console.log('Navigation is ready')}>
-      {isBiometricUserAvailable ? (
+      {isBiometricUserAvailable && !routeHandlingBiometric ? (
         <LoginScreen />
+      ) : isBiometricUserAvailable && routeHandlingBiometric ? (
+        // Show loading while Route handles biometric on resume
+        <View style={styles.loaderContainer}>
+          <ActivityIndicator size="large" color={themeColors.primary} />
+        </View>
       ) : userData?.id ? (
         // Change: Don't create another NavigationContainer in AppNavigation
         <AppNavigation />

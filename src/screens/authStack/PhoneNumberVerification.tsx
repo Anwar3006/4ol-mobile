@@ -10,8 +10,6 @@ import {fonts} from '../../theme/fonts';
 import {SCREENS} from '../../constants/screens';
 import {signInWithPhoneNumber} from '../../services/auth';
 import {useToast} from 'react-native-toast-notifications';
-import {getCountry} from '../../utils/helpers';
-import DeviceCountry from 'react-native-device-country';
 import {KeyboardAvoidingView} from 'react-native';
 import {Formik, FormikConfig} from 'formik';
 import {NavigationStackParams, PhoneNumberSchema} from '../../interfaces';
@@ -36,14 +34,8 @@ const PhoneNumberVerification = () => {
   const [countryCode, setCountryCode] = useState<any>();
 
   useEffect(() => {
-    DeviceCountry.getCountryCode()
-      .then(result => {
-        setCountryCode(result?.code?.toUpperCase() || 'GH');
-      })
-      .catch(e => {
-        setCountryCode('GH');
-        console.log('Error while getting country', e);
-      });
+    // Set default country code to Ghana (GH)
+    setCountryCode('GH');
   }, []);
 
   const handleSubmit = async (values: PhoneNumberSchema) => {

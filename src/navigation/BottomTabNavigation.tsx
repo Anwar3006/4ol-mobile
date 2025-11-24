@@ -25,10 +25,21 @@ import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {BottomTabSchema, StackParams} from '../interfaces';
 import RegisteredFacilites from '../screens/Locator/RegisteredFacilites';
 import {moderateScale, verticalScale} from '../utils/metrics';
-
+import {useWindowDimensions} from 'react-native';
+import {Platform} from 'react-native';
 const Tab = createBottomTabNavigator<any>();
-
 const BottomTabNavigation: React.FC = () => {
+  const {width} = useWindowDimensions();
+  const [iheight, setIheight] = useState<number>(0);
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      setIheight(55);
+    } else if (width <= 380) {
+      setIheight(55);
+    } else {
+      setIheight(80);
+    }
+  }, [width]);
   const userData: any = useSelector(user);
   const paddingAnim = useRef(new Animated.Value(0)).current;
 
@@ -68,7 +79,7 @@ const BottomTabNavigation: React.FC = () => {
       <Tab.Navigator
         screenOptions={({route}) => ({
           tabBarHideOnKeyboard: true,
-          tabBarStyle: {height: 80},
+          tabBarStyle: {height: iheight},
           headerStyle: {
             backgroundColor: themeColors.white,
             elevation: 5,
@@ -180,18 +191,21 @@ const BottomTabNavigation: React.FC = () => {
                 {iconName == 'favorite' ? (
                   <MaterialIcon
                     name={iconName}
-                    size={28}
+                    size={Platform.OS === 'android' ? 25 : 28}
                     color={focused ? themeColors.white : themeColors.darkGray}
                   />
                 ) : iconName == 'medkit' ? (
                   <Image
                     source={require('../../assets/images/pillsReminderIcon2.png')}
-                    style={{width: 25, height: 25}}
+                    style={{
+                      width: Platform.OS === 'android' ? 25 : 28,
+                      height: Platform.OS === 'android' ? 25 : 28,
+                    }}
                   />
                 ) : (
                   <Icon
                     name={iconName}
-                    size={25}
+                    size={Platform.OS === 'android' ? 25 : 28}
                     color={focused ? themeColors.white : themeColors.darkGray}
                   />
                 )}

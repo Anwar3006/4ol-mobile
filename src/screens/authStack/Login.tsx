@@ -23,7 +23,6 @@ import {getUserProfile, login} from '../../services/auth';
 import {useToast} from 'react-native-toast-notifications';
 import {useDispatch, useSelector} from 'react-redux';
 import {isBiometricUser, setUserData} from '../../store/slices/User';
-import DeviceCountry from 'react-native-device-country';
 import TouchID from 'react-native-touch-id';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PhoneNumberComponent from '../../components/auth/PhoneNumberComponent';
@@ -74,17 +73,8 @@ const LoginScreen = () => {
   }, []);
 
   useEffect(() => {
-    const fetchCountryCode = async () => {
-      try {
-        const result = await DeviceCountry.getCountryCode();
-        setCountryCode(result?.code?.toUpperCase() || 'GH');
-      } catch (e) {
-        setCountryCode('GH');
-        console.log('Error while getting country', e);
-      }
-    };
-
-    fetchCountryCode(); // Call the async function inside useEffect
+    // Set default country code to Ghana (GH)
+    setCountryCode('GH');
   }, []);
 
   const optionalConfigObject = {

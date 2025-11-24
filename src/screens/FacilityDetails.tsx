@@ -48,6 +48,7 @@ import {supabase} from '../utils/supabaseClient';
 import Geolocation from '@react-native-community/geolocation';
 import {fetchDistanceAndDuration} from '../services/distanceDurationService';
 import DistanceCache from '../utils/distanceCache';
+
 type FacilityDetailsProps = {
   navigation?: NativeStackNavigationProp<any>;
   route?: {
@@ -68,6 +69,20 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
   const [reviewData, setReviewData] = useState([]);
   const [userReview, setUserReview] = useState();
   const {width, height} = useWindowDimensions();
+  const [iheight, setIheight] = useState<number>(0);
+  const [imarginBottom, setIMarginBottom] = useState<number>(0);
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      setIheight(70);
+      setIMarginBottom(10);
+    } else if (width <= 380) {
+      setIheight(70);
+      setIMarginBottom(10);
+    } else {
+      setIheight(90);
+      setIMarginBottom(25);
+    }
+  }, [width]);
   console.log('width', width, 'height', height);
   const isTablet = width >= 600; // Adjust based on your tablet breakpoint
 
@@ -1164,9 +1179,9 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
             onLayout={e => {
               setBottomBarHeight(e.nativeEvent.layout.height);
             }}
-            style={styles.fixedButtonsContainer}>
+            style={[styles.fixedButtonsContainer, {height: iheight}]}>
             <TouchableOpacity
-              style={styles.button}
+              style={[styles.button, {marginBottom: imarginBottom}]}
               onPress={() => setIsModalVisible(true)}>
               <Icon name="phone-alt" size={20} color={themeColors.white} />
               <Text style={styles.buttonText}>Contact</Text>
@@ -1181,7 +1196,7 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
             </View>
             <TouchableOpacity
               disabled={!distance}
-              style={[styles.button]}
+              style={[styles.button, {marginBottom: imarginBottom}]}
               onPress={openInMaps}>
               <Icon name="map-marker-alt" size={20} color={themeColors.white} />
               <Text style={styles.buttonText}>
@@ -1199,7 +1214,9 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
               }}>
               <Text></Text>
             </View>
-            <TouchableOpacity style={styles.button} onPress={handleShare}>
+            <TouchableOpacity
+              style={[styles.button, {marginBottom: imarginBottom}]}
+              onPress={handleShare}>
               <Icon name="share-alt" size={20} color={themeColors.white} />
               <Text style={styles.buttonText}>Share</Text>
             </TouchableOpacity>
@@ -1341,13 +1358,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderTopWidth: 1,
     borderTopColor: themeColors.white,
-    height: 90,
+    // height: 90,
     width: '100%',
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 25,
   },
   buttonText: {
     marginLeft: 5,

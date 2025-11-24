@@ -221,25 +221,25 @@ export const login = async (
       }
       await AsyncStorage.setItem('user_id', userId);
       await AsyncStorage.setItem('isLoggedIn', JSON.stringify(true));
-      await logActivity(
-        {
-          user_id: userId,
-          user_name: `${userProfile.first_name} ${userProfile.last_name}`,
-          type: 'authentication',
-          description: 'User logged into the app',
-          reference: 'login',
-          reference_id: userId,
-        },
-        () => {
-          console.log('Logging login activity...');
-        },
-        data => {
-          console.log('Login activity logged successfully:', data);
-        },
-        error => {
-          console.error('Error logging login activity:', error);
-        },
-      );
+      // await logActivity(
+      //   {
+      //     user_id: userId,
+      //     user_name: `${userProfile.first_name} ${userProfile.last_name}`,
+      //     type: 'authentication',
+      //     description: 'User logged into the app',
+      //     reference: 'login',
+      //     reference_id: userId,
+      //   },
+      //   () => {
+      //     console.log('Logging login activity...');
+      //   },
+      //   data => {
+      //     console.log('Login activity logged successfully:', data);
+      //   },
+      //   error => {
+      //     console.error('Error logging login activity:', error);
+      //   },
+      // );
       successCallback(userProfile);
     } else {
       errorCallback(new Error('User ID is not available.'));

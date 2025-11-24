@@ -21,7 +21,8 @@ const LocationLayout = ({children}: any) => {
     RNRestart.restart();
     setRefreshing(false);
   };
-
+  // console.log('locationError', locationError);
+  console.log('location', location);
   return locationError ? (
     <ScrollView
       contentContainerStyle={styles.container}
