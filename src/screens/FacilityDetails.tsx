@@ -48,6 +48,7 @@ import {supabase} from '../utils/supabaseClient';
 import Geolocation from '@react-native-community/geolocation';
 import {fetchDistanceAndDuration} from '../services/distanceDurationService';
 import DistanceCache from '../utils/distanceCache';
+import {useNavigationMode} from 'react-native-navigation-mode';
 
 type FacilityDetailsProps = {
   navigation?: NativeStackNavigationProp<any>;
@@ -71,18 +72,61 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
   const {width, height} = useWindowDimensions();
   const [iheight, setIheight] = useState<number>(0);
   const [imarginBottom, setIMarginBottom] = useState<number>(0);
+  const {
+    navigationMode,
+    loading: navigationModeLoading,
+    error: navigationModeError,
+  } = useNavigationMode();
+
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      setIheight(70);
-      setIMarginBottom(10);
-    } else if (width <= 380) {
-      setIheight(70);
-      setIMarginBottom(10);
-    } else {
-      setIheight(90);
-      setIMarginBottom(25);
+    // iOS logic stays width-based as before
+    if (Platform.OS !== 'android') {
+      if (width <= 380) {
+        setIheight(70);
+        setIMarginBottom(10);
+      } else {
+        setIheight(90);
+        setIMarginBottom(25);
+      }
+      return;
     }
-  }, [width]);
+
+    // ANDROID: while loading or on error, keep the original Android defaults
+    if (navigationModeLoading || navigationModeError || !navigationMode) {
+      setIheight(70);
+      setIMarginBottom(10);
+      return;
+    }
+
+    // If navigation mode is gesture -> keep existing height
+    if (navigationMode.isGestureNavigation) {
+      if (width <= 395) {
+        setIheight(60);
+        setIMarginBottom(5);
+      } else if (width <= 480) {
+        setIheight(70);
+        setIMarginBottom(10);
+      } else if (width > 1000) {
+        setIheight(80);
+        setIMarginBottom(22);
+      } else {
+        setIheight(75);
+        setIMarginBottom(22);
+      }
+    } else {
+      // 3-button / 2-button navigation -> increase height & bottom margin
+      if (width <= 395) {
+        setIheight(60);
+        setIMarginBottom(5);
+      } else if (width <= 480) {
+        setIheight(110);
+        setIMarginBottom(40);
+      } else {
+        setIheight(110);
+        setIMarginBottom(40);
+      }
+    }
+  }, [width, navigationMode, navigationModeLoading, navigationModeError]);
   console.log('width', width, 'height', height);
   const isTablet = width >= 600; // Adjust based on your tablet breakpoint
 
@@ -1358,7 +1402,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderTopWidth: 1,
     borderTopColor: themeColors.white,
-    // height: 90,
     width: '100%',
   },
   button: {
@@ -1381,7 +1424,7 @@ const styles = StyleSheet.create({
     width: '80%',
     backgroundColor: themeColors.white,
     padding: 20,
-    borderRadius: 10,
+    // borderRadius: 10,
   },
   modalTitle: {
     fontSize: size.lg,

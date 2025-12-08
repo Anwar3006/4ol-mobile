@@ -27,19 +27,52 @@ import RegisteredFacilites from '../screens/Locator/RegisteredFacilites';
 import {moderateScale, verticalScale} from '../utils/metrics';
 import {useWindowDimensions} from 'react-native';
 import {Platform} from 'react-native';
+import {useNavigationMode} from 'react-native-navigation-mode';
 const Tab = createBottomTabNavigator<any>();
 const BottomTabNavigation: React.FC = () => {
-  const {width} = useWindowDimensions();
   const [iheight, setIheight] = useState<number>(0);
+  const [headerHeight, setHeaderHeight] = useState<number>(0);
+  const {navigationMode, loading, error} = useNavigationMode();
+  const {width} = useWindowDimensions();
+
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      setIheight(55);
-    } else if (width <= 380) {
-      setIheight(55);
+    // Adjust header height based on screen width
+    if (width <= 395) {
+      setHeaderHeight(55);
     } else {
-      setIheight(80);
+      setHeaderHeight(80);
     }
   }, [width]);
+  useEffect(() => {
+    // iOS logic stays as before
+    if (Platform.OS !== 'android') {
+      if (width <= 395) {
+        setIheight(55);
+      } else {
+        setIheight(80);
+      }
+      return;
+    }
+
+    // ANDROID: while loading or on error, use a sane default
+    if (loading || error || !navigationMode) {
+      setIheight(55);
+      return;
+    }
+
+    // If navigation mode is gesture -> DO NOT increase height
+    if (navigationMode.isGestureNavigation) {
+      setIheight(55); // normal height for gesture navigation
+    } else {
+      if (width <= 395) {
+        setIheight(55);
+      } else if (width <= 480) {
+        setIheight(95);
+      } else {
+        setIheight(95);
+      }
+    }
+  }, [width, navigationMode, loading, error]);
   const userData: any = useSelector(user);
   const paddingAnim = useRef(new Animated.Value(0)).current;
 
@@ -87,6 +120,7 @@ const BottomTabNavigation: React.FC = () => {
             shadowOffset: {width: 0, height: 3},
             shadowOpacity: 0.2,
             shadowRadius: 5,
+            height: headerHeight,
           },
           headerLeft: () => (
             <TouchableOpacity
@@ -263,13 +297,13 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   headerSide: {
-    marginBottom: verticalScale(15),
+    marginBottom: verticalScale(5),
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 10,
   },
   headerTitleContainer: {
-    marginBottom: verticalScale(15),
+    marginBottom: verticalScale(5),
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -298,7 +332,7 @@ const styles = StyleSheet.create({
     // paddingHorizontal: 10,
     width: 40,
     height: 40,
-    marginBottom: verticalScale(15),
+    marginBottom: verticalScale(5),
     borderRadius: 50,
     justifyContent: 'center',
     marginLeft: 15,

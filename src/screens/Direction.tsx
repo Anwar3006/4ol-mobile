@@ -693,7 +693,8 @@ const DirectionScreen: React.FC<DirectionScreenProps> = ({
           showsUserLocation={true}
           zoomControlEnabled={true}
           showsCompass={true}
-          showsMyLocationButton={true}
+          // Hide the blue target "my location" button
+          showsMyLocationButton={false}
           showsScale={true}
           onUserLocationChange={event => {
             const {latitude, longitude}: any = event.nativeEvent.coordinate;

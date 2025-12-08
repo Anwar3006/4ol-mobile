@@ -9,6 +9,7 @@ import {
   Image,
   ScrollView,
   SafeAreaView,
+  Platform,
 } from 'react-native';
 import {Dropdown} from 'react-native-element-dropdown';
 import ColorPicker, {
@@ -36,10 +37,19 @@ import {
   ensureCameraPermission,
   ensurePhotoLibraryPermission,
 } from '../../utils/permissions';
+import {useWindowDimensions} from 'react-native';
+import {useNavigationMode} from 'react-native-navigation-mode';
 
 export default function AddMedication({route}: any) {
   const router: any = useNavigation();
   const {title = 'Create Medication Reminder', medication} = route.params || {};
+  const {width: screenWidth} = useWindowDimensions();
+  const {
+    navigationMode,
+    loading: navLoading,
+    error: navError,
+  } = useNavigationMode();
+  const [bottomMargin, setBottomMargin] = useState<number>(0);
 
   // Set initial values from medication if it exists
   const [medicationName, setMedicationName] = useState(
@@ -74,6 +84,35 @@ export default function AddMedication({route}: any) {
   useEffect(() => {
     router.setOptions({title});
   }, [title, router]);
+
+  // Adjust bottom margin for Next button based on navigation mode
+  useEffect(() => {
+    // iOS or non-Android: no adjustment needed
+    if (Platform.OS !== 'android') {
+      setBottomMargin(0);
+      return;
+    }
+
+    // While loading or on error, use default
+    if (navLoading || navError || !navigationMode) {
+      setBottomMargin(0);
+      return;
+    }
+
+    // If navigation mode is gesture -> no adjustment needed
+    if (navigationMode.isGestureNavigation) {
+      setBottomMargin(0);
+    } else {
+      // 3-button / 2-button navigation: move button upward to clear navbar
+      if (screenWidth <= 395) {
+        setBottomMargin(20);
+      } else if (screenWidth <= 480) {
+        setBottomMargin(30);
+      } else {
+        setBottomMargin(40);
+      }
+    }
+  }, [screenWidth, navigationMode, navLoading, navError]);
 
   const medicationTypes = [
     {
@@ -421,7 +460,7 @@ export default function AddMedication({route}: any) {
         )}
       </ScrollView>
 
-      <View style={styles.bottomContainer}>
+      <View style={[styles.bottomContainer, {bottom: bottomMargin}]}>
         <TouchableOpacity onPress={onSubmit} style={styles.nextButton}>
           <Text style={styles.nextButtonText}>Next</Text>
         </TouchableOpacity>

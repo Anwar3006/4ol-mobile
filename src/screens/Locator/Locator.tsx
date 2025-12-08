@@ -1508,6 +1508,8 @@ const TopRated: React.FC<TopRatedProps> = ({navigation}) => {
           showsUserLocation={true}
           zoomControlEnabled={true}
           showsCompass={false}
+          // Hide the blue target "my location" button
+          showsMyLocationButton={false}
           onMapReady={() => {
             console.log(
               '🗺️ [MAP] MapView ready. Provider:',

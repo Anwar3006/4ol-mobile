@@ -36,7 +36,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   const {width, height} = useWindowDimensions();
   const isTablet = width >= 600; // Typical tablet breakpoint
-  const searchHeight = isTablet ? 48 : 43; // Adjust height for tablets
+
+  // Make the search bar and text scale more gently on large devices
+  const searchHeight = isTablet ? 48 : 43;
+  const baseFontSize = 15;
+  const tabletFontSize = 18; // smaller than before so placeholder isn't huge on tablets
+
   return (
     <View style={[styles.container]}>
       <View style={[styles.inputWrapper, {height: searchHeight}]}>
@@ -52,7 +57,10 @@ const SearchBar: React.FC<SearchBarProps> = ({
           onFocus={onFocus}
           style={[
             styles.input,
-            {paddingLeft: isTablet ? 55 : 30, fontSize: isTablet ? 25 : 15},
+            {
+              paddingLeft: isTablet ? 55 : 30,
+              fontSize: isTablet ? tabletFontSize : baseFontSize,
+            },
           ]}
           placeholderTextColor={themeColors.black}
           placeholder={placeholder}
@@ -66,7 +74,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             style={[
               {
                 // height: searchHeight,
-                fontSize: isTablet ? 25 : 17,
+                fontSize: isTablet ? 17 : 17,
                 color: themeColors.white,
                 fontFamily: fonts.QuincyCFBold,
               },

@@ -52,7 +52,7 @@ import {user} from '../../store/selectors';
 import type {AppDispatch} from '../../store/index';
 // import apiCallTracker from '../../utils/apiCallTracker';
 import ModalCache from '../../utils/modalCache';
-
+import {useWindowDimensions} from 'react-native';
 import {THIS_IS_MAP_KEY} from '../../../config/variables';
 import {supabase} from '../../utils/supabaseClient';
 
@@ -112,6 +112,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   const [baseFilteredMarkers, setBaseFilteredMarkers] = useState<any[]>([]);
   const [markModal, setMarkModal] = useState(false);
   const [image, setImage] = useState<string | null>(null);
+  const [height, setHeight] = useState<string>('100%');
   const [markerInfo, setMarkerInfo] = useState<{
     name: string;
     vicinity: string;
@@ -120,6 +121,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
   } | null>(null);
 
   // Separate state for local facility modal data
+
   const [localFacilityModalData, setLocalFacilityModalData] = useState<{
     [facilityId: string]: {
       name: string;
@@ -129,7 +131,6 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
       image: string | null;
     };
   }>({});
-
   // Cache for distance calculations to avoid API calls on filter changes
   const [distanceCache, setDistanceCache] = useState<Map<string, any>>(
     new Map(),
@@ -160,10 +161,20 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
     lastFetchedDistance,
   } = useSelector((state: RootState) => state.markers);
 
+  // =========== WINDOW DIMENSIONS HOOK ============
+  const {width} = useWindowDimensions();
+
   // =========== REF HOOKS ============
   const mapRef = useRef<MapView>(null);
   const slideAnim = useRef(new Animated.Value(-200)).current;
 
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (width <= 395) {
+        setHeight('70%');
+      }
+    }
+  }, [width]);
   // =========== iOS ZOOM CONTROLS ============
   const zoomBy = async (delta: number) => {
     try {
@@ -2167,8 +2178,8 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
             left: 0,
             right: 0,
             zIndex: 10,
-            gap: 10,
-            paddingTop: 10,
+            gap: 5, // reduce vertical gap between sections
+            paddingTop: 4, // reduce top padding
           }}>
           {/* SEARCH INPUT */}
           <View style={styles.searchContainer}>
@@ -2265,7 +2276,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
           <ScrollView
             horizontal
             contentContainerStyle={{
-              gap: 10,
+              gap: 6, // slightly tighter spacing between chips
               paddingHorizontal: 10,
             }}
             showsHorizontalScrollIndicator={false}
@@ -2276,7 +2287,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
           <View
             style={[
               styles.addressFilterContainer,
-              {gap: 10, alignItems: 'center'},
+              {gap: 6, alignItems: 'center'}, // reduce gap between address and Show dropdown
             ]}>
             {/* GHANA POST GPS ADDRESS */}
             <View
@@ -2290,7 +2301,7 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
               </Text>
             </View>
             {/* RANGE FILTER */}
-            <View style={{flex: 0.6, height: '100%'}}>
+            <View style={{flex: 0.6, height: height}}>
               <Dropdown
                 renderLeftIcon={() => (
                   <Icon
@@ -2583,7 +2594,8 @@ const RegisteredFacilites = ({navigation, route}: TopRatedProps) => {
                 scrollEnabled
                 showsUserLocation={true}
                 zoomControlEnabled
-                showsMyLocationButton={true}
+                // Hide the blue target "my location" button
+                showsMyLocationButton={false}
                 showsCompass={false}
                 maxZoomLevel={16}
                 minZoomLevel={10}

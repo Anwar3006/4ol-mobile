@@ -11,6 +11,7 @@ import {
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import {Picker} from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import {Dropdown} from 'react-native-element-dropdown';
 import {themeColors} from '../../theme/colors';
 import {size} from '../../theme/fontStyle';
 import CustomInput from '../../components/common/CustomInput';
@@ -155,40 +156,25 @@ const SignupScreen = ({route}: {route: any}) => {
                     color={'gray'}
                     style={{paddingHorizontal: 10}}
                   />
-                  <Picker
-                    selectionColor={themeColors.primary}
-                    selectedValue={values.sex}
-                    onValueChange={itemValue => {
-                      if (itemValue !== 'Sex') {
-                        handleChange('sex')(itemValue);
+                  <Dropdown
+                    data={[
+                      {label: 'Male', value: 'Male'},
+                      {label: 'Female', value: 'Female'},
+                    ]}
+                    labelField="label"
+                    valueField="value"
+                    placeholder="Select sex"
+                    value={values.sex}
+                    onChange={(item: {label: string; value: string}) => {
+                      if (item.value !== 'Sex') {
+                        handleChange('sex')(item.value);
                       }
                     }}
-                    style={styles.picker}>
-                    <Picker.Item
-                      style={{
-                        color: themeColors.black,
-                        backgroundColor: 'white',
-                      }}
-                      label="Sex"
-                      value="Sex"
-                    />
-                    <Picker.Item
-                      style={{
-                        color: themeColors.black,
-                        backgroundColor: 'white',
-                      }}
-                      label="Male"
-                      value="Male"
-                    />
-                    <Picker.Item
-                      style={{
-                        color: themeColors.black,
-                        backgroundColor: 'white',
-                      }}
-                      label="Female"
-                      value="Female"
-                    />
-                  </Picker>
+                    style={styles.dropdown}
+                    placeholderStyle={{color: themeColors.black}}
+                    selectedTextStyle={{color: themeColors.black}}
+                    containerStyle={{borderRadius: 20, overflow: 'hidden'}}
+                  />
                 </View>
                 {errors.sex && <Text style={styles.error}>{errors.sex}</Text>}
               </View>
@@ -232,7 +218,7 @@ const SignupScreen = ({route}: {route: any}) => {
             </View>
             <View
               style={{
-                width: '90%',
+                width: horizontalScale(330),
                 flexDirection: 'row',
                 alignItems: 'center',
                 borderRadius: 50,
@@ -246,7 +232,8 @@ const SignupScreen = ({route}: {route: any}) => {
                 borderWidth: 2,
                 borderColor: themeColors.gray,
                 marginBottom: 20,
-                overflow: 'hidden',
+                // overflow: 'hidden',
+                alignSelf: 'center',
               }}>
               <MaterialIcons.default
                 name="location-on"
@@ -254,27 +241,27 @@ const SignupScreen = ({route}: {route: any}) => {
                 color={'gray'}
                 style={{paddingHorizontal: 10}}
               />
-              <Picker
-                selectedValue={values.region}
-                onValueChange={itemValue => {
-                  if (itemValue !== 'region') {
-                    handleChange('region')(itemValue);
-                  }
+              <Dropdown
+                data={regionNames.map((item: string) => ({
+                  label: item,
+                  value: item,
+                }))}
+                labelField="label"
+                valueField="value"
+                placeholder="Select region"
+                value={values.region}
+                onChange={(item: {label: string; value: string}) => {
+                  handleChange('region')(item.value);
                 }}
-                selectionColor={themeColors.primary}
-                style={styles.picker}>
-                {regionNames.map((item, index) => (
-                  <Picker.Item
-                    color="black"
-                    style={{
-                      backgroundColor: themeColors.white,
-                      color: themeColors.black,
-                    }}
-                    label={item}
-                    value={item}
-                  />
-                ))}
-              </Picker>
+                iconStyle={{marginRight: 15}}
+                style={styles.regionDropdown}
+                placeholderStyle={{color: themeColors.black}}
+                selectedTextStyle={{color: themeColors.black}}
+                containerStyle={{
+                  overflow: 'hidden',
+                  borderRadius: 20,
+                }}
+              />
             </View>
             <CustomInput
               placeholder={'Email Address'}
@@ -370,7 +357,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   pickerContainer: {
-    width: '100%',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
@@ -379,7 +365,10 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     backgroundColor: themeColors.white,
     marginLeft: 2,
-    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: themeColors.gray,
+    padding: 3,
+    // overflow: 'hidden' removed to allow shadow to be visible
   },
   picker: {
     height: 50,
@@ -459,6 +448,18 @@ const styles = StyleSheet.create({
   dropdownItemIconStyle: {
     fontSize: 28,
     marginRight: 8,
+  },
+  dropdown: {
+    height: 41,
+    width: '80%',
+    paddingHorizontal: 15,
+    borderRadius: 50,
+  },
+  regionDropdown: {
+    flex: 1,
+    height: 45,
+    paddingLeft: 5,
+    borderRadius: 50,
   },
 });
 

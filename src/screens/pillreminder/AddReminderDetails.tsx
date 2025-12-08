@@ -27,6 +27,8 @@ import {
 } from '../../services/medication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {uploadMedicationImage} from '../../services/uploadMedicationImage';
+import {useWindowDimensions} from 'react-native';
+import {useNavigationMode} from 'react-native-navigation-mode';
 
 const notificationOptions = [
   {label: 'Only one day', value: 'one_day'},
@@ -141,7 +143,14 @@ export default function AddReminderDetails({route}) {
   } = route.params;
 
   const navigation = useNavigation();
+  const {width: screenWidth} = useWindowDimensions();
+  const {
+    navigationMode,
+    loading: navLoading,
+    error: navError,
+  } = useNavigationMode();
   const [submitButtonHeight, setSubmitButtonHeight] = useState(0);
+  const [bottomMargin, setBottomMargin] = useState<number>(40);
   const [infoModal, setInfoModal] = useState({
     visible: false,
     title: '',
@@ -284,6 +293,35 @@ export default function AddReminderDetails({route}) {
       headerTitle: `${medicationName} Reminder Details`,
     });
   }, [navigation, medicationName, color]);
+
+  // Adjust bottom margin for Update/Set Reminder button based on navigation mode
+  useEffect(() => {
+    // iOS or non-Android: use default margin
+    if (Platform.OS !== 'android') {
+      setBottomMargin(40);
+      return;
+    }
+
+    // While loading or on error, use default
+    if (navLoading || navError || !navigationMode) {
+      setBottomMargin(40);
+      return;
+    }
+
+    // If navigation mode is gesture -> use default margin
+    if (navigationMode.isGestureNavigation) {
+      setBottomMargin(40);
+    } else {
+      // 3-button / 2-button navigation: move button upward to clear navbar
+      if (screenWidth <= 395) {
+        setBottomMargin(45);
+      } else if (screenWidth <= 480) {
+        setBottomMargin(50);
+      } else {
+        setBottomMargin(80);
+      }
+    }
+  }, [screenWidth, navigationMode, navLoading, navError]);
   // iOS: Update temp state only, don't close picker
   // Android: Update actual state and close picker
   const onChangeStart = (event: any, selectedDate?: Date) => {
@@ -650,7 +688,7 @@ export default function AddReminderDetails({route}) {
         contentContainerStyle={{
           padding: 16,
           backgroundColor: '#fff',
-          paddingBottom: submitButtonHeight + 10,
+          paddingBottom: submitButtonHeight + bottomMargin + 100, // Extra space for better scrolling
         }}>
         <View style={{flexDirection: 'row', alignItems: 'center'}}>
           <Text style={{fontWeight: '700', color: 'black'}}>
@@ -1413,7 +1451,7 @@ export default function AddReminderDetails({route}) {
         onPress={onSubmit}
         style={{
           position: 'absolute',
-          bottom: 40,
+          bottom: bottomMargin,
           left: 10,
           right: 10,
           backgroundColor: themeColors.primary,

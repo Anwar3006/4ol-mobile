@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
     fontFamily: fonts.OpenSansBold,
     textTransform: 'capitalize',
     textAlign: 'center',
-    paddingTop: 20,
+    paddingTop: 7,
   },
   title: {
     color: themeColors.darkGray,

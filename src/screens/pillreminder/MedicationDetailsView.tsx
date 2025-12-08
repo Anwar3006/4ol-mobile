@@ -1670,6 +1670,7 @@ import {
   Dimensions,
   Modal,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import moment from 'moment';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
@@ -1684,6 +1685,8 @@ import {ActivityIndicator} from 'react-native-paper';
 import {supabase} from '../../utils/supabaseClient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useCallback} from 'react';
+import {useWindowDimensions} from 'react-native';
+import {useNavigationMode} from 'react-native-navigation-mode';
 
 const {width} = Dimensions.get('window');
 
@@ -1696,12 +1699,48 @@ const MedicationDetailsView = ({route, navigation}) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(Date.now()); // Add this state
+  const [actionsBottomMargin, setActionsBottomMargin] = useState<number>(0);
+  const {width: screenWidth} = useWindowDimensions();
+  const {
+    navigationMode,
+    loading: navLoading,
+    error: navError,
+  } = useNavigationMode();
 
   console.log('Medication details:', medication);
 
   useEffect(() => {
     fetchMedicationData();
   }, [medicationId]);
+
+  // Adjust bottom margin for Edit/Delete buttons based on navigation mode
+  useEffect(() => {
+    // iOS or non-Android: no adjustment needed
+    if (Platform.OS !== 'android') {
+      setActionsBottomMargin(0);
+      return;
+    }
+
+    // While loading or on error, use default
+    if (navLoading || navError || !navigationMode) {
+      setActionsBottomMargin(0);
+      return;
+    }
+
+    // If navigation mode is gesture -> no adjustment needed
+    if (navigationMode.isGestureNavigation) {
+      setActionsBottomMargin(0);
+    } else {
+      // 3-button / 2-button navigation: move buttons upward to clear navbar
+      if (screenWidth <= 395) {
+        setActionsBottomMargin(20);
+      } else if (screenWidth <= 480) {
+        setActionsBottomMargin(35);
+      } else {
+        setActionsBottomMargin(40);
+      }
+    }
+  }, [screenWidth, navigationMode, navLoading, navError]);
 
   const fetchMedicationData = useCallback(
     async (forceRefresh = false) => {
@@ -2205,7 +2244,7 @@ const MedicationDetailsView = ({route, navigation}) => {
 
       {/* Action Buttons */}
       {medication?.id && (
-        <View style={styles.actionsContainer}>
+        <View style={[styles.actionsContainer, {bottom: actionsBottomMargin}]}>
           <TouchableOpacity
             style={[styles.actionButton, {backgroundColor: '#f0f0f0'}]}
             onPress={() =>

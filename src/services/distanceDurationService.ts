@@ -1,20 +1,20 @@
 import axios from 'axios';
-import {THIS_IS_MAP_KEY} from '../../config/variables';
+import {
+  THIS_IS_MAP_KEY,
+  SUPABASE_URL,
+  SUPABASE_KEY,
+} from '../../config/variables';
 
 // Supabase Edge Function API guard
 const checkApiAllowed = async (action: string) => {
-  const res = await fetch(
-    'https://bqdohqgwdqrpmzffmsva.supabase.co/functions/v1/api-guard',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization:
-          'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxZG9ocWd3ZHFycG16ZmZtc3ZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MjI2MTQ0OTAsImV4cCI6MjAzODE5MDQ5MH0.oS-GvWNzPgRuQWrlPwaReAe5Mo1UD3W5-VCZpRTRWTo',
-      },
-      body: JSON.stringify({action}),
+  const res = await fetch(`${SUPABASE_URL}/functions/v1/api-guard`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${SUPABASE_KEY}`,
     },
-  );
+    body: JSON.stringify({action}),
+  });
   const data = await res.json();
   if (!data.ok) throw new Error(data.message);
   return true;

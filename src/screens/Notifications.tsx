@@ -9,6 +9,7 @@ import {
   ScrollView,
   TextInput,
   KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {themeColors} from '../theme/colors';
 import {size} from '../theme/fontStyle';
@@ -25,6 +26,7 @@ import {useWindowDimensions} from 'react-native';
 import moment from 'moment';
 import {horizontalScale, moderateScale, verticalScale} from '../utils/metrics';
 import {ChatModal} from '../components/shared-components/ChatSupportModal';
+import {useNavigationMode} from 'react-native-navigation-mode';
 
 const Notifications = () => {
   const userData: any = useSelector(user);
@@ -34,6 +36,17 @@ const Notifications = () => {
   const {width} = useWindowDimensions();
   const [hasMore, setHasMore] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
+  const [supportButtonHeight, setSupportButtonHeight] = useState<number>(
+    verticalScale(50),
+  );
+  const [supportContainerHeight, setSupportContainerHeight] = useState<number>(
+    verticalScale(65),
+  );
+  const {
+    navigationMode,
+    loading: navLoading,
+    error: navError,
+  } = useNavigationMode();
 
   const ref = useRef<TextInput>(null);
 
@@ -88,6 +101,47 @@ const Notifications = () => {
       loadNotifications(userData?.id);
     }
   }, [userData?.id]);
+
+  useEffect(() => {
+    // Default sizing for non-Android
+    if (Platform.OS !== 'android') {
+      if (width <= 395) {
+        setSupportButtonHeight(verticalScale(48));
+        setSupportContainerHeight(verticalScale(60));
+      } else {
+        setSupportButtonHeight(verticalScale(50));
+        setSupportContainerHeight(verticalScale(65));
+      }
+      return;
+    }
+
+    // ANDROID: while loading or on error, keep the default Android sizing
+    if (navLoading || navError || !navigationMode) {
+      setSupportButtonHeight(verticalScale(50));
+      setSupportContainerHeight(verticalScale(65));
+      return;
+    }
+
+    // Gesture navigation: keep compact
+    if (navigationMode.isGestureNavigation) {
+      if (width <= 395) {
+        setSupportButtonHeight(verticalScale(50));
+        setSupportContainerHeight(verticalScale(10));
+      } else {
+        setSupportButtonHeight(verticalScale(50));
+        setSupportContainerHeight(verticalScale(35));
+      }
+    } else {
+      // 3-button / 2-button navigation: give more height/padding to clear navbar
+      if (width <= 395) {
+        setSupportButtonHeight(verticalScale(50));
+        setSupportContainerHeight(verticalScale(15));
+      } else {
+        setSupportButtonHeight(verticalScale(50));
+        setSupportContainerHeight(verticalScale(85));
+      }
+    }
+  }, [width, navigationMode, navLoading, navError]);
 
   const renderFooter = () => {
     return hasMore && loading ? (
@@ -148,11 +202,17 @@ const Notifications = () => {
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.5}
       />
-      <View style={styles.supportButtonView}>
+      <View
+        style={[styles.supportButtonView, {height: supportContainerHeight}]}>
         <TouchableOpacity
           style={[
             styles.supportButton,
-            {backgroundColor: themeColors.primary, width: width - 60},
+            {
+              backgroundColor: themeColors.primary,
+              width: width - 60,
+              height: supportButtonHeight,
+              marginBottom: supportButtonHeight,
+            },
           ]}
           onPress={toggleModal}>
           <Text style={[styles.supportButtonText, {color: themeColors.white}]}>
@@ -233,7 +293,6 @@ const styles = StyleSheet.create({
   supportButtonView: {
     position: 'absolute',
     bottom: 20,
-    height: verticalScale(65),
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -243,7 +302,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 10,
     // width: '100%',
-    height: verticalScale(50),
     // width: horizontalScale(250),
     marginHorizontal: horizontalScale(30),
   },
