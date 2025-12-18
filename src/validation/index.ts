@@ -64,6 +64,43 @@ export const validationSignUpSchema = Yup.object().shape({
     .min(8, 'Confirm Password length should be 8 characters'),
 });
 
+export const validationBusinessSignUpSchema = Yup.object().shape({
+  full_name: Yup.string()
+    .min(2, 'Too Short')
+    .max(50, 'Too Long!')
+    .required('Full name is required')
+    .matches(/^[^\s]+$/, 'Full name cannot contain spaces'),
+  business_name: Yup.string()
+    .required('Business name is required')
+    .matches(/^[^\s]+$/, 'Business name cannot contain spaces'),
+  email: Yup.string()
+    .email('Invalid email')
+    .required('Email is required')
+    .matches(
+      /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/,
+      'Must be a valid email',
+    )
+    .matches(/^[^\s]+$/, 'Email cannot contain spaces'),
+  password: Yup.string()
+    .required('Password is required')
+    .min(8, 'Password length should be 8 characters'),
+  confirm_password: Yup.string()
+    .required('Confirm Password is required')
+    .oneOf([Yup.ref('password'), ''], 'Passwords must match')
+    .min(8, 'Confirm Password length should be 8 characters'),
+  phone_number: Yup.string().required('Phone number is required'),
+  business_type: Yup.string().required('Business type is required'),
+  specializations: Yup.string().required('Specializations are required'),
+  qualifications: Yup.string().required(
+    'Professional qualifications are required',
+  ),
+  has_agreed_to_tc: Yup.boolean().oneOf([true], 'You must accept the terms'),
+  has_provided_accurate_info: Yup.boolean().oneOf(
+    [true],
+    'Please certify your information',
+  ),
+});
+
 export const validationUpdateProfile = Yup.object().shape({
   first_name: Yup.string()
     .min(2, 'Too Short')
@@ -101,7 +138,7 @@ export const validationChangePassword = Yup.object().shape({
     .min(8, 'Password length should be 8 characters'),
   confirmPassword: Yup.string()
     .required('Confirm Password is required')
-    .oneOf([Yup.ref('newPassword'), null], 'Passwords must match')
+    .oneOf([Yup.ref('newPassword'), ''], 'Passwords must match')
     .min(8, 'Confirm Password length should be 8 characters'),
 });
 

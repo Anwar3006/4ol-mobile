@@ -1,38 +1,25 @@
-import React, {
-  ChangeEvent,
-  Dispatch,
-  MutableRefObject,
-  useRef,
-  useState,
-} from 'react';
-import {View, Text, StyleSheet} from 'react-native';
+import React, {useState} from 'react';
+import {View, Text, StyleSheet, Platform} from 'react-native';
 import PhoneInput from 'react-native-phone-number-input';
-// import {
-//   responsiveFontSize,
-//   responsiveWidth,
-//   responsiveHeight,
-// } from 'react-native-responsive-dimensions';
-// import { FourthColor, TextinputColor } from '../screens/Styles/Style';
 import {
   verticalScale,
   moderateScale,
   horizontalScale,
 } from '../../utils/metrics';
 import {themeColors} from '../../theme/colors';
-import ErrorIcon from 'react-native-vector-icons/MaterialIcons';
 import {fonts} from '../../theme/fonts';
 
 interface Props {
   value: string | undefined;
-  onchangeState: (e: string | ChangeEvent<any>) => void;
-  setCountryCode: Dispatch<any>;
-  phoneInput: MutableRefObject<any>;
+  onchangeState: (val: string) => void;
+  setCountryCode: (code: any) => void;
+  phoneInput: React.MutableRefObject<any>;
   countrycode: any;
-  error: string | undefined;
-  stateError?: string | undefined;
-  touched: boolean | undefined;
-  editable?: boolean | undefined;
-  placeHolder: string | undefined;
+  error?: string;
+  touched?: boolean;
+  editable?: boolean;
+  placeHolder?: string;
+  label?: string; // Consistent with CustomInput
 }
 
 const CustomPhoneNumber = ({
@@ -42,113 +29,120 @@ const CustomPhoneNumber = ({
   countrycode,
   phoneInput,
   error,
-  stateError,
   touched,
-  editable,
+  editable = true,
   placeHolder,
+  label,
 }: Props) => {
-  const [isFocused, setIsFocused] = useState<boolean>(false);
+  const [isFocused, setIsFocused] = useState(false);
 
-  // const [countryCode, setCountryCode] = useState<any>();
-  // const handleInputFocus = () => {
-  //   setIsFocused(true);
-  // };
-
-  // const handleInputBlur = (e: any) => {
-  //   setIsFocused(false);
-  // };
+  // Determine border color based on state to match CustomInput
+  const getBorderColor = () => {
+    if (error && touched) return 'red';
+    if (isFocused) return themeColors.primary;
+    return '#E0E0E0';
+  };
 
   return (
-    <>
+    <View style={styles.outerContainer}>
+      {label && <Text style={styles.label}>{label}</Text>}
+
       <View
-        style={{
-          justifyContent: 'center',
-          alignItems: 'center',
-          paddingTop: verticalScale(5),
-        }}>
+        style={[
+          styles.borderWrapper,
+          {
+            borderColor: getBorderColor(),
+            backgroundColor: editable ? '#FFFFFF' : '#F5F5F5',
+          },
+        ]}>
         <PhoneInput
           ref={phoneInput}
           defaultValue={value}
-          //   onChangeText={number => onchangeState(number)}
-          onChangeFormattedText={val => onchangeState(val)}
-          value={value}
-          withShadow
+          onChangeFormattedText={onchangeState}
           defaultCode={countrycode}
           layout="first"
           placeholder={placeHolder}
-          codeTextStyle={{fontSize: moderateScale(14), fontWeight: '600'}}
-          containerStyle={[
-            styles.phoneContainer,
-            {
-              backgroundColor: !editable ? 'lightgrey' : themeColors.white,
-            },
-          ]}
-          textContainerStyle={styles.phoneTextContainer}
-          textInputStyle={styles.phoneTextInput}
-          onChangeCountry={val => {
-            setCountryCode(val?.cca2);
-          }}
+          disableArrowIcon={!editable}
+          // Disable internal shadows/borders to use our wrapper
+          withShadow={false}
+          withDarkTheme={false}
+          autoFocus={false}
+          containerStyle={styles.phoneContainer}
+          textContainerStyle={styles.textContainer}
+          codeTextStyle={styles.codeText}
+          textInputStyle={styles.textInput}
+          onChangeCountry={val => setCountryCode(val.cca2)}
           textInputProps={{
-            placeholderTextColor: themeColors.black,
+            onFocus: () => setIsFocused(true),
+            onBlur: () => setIsFocused(false),
             editable: editable,
-            style: {fontSize: moderateScale(14), fontWeight: '600'},
+            placeholderTextColor: '#BDBDBD',
           }}
-          //   textStyle={{ color: '#000' }}
         />
       </View>
-      {(error && ((touched && !value) || (error && value) || isFocused)) ||
-      (!error && stateError) ? (
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            paddingVertical: verticalScale(6),
-          }}>
-          <Text
-            style={{
-              color: 'red',
-              fontWeight: 'bold',
-              paddingHorizontal: 4,
-              fontFamily: fonts.OpenSansRegular,
-            }}>
-            {error ? error : stateError}
-          </Text>
-        </View>
+
+      {/* Consistent Error Message Placement */}
+      {error && touched ? (
+        <Text style={styles.errorText}>{error}</Text>
       ) : (
-        <View style={{height: verticalScale(20)}} />
+        <View style={styles.errorSpacer} />
       )}
-    </>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  phoneInput: {
-    width: verticalScale(80),
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+  outerContainer: {
+    width: '100%', // Responsive width
+    marginBottom: verticalScale(5),
   },
-  phoneTextInput: {
-    paddingVertical: 0,
-    fontSize: moderateScale(12),
-    color: themeColors.black,
+  label: {
+    fontFamily: fonts.OpenSansBold,
+    fontSize: 14,
+    color: themeColors.darkGray,
+    marginBottom: verticalScale(6),
+    marginLeft: horizontalScale(4),
   },
-  phoneTextContainer: {
-    alignItems: 'baseline',
-    backgroundColor: 'transparent',
+  borderWrapper: {
+    borderWidth: 1.5,
+    borderRadius: moderateScale(10), // Matching CustomInput geometry
+    overflow: 'hidden',
+    height: verticalScale(55),
+    justifyContent: 'center',
   },
   phoneContainer: {
-    flexDirection: 'row',
-    borderRadius: 50,
-    width: horizontalScale(330),
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    borderWidth: 2,
-    borderColor: themeColors.gray,
-    fontSize: moderateScale(30),
+    width: horizontalScale(300),
+    backgroundColor: 'transparent', // Uses wrapper background
+    height: '100%',
+  },
+  textContainer: {
+    backgroundColor: 'transparent',
+    paddingVertical: 0,
+    paddingHorizontal: 10,
+    borderLeftWidth: 1,
+    borderLeftColor: '#E0E0E0', // Subtle separator between code and number
+  },
+  codeText: {
+    fontSize: 16,
+    fontFamily: fonts.OpenSansRegular,
+    color: themeColors.black,
+  },
+  textInput: {
+    fontSize: 16,
+    fontFamily: fonts.OpenSansRegular,
+    color: themeColors.black,
+    height: '100%',
+    paddingLeft: horizontalScale(10),
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 12,
+    fontFamily: fonts.OpenSansRegular,
+    marginTop: verticalScale(4),
+    marginLeft: horizontalScale(4),
+  },
+  errorSpacer: {
+    height: verticalScale(18),
   },
 });
 

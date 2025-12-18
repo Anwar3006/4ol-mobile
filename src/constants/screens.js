@@ -34,6 +34,8 @@ export const SCREENS = {
   SPLASH: 'Splash',
   GETSTARTED: 'GetStarted',
   SIGNUP: 'SignUp',
+  BUSINESSAUTH: 'BusinessAuth',
+  BUSINESSSIGNUPSCREEN: 'BusinessSignUpScreen',
   VERIFYPHONENUMBER: 'VerifyPhoneNumber',
   OTPVERIFICATION: 'OTPVerification',
   LOGIN: 'Login',

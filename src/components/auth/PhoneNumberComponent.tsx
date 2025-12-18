@@ -212,7 +212,7 @@ const PhoneNumberComponent = ({
                     error={errors?.emailOrPhone}
                     touched={touched.emailOrPhone}
                     editable={true}
-                    stateError={isError}
+                    // stateError={isError}
                     placeHolder={'Phone Number'}
                   />
 
@@ -248,7 +248,7 @@ const PhoneNumberComponent = ({
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
+    // flex: 1,
     backgroundColor: themeColors.white,
   },
   contentContainer: {

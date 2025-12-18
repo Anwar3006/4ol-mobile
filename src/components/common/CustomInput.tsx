@@ -6,162 +6,161 @@ import {
   TouchableOpacity,
   View,
   TextInputProps,
+  Platform,
 } from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome5';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {themeColors} from '../../theme/colors';
-import {size} from '../../theme/fontStyle';
 import {fonts} from '../../theme/fonts';
-import {Colors} from 'react-native/Libraries/NewAppScreen';
-import ErrorIcon from 'react-native-vector-icons/MaterialIcons';
-import {horizontalScale, verticalScale} from '../../utils/metrics';
+import {
+  horizontalScale,
+  verticalScale,
+  moderateScale,
+} from '../../utils/metrics';
 
-interface CustomInputProps {
-  value: string | undefined;
-  onChangeText: any;
-  placeholder: string;
-  secureTextEntry?: boolean;
-  keyboardType?: TextInputProps['keyboardType'];
+interface CustomInputProps extends TextInputProps {
+  label?: string; // Optional label for better UX
   icon?: string;
   error?: string;
-  touched?: boolean | undefined;
-  isError?: string | undefined;
-  editable?: boolean | undefined;
-  autoCapitalize?: TextInputProps['autoCapitalize'];
+  touched?: boolean;
+  editable?: boolean;
 }
 
 const CustomInput: React.FC<CustomInputProps> = ({
+  label,
   value,
   onChangeText,
   placeholder,
   secureTextEntry = false,
   error,
   touched,
-  isError,
-  keyboardType = 'default',
-  icon = 'user',
-  editable,
-  autoCapitalize = 'none',
+  icon,
+  editable = true,
+  multiline = false,
+  numberOfLines = 1,
+  ...props
 }) => {
-  const [show, setShow] = useState<boolean>(false);
-  const [isFocused, setIsFocused] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
-  const handleInputFocus = () => {
-    setIsFocused(true);
-    editable;
-  };
-
-  const handleInputBlur = (e: any) => {
-    setIsFocused(false);
+  // Determine border color based on state
+  const getBorderColor = () => {
+    if (error && touched) return 'red';
+    if (isFocused) return themeColors.primary;
+    return '#E0E0E0'; // Elegant light gray
   };
 
   return (
-    <>
-      <View style={styles.container}>
-        <View
-          style={[
-            styles.inputContainer,
-            {
-              backgroundColor: editable ? themeColors.white : 'lightgrey',
-              paddingVertical: verticalScale(15),
-            },
-          ]}>
-          <Icon name={icon} size={20} color={'gray'} style={styles.startIcon} />
-          <TextInput
-            style={styles.input}
-            value={value}
-            placeholder={placeholder}
-            onChangeText={onChangeText}
-            placeholderTextColor={Colors.black}
-            secureTextEntry={secureTextEntry && !show}
-            keyboardType={keyboardType}
-            onBlur={handleInputBlur}
-            onFocus={handleInputFocus}
-            editable={editable}
-            autoCapitalize={autoCapitalize}
+    <View style={styles.container}>
+      {label && <Text style={styles.label}>{label}</Text>}
+
+      <View
+        style={[
+          styles.inputWrapper,
+          {
+            borderColor: getBorderColor(),
+            backgroundColor: editable ? '#FFFFFF' : '#F5F5F5',
+            // Increase height and align items to top for multiline
+            minHeight: multiline ? verticalScale(100) : verticalScale(55),
+            alignItems: multiline ? 'flex-start' : 'center',
+            paddingTop: multiline ? verticalScale(12) : 0,
+          },
+        ]}>
+        {icon && (
+          <Icon
+            name={icon}
+            size={20}
+            color={isFocused ? themeColors.primary : '#9E9E9E'}
+            style={[
+              styles.iconStyle,
+              multiline && {marginTop: verticalScale(2)},
+            ]}
           />
+        )}
 
-          {secureTextEntry && (
-            <TouchableOpacity
-              style={styles.icon}
-              onPress={() => setShow(!show)}>
-              <Icon
-                name={!show ? 'eye' : 'eye-slash'}
-                size={20}
-                color={'gray'}
-              />
-            </TouchableOpacity>
-          )}
-        </View>
+        <TextInput
+          style={[
+            styles.input,
+            {textAlignVertical: multiline ? 'top' : 'center'},
+          ]}
+          value={value}
+          placeholder={placeholder}
+          placeholderTextColor="#BDBDBD"
+          onChangeText={onChangeText}
+          secureTextEntry={secureTextEntry && !showPassword}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          editable={editable}
+          multiline={multiline}
+          numberOfLines={numberOfLines}
+          autoCorrect={false}
+          {...props}
+        />
 
-        {error && ((touched && !value) || (error && value) || isFocused) ? (
-          <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              // marginTop: verticalScale(15),
-              paddingVertical: verticalScale(6),
-            }}>
-            <Text
-              style={{
-                color: 'red',
-                fontWeight: '800',
-                paddingHorizontal: 4,
-                fontFamily: fonts.OpenSansRegular,
-              }}>
-              {error}
-            </Text>
-          </View>
-        ) : (
-          <View style={{height: verticalScale(20)}} />
+        {secureTextEntry && (
+          <TouchableOpacity
+            style={styles.eyeIcon}
+            onPress={() => setShowPassword(!showPassword)}>
+            <Icon
+              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+              size={22}
+              color="#9E9E9E"
+            />
+          </TouchableOpacity>
         )}
       </View>
-    </>
+
+      {/* Elegant Error Message */}
+      {error && touched ? (
+        <Text style={styles.errorText}>{error}</Text>
+      ) : (
+        <View style={styles.errorSpacer} />
+      )}
+    </View>
   );
 };
 
-export default CustomInput;
-
 const styles = StyleSheet.create({
   container: {
-    width: horizontalScale(330),
-    // paddingVertical: verticalScale(10),
-    // marginBottom: 20,
+    width: '100%', // Responsive width
+    marginBottom: verticalScale(5),
   },
-  inputContainer: {
+  label: {
+    fontFamily: fonts.OpenSansBold,
+    fontSize: 14,
+    color: themeColors.darkGray,
+    marginBottom: verticalScale(6),
+    marginLeft: horizontalScale(4),
+  },
+  inputWrapper: {
     flexDirection: 'row',
-    alignItems: 'center',
-    // backgroundColor:  '#D3D3D3',
-    borderRadius: 50,
-    padding: verticalScale(3),
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    borderWidth: 2,
-    borderColor: themeColors.gray,
+    borderRadius: moderateScale(10), // Elegant subtle rounding instead of pill
+    borderWidth: 1.5,
+    paddingHorizontal: horizontalScale(12),
   },
   input: {
     flex: 1,
-    fontSize: size.md,
-    color: themeColors.black,
+    fontSize: 16,
+    color: '#333',
     fontFamily: fonts.OpenSansRegular,
+    paddingVertical:
+      Platform.OS === 'ios' ? verticalScale(12) : verticalScale(8),
+  },
+  iconStyle: {
+    marginRight: horizontalScale(10),
+  },
+  eyeIcon: {
     paddingLeft: horizontalScale(10),
-    paddingRight: horizontalScale(10),
-    textAlign: 'center',
-    // backgroundColor: '#000',
   },
-  startIcon: {
-    paddingLeft: horizontalScale(10),
-  },
-  icon: {
-    paddingRight: horizontalScale(10),
-  },
-  error: {
+  errorText: {
     color: 'red',
-    fontWeight: '500',
-    paddingHorizontal: horizontalScale(4),
+    fontSize: 12,
     fontFamily: fonts.OpenSansRegular,
+    marginTop: verticalScale(4),
+    marginLeft: horizontalScale(4),
+  },
+  errorSpacer: {
+    height: verticalScale(18),
   },
 });
+
+export default CustomInput;

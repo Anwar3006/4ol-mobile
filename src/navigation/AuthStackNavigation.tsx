@@ -11,6 +11,8 @@ import ForgotPasswordScreen from '../screens/authStack/forgetScreens/ForgotPassw
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useEffect, useRef, useState} from 'react';
 import {themeColors} from '../theme/colors';
+import BusinessAuth from '../screens/authStack/BusinessAuth';
+import BusinessSignUpScreen from '../screens/authStack/BusinessSignUp';
 
 const AuthStackNavigation = () => {
   const Stack = createNativeStackNavigator();
@@ -159,6 +161,20 @@ const AuthStackNavigation = () => {
         options={{title: 'Sign Up'}}
       />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+
+      {/* Stack Screens for Registered Business Login and Individual Business Provider Registration */}
+      {/* 1. IBP Registration */}
+      <Stack.Screen
+        name="BusinessAuth"
+        component={BusinessAuth}
+        options={{title: 'Business Auth'}}
+      />
+      <Stack.Screen
+        name="BusinessSignUpScreen"
+        component={BusinessSignUpScreen}
+        options={{title: 'Register Your Business'}}
+      />
+      {/* 2. All Business Login */}
     </Stack.Navigator>
   );
 };

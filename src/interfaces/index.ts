@@ -52,6 +52,26 @@ export interface SignUpSchema {
   confirm_password: string | undefined;
 }
 
+export interface BusinessSignUpSchema {
+  full_name: string | undefined;
+  business_name: string | undefined;
+  phone_number: string | undefined;
+  whatsapp_number: string | undefined;
+  email: string | undefined;
+  password: string | undefined;
+  confirm_password: string | undefined;
+  gps_address: string;
+  street: string;
+  region: string;
+  district: string;
+  area: string;
+  business_type: string | undefined;
+  specializations: string;
+  qualifications: string;
+  has_agreed_to_tc: boolean | undefined;
+  has_agreed_to_pa: boolean | undefined;
+}
+
 export interface ResetpasswordSchema {
   newPin: string | undefined;
   confirmPin: string | undefined;
@@ -69,6 +89,8 @@ export interface NavigationStackParams {
   Splash: string | undefined;
   GetStarted: string | undefined;
   SignUp: string | undefined;
+  BusinessAuth: string | undefined;
+  BusinessSignUpScreen: string | undefined;
   VerifyPhoneNumber: string | undefined;
   OtpVerification: string;
   Login: string | undefined;

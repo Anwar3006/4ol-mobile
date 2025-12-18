@@ -80,39 +80,38 @@ const EmailAddressComponent = ({
   };
 
   return (
-    <>
-      <Formik
-        initialValues={{
-          emailOrPhone: '',
-          passcode: '',
-        }}
-        onSubmit={handleSubmit}
-        validationSchema={validationLoginSchema}>
-        {({
-          errors,
-          values,
-          handleChange,
-          handleReset,
-          handleSubmit,
-          resetForm,
-          touched,
-          setSubmitting,
-          isSubmitting,
-        }) => (
-          <>
-            <CustomInput
-              placeholder="Email Address"
-              value={values.emailOrPhone}
-              onChangeText={handleChange('emailOrPhone')}
-              secureTextEntry={false}
-              isError={isError}
-              icon="at"
-              error={errors?.emailOrPhone}
-              touched={touched.emailOrPhone}
-              editable={true}
-            />
+    <Formik
+      initialValues={{
+        emailOrPhone: '',
+        passcode: '',
+      }}
+      onSubmit={handleSubmit}
+      validationSchema={validationLoginSchema}>
+      {({
+        errors,
+        values,
+        handleChange,
+        handleReset,
+        handleSubmit,
+        resetForm,
+        touched,
+        setSubmitting,
+        isSubmitting,
+      }) => (
+        <>
+          <CustomInput
+            placeholder="Email Address"
+            value={values.emailOrPhone}
+            onChangeText={handleChange('emailOrPhone')}
+            secureTextEntry={false}
+            // isError={isError}
+            icon="at"
+            error={errors?.emailOrPhone}
+            touched={touched.emailOrPhone}
+            editable={true}
+          />
 
-            {/* <CustomInput
+          {/* <CustomInput
               value={values.passcode}
               onChangeText={handleChange('passcode')}
               error={errors?.passcode}
@@ -123,30 +122,40 @@ const EmailAddressComponent = ({
               editable={true}
               icon="lock"
             /> */}
-            <PasswordInput
-              value={values.passcode}
-              onChangeText={handleChange('passcode')}
-              placeholder="Password"
-              editable={true}
-              error={errors?.passcode}
-              touched={touched.passcode}
-              isError={isError}
-              icon="lock"
-            />
+          {/* <PasswordInput
+            value={values.passcode}
+            onChangeText={handleChange('passcode')}
+            placeholder="Password"
+            editable={true}
+            error={errors?.passcode}
+            touched={touched.passcode}
+            isError={isError}
+            icon="lock"
+          /> */}
+          <CustomInput
+            placeholder="Password"
+            value={values.passcode}
+            onChangeText={handleChange('passcode')}
+            secureTextEntry={true}
+            // isError={isError}
+            icon="lock"
+            error={errors?.passcode}
+            touched={touched.passcode}
+            editable={true}
+          />
 
-            <CustomButton
-              text={'Login'}
-              onPress={handleSubmit}
-              loading={loading}
-              extraStyle={{
-                marginTop: verticalScale(20),
-                marginBottom: verticalScale(20),
-              }}
-            />
-          </>
-        )}
-      </Formik>
-    </>
+          <CustomButton
+            text={'Login'}
+            onPress={handleSubmit}
+            loading={loading}
+            extraStyle={{
+              marginTop: verticalScale(20),
+              marginBottom: verticalScale(20),
+            }}
+          />
+        </>
+      )}
+    </Formik>
   );
 };
 

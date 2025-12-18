@@ -61,6 +61,17 @@ const GetStarted = () => {
           }}
         />
       </ScrollView>
+
+      {/* Business/Facility Provider Login button */}
+      <View style={styles.businessView}>
+        <CustomButton
+          text={'Login as Business'}
+          onPress={() => {
+            navigation.navigate('BusinessAuth'); //modify NavigationStackParams, SCREENS, AuthStackNavigation.tsx accordingly in order to add this screen
+            // navigation?.navigate(SCREENS.SIGNUP, {phone: '+923323583308'});
+          }}
+        />
+      </View>
     </View>
   );
 };
@@ -108,6 +119,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 10,
     color: themeColors.black,
+  },
+  businessView: {
+    marginVertical: 30,
+    paddingHorizontal: 55,
+    position: 'absolute',
+    bottom: 3,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
   },
 });
 

@@ -81,176 +81,166 @@ const DiseaseDetails: React.FC<DiseaseDetailsProps> = ({navigation, route}) => {
           <Text style={styles.noDataText}>No record found</Text>
         </View>
       ) : (
-        <>
-          <ScrollView
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}>
-            <View style={styles.imageContainer}>
-              {diseaseDetails?.image_url ? (
-                <Image
-                  source={{uri: diseaseDetails?.image_url}}
-                  style={styles.image}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View style={styles.placeholder} />
-              )}
+        <ScrollView
+          showsHorizontalScrollIndicator={false}
+          showsVerticalScrollIndicator={false}>
+          <View style={styles.imageContainer}>
+            {diseaseDetails?.image_url ? (
+              <Image
+                source={{uri: diseaseDetails?.image_url}}
+                style={styles.image}
+                resizeMode="cover"
+              />
+            ) : (
+              <View style={styles.placeholder} />
+            )}
+          </View>
+          <Text style={styles.diseaseName}>
+            {diseaseDetails?.condition_name}
+          </Text>
+          {diseaseDetails?.about && (
+            <View>
+              <Text style={styles.title}>
+                About {diseaseDetails?.condition_name}
+              </Text>
+              <View style={styles.separator} />
+              <Text style={styles.description}>{diseaseDetails?.about}</Text>
             </View>
-            <Text style={styles.diseaseName}>
-              {diseaseDetails?.condition_name}
-            </Text>
-            {diseaseDetails?.about && (
-              <View>
-                <Text style={styles.title}>
-                  About {diseaseDetails?.condition_name}
-                </Text>
-                <View style={styles.separator} />
-                <Text style={styles.description}>{diseaseDetails?.about}</Text>
-              </View>
-            )}
-            {diseaseDetails?.types?.length > 0 ? (
-              <View>
-                <Text style={[styles.title]}>
-                  Types of {diseaseDetails?.condition_name}
-                </Text>
-                <View style={styles.separator} />
-                {diseaseDetails?.types?.map((d: any, i: any) => {
-                  return (
-                    <View key={i.toString()}>
-                      <Text style={[styles.title]}>
-                        {`${i + 1}) ${d?.type_name}`}
-                      </Text>
-                      <Text style={styles?.description}>{d?.about_type}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : null}
-            {diseaseDetails?.causes?.length > 0 ? (
-              <View>
-                <Text style={[styles.title, {marginBottom: 0}]}>
-                  Causes of {diseaseDetails?.condition_name}
-                </Text>
-                <View style={styles.separator} />
-                {diseaseDetails?.causes?.map((d: any, i: any) => {
-                  return (
-                    <View key={i.toString()}>
-                      <Text style={[styles.title]}>
-                        {`${i + 1}) ${d.cause_name}`}
-                      </Text>
-                      <Text style={styles.description}>
-                        {d?.other_possible_causes}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            ) : null}
-            {diseaseDetails?.diagnosis && (
-              <View>
-                <Text style={styles.title}>
-                  Diagnosing {diseaseDetails?.condition_name}
-                </Text>
-                <View style={styles.separator} />
-                <Text style={styles.description}>
-                  {diseaseDetails?.diagnosis}
-                </Text>
-              </View>
-            )}
-            {diseaseDetails?.treating && (
-              <View>
-                <Text style={styles.title}>
-                  Treating {diseaseDetails?.condition_name}
-                </Text>
-                <View style={styles.separator} />
-                <Text style={styles.description}>
-                  {diseaseDetails?.treating}
-                </Text>
-              </View>
-            )}
-            {diseaseDetails?.complications && (
-              <View>
-                <Text style={styles.title}>
-                  Complications of {diseaseDetails?.condition_name}
-                </Text>
-                <View style={styles.separator} />
-                <Text style={styles.description}>
-                  {diseaseDetails?.complications}
-                </Text>
-              </View>
-            )}
-            {diseaseDetails?.symptoms && (
-              <View>
-                <Text style={styles.title}>
-                  Symptoms of {diseaseDetails?.condition_name}
-                </Text>
-                <View style={styles.separator} />
-                <Text style={styles.description}>
-                  {diseaseDetails?.symptoms}
-                </Text>
-              </View>
-            )}
-            {diseaseDetails?.prevention && (
-              <View>
-                <Text style={styles.title}>
-                  Preventing {diseaseDetails?.condition_name}
-                </Text>
-                <View style={styles.separator} />
-                <Text style={styles.description}>
-                  {diseaseDetails?.prevention}
-                </Text>
-              </View>
-            )}
-            {diseaseDetails?.specialist_to_contact && (
-              <View>
-                <Text style={styles.title}>Specialist to contact</Text>
-                <View style={styles.separator} />
-                <Text style={styles.description}>
-                  {diseaseDetails?.specialist_to_contact}
-                </Text>
-              </View>
-            )}
-            {diseaseDetails?.contact_your_doctor && (
-              <View>
-                <Text style={styles.title}>Contact your doctor</Text>
-                <View style={styles.separator} />
-                <Text style={styles.description}>
-                  {diseaseDetails?.contact_your_doctor}
-                </Text>
-              </View>
-            )}
-            {diseaseDetails?.more_information && (
-              <View>
-                <Text style={styles.title}>More information</Text>
-                <View style={styles.separator} />
-                <Text style={styles.description}>
-                  {diseaseDetails?.more_information}
-                </Text>
-              </View>
-            )}
-            {diseaseDetails?.attribution && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  marginTop: 20,
-                }}>
-                <Text
-                  style={[
-                    styles.description,
-                    {fontFamily: fonts.OpenSansBold},
-                  ]}>
-                  Source:{' '}
-                </Text>
-                <Text
-                  style={[styles.description, {color: themeColors.primary}]}>
-                  {diseaseDetails?.attribution}
-                </Text>
-              </View>
-            )}
-          </ScrollView>
-        </>
+          )}
+          {diseaseDetails?.types?.length > 0 ? (
+            <View>
+              <Text style={[styles.title]}>
+                Types of {diseaseDetails?.condition_name}
+              </Text>
+              <View style={styles.separator} />
+              {diseaseDetails?.types?.map((d: any, i: any) => {
+                return (
+                  <View key={i.toString()}>
+                    <Text style={[styles.title]}>
+                      {`${i + 1}) ${d?.type_name}`}
+                    </Text>
+                    <Text style={styles?.description}>{d?.about_type}</Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+          {diseaseDetails?.causes?.length > 0 ? (
+            <View>
+              <Text style={[styles.title, {marginBottom: 0}]}>
+                Causes of {diseaseDetails?.condition_name}
+              </Text>
+              <View style={styles.separator} />
+              {diseaseDetails?.causes?.map((d: any, i: any) => {
+                return (
+                  <View key={i.toString()}>
+                    <Text style={[styles.title]}>
+                      {`${i + 1}) ${d.cause_name}`}
+                    </Text>
+                    <Text style={styles.description}>
+                      {d?.other_possible_causes}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          ) : null}
+          {diseaseDetails?.diagnosis && (
+            <View>
+              <Text style={styles.title}>
+                Diagnosing {diseaseDetails?.condition_name}
+              </Text>
+              <View style={styles.separator} />
+              <Text style={styles.description}>
+                {diseaseDetails?.diagnosis}
+              </Text>
+            </View>
+          )}
+          {diseaseDetails?.treating && (
+            <View>
+              <Text style={styles.title}>
+                Treating {diseaseDetails?.condition_name}
+              </Text>
+              <View style={styles.separator} />
+              <Text style={styles.description}>{diseaseDetails?.treating}</Text>
+            </View>
+          )}
+          {diseaseDetails?.complications && (
+            <View>
+              <Text style={styles.title}>
+                Complications of {diseaseDetails?.condition_name}
+              </Text>
+              <View style={styles.separator} />
+              <Text style={styles.description}>
+                {diseaseDetails?.complications}
+              </Text>
+            </View>
+          )}
+          {diseaseDetails?.symptoms && (
+            <View>
+              <Text style={styles.title}>
+                Symptoms of {diseaseDetails?.condition_name}
+              </Text>
+              <View style={styles.separator} />
+              <Text style={styles.description}>{diseaseDetails?.symptoms}</Text>
+            </View>
+          )}
+          {diseaseDetails?.prevention && (
+            <View>
+              <Text style={styles.title}>
+                Preventing {diseaseDetails?.condition_name}
+              </Text>
+              <View style={styles.separator} />
+              <Text style={styles.description}>
+                {diseaseDetails?.prevention}
+              </Text>
+            </View>
+          )}
+          {diseaseDetails?.specialist_to_contact && (
+            <View>
+              <Text style={styles.title}>Specialist to contact</Text>
+              <View style={styles.separator} />
+              <Text style={styles.description}>
+                {diseaseDetails?.specialist_to_contact}
+              </Text>
+            </View>
+          )}
+          {diseaseDetails?.contact_your_doctor && (
+            <View>
+              <Text style={styles.title}>Contact your doctor</Text>
+              <View style={styles.separator} />
+              <Text style={styles.description}>
+                {diseaseDetails?.contact_your_doctor}
+              </Text>
+            </View>
+          )}
+          {diseaseDetails?.more_information && (
+            <View>
+              <Text style={styles.title}>More information</Text>
+              <View style={styles.separator} />
+              <Text style={styles.description}>
+                {diseaseDetails?.more_information}
+              </Text>
+            </View>
+          )}
+          {diseaseDetails?.attribution && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                marginTop: 20,
+              }}>
+              <Text
+                style={[styles.description, {fontFamily: fonts.OpenSansBold}]}>
+                Source:{' '}
+              </Text>
+              <Text style={[styles.description, {color: themeColors.primary}]}>
+                {diseaseDetails?.attribution}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
       )}
     </View>
   );
