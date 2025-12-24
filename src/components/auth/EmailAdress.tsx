@@ -109,6 +109,7 @@ const EmailAddressComponent = ({
             error={errors?.emailOrPhone}
             touched={touched.emailOrPhone}
             editable={true}
+            autoCapitalize="none"
           />
 
           {/* <CustomInput

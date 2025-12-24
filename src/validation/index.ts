@@ -60,7 +60,7 @@ export const validationSignUpSchema = Yup.object().shape({
     .min(8, 'Password length should be 8 characters'),
   confirm_password: Yup.string()
     .required('Confirm Password is required')
-    .oneOf([Yup.ref('password'), null], 'Passwords must match')
+    .oneOf([Yup.ref('password'), ''], 'Passwords must match')
     .min(8, 'Confirm Password length should be 8 characters'),
 });
 
@@ -68,8 +68,7 @@ export const validationBusinessSignUpSchema = Yup.object().shape({
   full_name: Yup.string()
     .min(2, 'Too Short')
     .max(50, 'Too Long!')
-    .required('Full name is required')
-    .matches(/^[^\s]+$/, 'Full name cannot contain spaces'),
+    .required('Full name is required'),
   business_name: Yup.string()
     .required('Business name is required')
     .matches(/^[^\s]+$/, 'Business name cannot contain spaces'),
@@ -89,15 +88,20 @@ export const validationBusinessSignUpSchema = Yup.object().shape({
     .oneOf([Yup.ref('password'), ''], 'Passwords must match')
     .min(8, 'Confirm Password length should be 8 characters'),
   phone_number: Yup.string().required('Phone number is required'),
-  business_type: Yup.string().required('Business type is required'),
-  specializations: Yup.string().required('Specializations are required'),
-  qualifications: Yup.string().required(
-    'Professional qualifications are required',
+  business_category: Yup.string().required('Business type is required'),
+  specific_category: Yup.string().required('Please select a Product/Service'),
+  gps_address: Yup.string().required('GPS Address is required'),
+  street: Yup.string().required(
+    'Please use the GPS lookup to find your street',
   ),
-  has_agreed_to_tc: Yup.boolean().oneOf([true], 'You must accept the terms'),
-  has_provided_accurate_info: Yup.boolean().oneOf(
+  region: Yup.string().required('Region is required'),
+  has_agreed_to_tc: Yup.boolean().oneOf(
     [true],
-    'Please certify your information',
+    'You must accept the terms of service',
+  ),
+  has_agreed_to_pa: Yup.boolean().oneOf(
+    [true],
+    'Please accept the professional accountability agreement',
   ),
 });
 

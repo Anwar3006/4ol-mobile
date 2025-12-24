@@ -65,9 +65,8 @@ export interface BusinessSignUpSchema {
   region: string;
   district: string;
   area: string;
-  business_type: string | undefined;
-  specializations: string;
-  qualifications: string;
+  business_category: string | undefined;
+  specific_category: string;
   has_agreed_to_tc: boolean | undefined;
   has_agreed_to_pa: boolean | undefined;
 }

@@ -110,6 +110,7 @@ export const signup = async (
           updated_by: userId,
           is_created_by_admin_panel: false,
           ...updatedUser,
+          // user_type: "customer"
         },
       ]);
       if (updateError) {
@@ -203,18 +204,23 @@ export const login = async (
         email: emailOrPhone,
         password: user.passcode,
       });
+    console.log('Sign in data: ', signinData);
     if (signinError) {
       errorCallback(signinError);
       return;
     }
 
     const userId = signinData.user?.id;
+    console.log('userId -> ', signinData.user?.id);
     if (userId) {
       const {data: userProfile, error: fetchError} = await supabase
         .from('user_profiles')
         .select('*')
-        .eq('id', userId)
-        .single();
+        .eq('id', userId);
+      // .single();
+
+      // console.log("Rows returned:", userProfile?.length);
+      console.log('UserProfileData: ', userProfile);
       if (fetchError) {
         errorCallback(fetchError);
         return;

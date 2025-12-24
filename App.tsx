@@ -18,16 +18,18 @@ import * as Sentry from '@sentry/react-native';
 Sentry.init({
   dsn: 'https://37e214a286dff0e65d5e624ae863189d@o4509994271637504.ingest.de.sentry.io/4509994289791056',
 
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
+  // ✅ FIXED: Disable PII collection to comply with App Store privacy requirements
+  // Sentry will still report crashes and errors, but without tracking user data
+  sendDefaultPii: false,
 
-  // Configure Session Replay
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1,
+  // ✅ FIXED: Disable Session Replay to prevent tracking user behavior
+  replaysSessionSampleRate: 0,
+  replaysOnErrorSampleRate: 0,
+  
+  // ✅ FIXED: Removed tracking integrations
   integrations: [
-    Sentry.mobileReplayIntegration(),
-    Sentry.feedbackIntegration(),
+    // Session replay removed - was tracking user interactions
+    // Feedback integration removed - was collecting user data
   ],
 
   // uncomment the line below to enable Spotlight (https://spotlightjs.com)

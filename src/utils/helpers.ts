@@ -8,7 +8,10 @@ export const validateEmail = (email: string) => {
 };
 
 export const encryptPassword = (message: string) => {
-  const encrypted = CryptoJS.AES.encrypt(message, ENCRYPT_KEY).toString();
+  const encrypted = CryptoJS.AES.encrypt(
+    message,
+    process.env.ENCRYPT_KEY!,
+  ).toString();
   return encrypted;
 };
 
@@ -2970,4 +2973,13 @@ export const sortFacilityByRatingAsc = data => {
     const ratingB = b.facility_ratings[0]?.avg ?? Number.MAX_VALUE;
     return ratingA - ratingB;
   });
+};
+
+export const splitFullName = (fullName: string) => {
+  const parts = fullName.trim().split(/\s+/);
+
+  const first_name = parts.shift() || '';
+  const last_name = parts.join(' ');
+
+  return {first_name, last_name};
 };

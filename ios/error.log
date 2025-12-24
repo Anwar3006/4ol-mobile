@@ -1,0 +1,5 @@
+info Found Xcode workspace "healthcare.xcworkspace"
+info Building (using "xcodebuild -workspace healthcare.xcworkspace -configuration Debug -scheme healthcare -destination id=00008030-00140D8911FA402E")
+
+info 💡 Tip: Make sure that you have set up your development environment correctly, by running npx react-native doctor. To read more about doctor command visit: https://github.com/react-native-community/cli/blob/main/packages/cli-doctor/README.md#doctor 
+
