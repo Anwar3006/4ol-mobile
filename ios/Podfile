@@ -16,11 +16,9 @@ setup_permissions([
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
-# ✅ DISABLE NEW ARCHITECTURE
-ENV['RCT_NEW_ARCH_ENABLED'] = '0'
-
-use_frameworks! :linkage => :static
+# Firebase configuration
 $RNFirebaseAsStaticFramework = true
+use_frameworks! :linkage => :static
 
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
@@ -29,77 +27,39 @@ if linkage != nil
 end
 
 target 'healthcare' do
-  # React Native Maps dependencies
-  rn_maps_path = '../node_modules/react-native-maps'
-  pod 'react-native-maps/Google', :path => rn_maps_path
-  
   config = use_native_modules!
 
   use_react_native!(
     :path => config[:reactNativePath],
-    :app_path => "#{Pod::Config.instance.installation_root}/..",
-    # ✅ EXPLICITLY DISABLE NEW ARCHITECTURE
-    :fabric_enabled => false,
-    :hermes_enabled => true
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
+  # React Native Maps with Google Maps support
+  rn_maps_path = '../node_modules/react-native-maps'
+  pod 'react-native-maps', :path => rn_maps_path, :subspecs => ['Google']
+
   post_install do |installer|
+    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
       config[:reactNativePath],
-      :mac_catalyst_enabled => false
+      :mac_catalyst_enabled => false,
+      # :ccache_enabled => true
     )
 
+    # Fix Hermes dSYM generation for TestFlight
     installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        # Force minimum iOS 13.0 deployment target
-        current_target = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
-        minimum_target = '13.0'
-        
-        if current_target.to_f < minimum_target.to_f
-          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = minimum_target
-        end
-        
-        # ✅ DISABLE NEW ARCHITECTURE FLAGS
-        config.build_settings['RCT_NEW_ARCH_ENABLED'] = '0'
-        config.build_settings.delete('RCT_FABRIC_ENABLED')
-        
-        # Fix architecture issues for device builds
-        config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
-        config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
-        
-        # Disable bitcode
-        config.build_settings['ENABLE_BITCODE'] = 'NO'
-        
-        # ✅ FIX DUPLICATE C++ LIBRARY WARNING (Handle String or Array)
-        ldflags = config.build_settings['OTHER_LDFLAGS']
-        if ldflags.is_a?(String)
-          # Convert string to array
-          ldflags = ldflags.split
-        elsif ldflags.nil?
-          ldflags = ['$(inherited)']
-        else
-          ldflags = ldflags.dup
-        end
-        
-        # Remove duplicate -lc++
-        ldflags.delete('-lc++')
-        ldflags.uniq!
-        config.build_settings['OTHER_LDFLAGS'] = ldflags
-        
-        # Fix library search paths
-        config.build_settings['LIBRARY_SEARCH_PATHS'] = [
-          '$(inherited)',
-          '$(SDKROOT)/usr/lib/swift'
-        ]
-      end
-
-      # Special handling for Hermes
       if target.name == 'hermes-engine' || target.name.include?('hermes')
         target.build_configurations.each do |config|
           config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf-with-dsym'
           config.build_settings['ONLY_ACTIVE_ARCH'] = 'NO'
         end
+      end
+      
+      # Fix for Firebase and GoogleMaps
+      target.build_configurations.each do |config|
+        config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
       end
     end
   end
