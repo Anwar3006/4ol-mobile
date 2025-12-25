@@ -3,7 +3,6 @@ import {
   StyleSheet,
   Text,
   View,
-  Dimensions,
   TouchableOpacity,
   Image,
   ScrollView,
@@ -12,423 +11,54 @@ import {
   Linking,
   RefreshControl,
   Platform,
-  PermissionsAndroid,
   Alert,
+  Dimensions,
 } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import MaterialIcon from 'react-native-vector-icons/MaterialCommunityIcons';
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {themeColors} from '../theme/colors';
 import {fonts} from '../theme/fonts';
 import {size} from '../theme/fontStyle';
 import {getFacilityDetailsById} from '../services/facility';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {parsePhoneNumbers} from '../utils/helpers';
 import {Share} from 'react-native';
-import Clipboard from '@react-native-clipboard/clipboard';
-import {useToast} from 'react-native-toast-notifications';
-import {AirbnbRating} from 'react-native-ratings';
-import {SCREENS} from '../constants/screens';
-import useLocation from '../hooks/useLocation';
-import {useWindowDimensions} from 'react-native';
-import {THIS_IS_MAP_KEY} from '../../config/variables';
-import {checkFavoriteStatus, toggleFacilityFavorite} from '../services/profile';
 import {useSelector} from 'react-redux';
 import {user} from '../store/selectors';
-import MaterialIcon from 'react-native-vector-icons/MaterialCommunityIcons';
-import {logActivity} from '../services/activityLogsService';
+import {toggleFacilityFavorite, checkFavoriteStatus} from '../services/profile';
 import {
   addFavoriteFacility,
   getFacilityRatingReview,
 } from '../services/favoriteFacilites';
+import {parsePhoneNumbers} from '../utils/helpers';
+import {logActivity} from '../services/activityLogsService';
 import FacilityRating from '../components/FacilityRating';
-import {horizontalScale, moderateScale, verticalScale} from '../utils/metrics';
-import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import {moderateScale, verticalScale} from '../utils/metrics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {supabase} from '../utils/supabaseClient';
-import Geolocation from '@react-native-community/geolocation';
-import {fetchDistanceAndDuration} from '../services/distanceDurationService';
-import DistanceCache from '../utils/distanceCache';
-import {useNavigationMode} from 'react-native-navigation-mode';
 
-type FacilityDetailsProps = {
-  navigation?: NativeStackNavigationProp<any>;
-  route?: {
-    params: {
-      id?: string;
-      setFavorites: any;
-      favorites: any;
-    };
-  };
-};
+const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
-const FacilityDetails: React.FC<FacilityDetailsProps> = ({
-  navigation,
-  route,
-}) => {
+const FacilityDetails = ({navigation, route}: any) => {
+  const insets = useSafeAreaInsets(); // ✅ Fix for Android navigation bar
   const userData: any = useSelector(user);
+  const {id, setFavorites, favorites} = route?.params || {};
+
+  const [loading, setLoading] = useState(false);
+  const [refresh, setRefresh] = useState(false);
+  const [facilityDetails, setFacilityDetails] = useState<any>();
   const [isFavorited, setIsFavorited] = useState(false);
   const [reviewData, setReviewData] = useState([]);
   const [userReview, setUserReview] = useState();
-  const {width, height} = useWindowDimensions();
-  const [iheight, setIheight] = useState<number>(0);
-  const [imarginBottom, setIMarginBottom] = useState<number>(0);
-  const {
-    navigationMode,
-    loading: navigationModeLoading,
-    error: navigationModeError,
-  } = useNavigationMode();
-
-  useEffect(() => {
-    // iOS logic stays width-based as before
-    if (Platform.OS !== 'android') {
-      if (width <= 380) {
-        setIheight(70);
-        setIMarginBottom(10);
-      } else {
-        setIheight(90);
-        setIMarginBottom(25);
-      }
-      return;
-    }
-
-    // ANDROID: while loading or on error, keep the original Android defaults
-    if (navigationModeLoading || navigationModeError || !navigationMode) {
-      setIheight(70);
-      setIMarginBottom(10);
-      return;
-    }
-
-    // If navigation mode is gesture -> keep existing height
-    if (navigationMode.isGestureNavigation) {
-      if (width <= 395) {
-        setIheight(60);
-        setIMarginBottom(5);
-      } else if (width <= 480) {
-        setIheight(70);
-        setIMarginBottom(10);
-      } else if (width > 1000) {
-        setIheight(80);
-        setIMarginBottom(22);
-      } else {
-        setIheight(75);
-        setIMarginBottom(22);
-      }
-    } else {
-      // 3-button / 2-button navigation -> increase height & bottom margin
-      if (width <= 395) {
-        setIheight(60);
-        setIMarginBottom(5);
-      } else if (width <= 480) {
-        setIheight(110);
-        setIMarginBottom(40);
-      } else {
-        setIheight(110);
-        setIMarginBottom(40);
-      }
-    }
-  }, [width, navigationMode, navigationModeLoading, navigationModeError]);
-  console.log('width', width, 'height', height);
-  const isTablet = width >= 600; // Adjust based on your tablet breakpoint
-
-  useEffect(() => {
-    (async () => {
-      if (reviewData) {
-        const userId = await AsyncStorage.getItem('user_id');
-        const userReview = reviewData.find(
-          review => review.user_profiles.id === userId,
-        );
-        if (userReview) {
-          setUserReview(userReview);
-          return;
-        }
-        setUserReview(null);
-      }
-    })();
-  }, [reviewData]);
-
-  const toast = useToast();
-  const {location} = useLocation();
-  const {
-    id,
-    setFavorites,
-    favorites,
-    currentLocation: passedLocation,
-  } = (route?.params as any) || {};
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [facilityDetails, setFacilityDetails] = useState<any>();
   const [isModalVisible, setIsModalVisible] = useState(false);
-
-  // Update header title dynamically when facility details are loaded
-  useLayoutEffect(() => {
-    if (facilityDetails?.facility_name) {
-      navigation?.setOptions({
-        title: facilityDetails.facility_name,
-      });
-    }
-  }, [facilityDetails?.facility_name, navigation]);
-  const [selectedNumber, setSelectedNumber] = useState<string | null>(null);
   const [actionType, setActionType] = useState<'call' | 'whatsapp' | null>(
     null,
   );
-  const [hasWhatsapp, setHasWhatsapp] = useState(false);
-  const [facilityData, setFacilityData] = useState({
-    id: '',
-    facility_name: '',
-    gps_address: '',
-    hospital_services: [],
-    hospital_amenities: [],
-    mediaUrls: [],
-    avg_rating: 0,
-    business_hours: {},
-    reviews: [],
-    contact_num: '',
-    website: '',
-    location: {lat: 0, lng: 0},
-    types: [],
-  });
-  const currentDay = new Date().toLocaleDateString('en-US', {
-    weekday: 'long',
-  });
-  const [distance, setDistance] = useState<string>('');
-  const [duration, setDuration] = useState<string>('');
-  const [curFav, setCurFav] = useState<any>(null);
-  const [bottomBarHeight, setBottomBarHeight] = useState(0);
-  const [refresh, setRefresh] = useState(false);
-  const [destination, setDestination] = useState({
-    latitude: null,
-    longitude: null,
-  });
-  const [currentLocation, setCurrentLocation] = useState({
-    latitude: passedLocation?.latitude || null,
-    longitude: passedLocation?.longitude || null,
-  });
-  const [distanceCalculated, setDistanceCalculated] = useState(false); // Track if distance was already calculated
-  const [lastCalculatedLocation, setLastCalculatedLocation] = useState(
-    null as any,
-  ); // Track last location used for calculation
+  const [distance, setDistance] = useState('2.3 km'); // Mock data
+  const [duration, setDuration] = useState('8 mins'); // Mock data
 
-  // useEffect(() => {
-  //   if (location?.latitude && facilityData?.location) {
-  //     fetchDistanceAndDuration(
-  //       {
-  //         lat: location?.latitude || 0,
-  //         lng: location?.longitude || 0,
-  //       },
-  //       facilityData?.location,
-  //     );
-  //   }
-  // }, [location?.latitude, facilityData?.location]);
-
-  // Helpers for contact numbers selection
-  const getParsedTel = (): string[] => {
-    const telRaw = facilityDetails?.tel || '';
-    const parsed = telRaw ? parsePhoneNumbers(telRaw) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  };
-
-  const getCallNumbers = (): string[] => {
-    const tel = getParsedTel();
-    if (tel.length > 0) return tel;
-    return facilityDetails?.contact_num
-      ? [String(facilityDetails.contact_num)]
-      : [];
-  };
-
-  const getWhatsappNumbers = (): string[] => {
-    const tel = getParsedTel();
-    if (tel.length > 0) return tel; // prefer tel for WhatsApp if present
-    return facilityDetails?.whatsapp ? [String(facilityDetails.whatsapp)] : [];
-  };
-
-  const dialNumber = (number: string) => {
-    const phoneUrl = `tel:${number}`;
-    console.log('🔍 [PHONE] Attempting to dial:', phoneUrl);
-
-    Linking.canOpenURL(phoneUrl)
-      .then(supported => {
-        console.log('🔍 [PHONE] canOpenURL result:', supported);
-        if (!supported) {
-          console.log('🔍 [PHONE] Phone not supported, trying direct open');
-          // Try to open directly even if canOpenURL returns false
-          Linking.openURL(phoneUrl).catch(err => {
-            console.log('🔍 [PHONE] Direct open failed:', err);
-            Alert.alert(
-              'Error',
-              'Phone calls are not supported on this device',
-            );
-          });
-        } else {
-          return Linking.openURL(phoneUrl);
-        }
-      })
-      .catch(err => {
-        console.log('🔍 [PHONE] canOpenURL error:', err);
-        // Try direct open as fallback
-        Linking.openURL(phoneUrl).catch(openErr => {
-          console.log('🔍 [PHONE] Fallback open failed:', openErr);
-          Alert.alert('Error', 'Failed to make phone call');
-        });
-      });
-  };
-
-  const openWhatsApp = (rawNumber: string) => {
-    const number = String(rawNumber).replace(/[-\s]/g, '');
-    if (!number) {
-      Alert.alert(
-        'No WhatsApp Number',
-        'WhatsApp number not available for this facility',
-      );
-      return;
-    }
-    const url = `whatsapp://send?phone=${number}`;
-    console.log('🔍 [WHATSAPP] Attempting to open:', url);
-
-    Linking.canOpenURL(url)
-      .then(supported => {
-        console.log('🔍 [WHATSAPP] canOpenURL result:', supported);
-        if (!supported) {
-          console.log(
-            '🔍 [WHATSAPP] WhatsApp not supported, trying direct open',
-          );
-          // Try to open directly even if canOpenURL returns false
-          Linking.openURL(url).catch(err => {
-            console.log('🔍 [WHATSAPP] Direct open failed:', err);
-            Alert.alert(
-              'WhatsApp Not Available',
-              'WhatsApp is not installed on this device',
-            );
-          });
-        } else {
-          return Linking.openURL(url);
-        }
-      })
-      .catch(err => {
-        console.log('🔍 [WHATSAPP] canOpenURL error:', err);
-        // Try direct open as fallback
-        Linking.openURL(url).catch(openErr => {
-          console.log('🔍 [WHATSAPP] Fallback open failed:', openErr);
-          Alert.alert('Error', 'Failed to open WhatsApp');
-        });
-      });
-  };
-
-  const handleActionPress = (type: 'call' | 'whatsapp') => {
-    setActionType(type);
-
-    if (type === 'call') {
-      const numbers = getCallNumbers();
-      if (numbers.length === 0) {
-        Alert.alert(
-          'No Phone Number',
-          'Phone number not available for this facility',
-        );
-        return;
-      }
-      if (numbers.length === 1) {
-        dialNumber(numbers[0]);
-        return;
-      }
-      setIsModalVisible(true); // choose which to call
-      return;
-    }
-
-    if (type === 'whatsapp') {
-      const numbers = getWhatsappNumbers();
-      if (numbers.length === 0) {
-        Alert.alert(
-          'No WhatsApp Number',
-          'WhatsApp number not available for this facility',
-        );
-        return;
-      }
-      if (numbers.length === 1) {
-        openWhatsApp(numbers[0]);
-        return;
-      }
-      setIsModalVisible(true); // choose which to WhatsApp
-    }
-  };
-
-  const handleNumberSelect = (number: string) => {
-    setSelectedNumber(number);
-    setIsModalVisible(false);
-
-    if (actionType === 'call') {
-      dialNumber(number);
-    } else if (actionType === 'whatsapp') {
-      openWhatsApp(number);
-    }
-  };
-
-  const handleShare = async () => {
-    try {
-      const result = await Share.share({
-        message: `Check out this facility: ${
-          facilityDetails?.facility_name
-        }\n\nAddress: ${
-          facilityDetails?.gps_address || facilityDetails?.location
-        }\n\nVisit us for more info!`,
-      });
-      if (result.action === Share.sharedAction) {
-        if (result.activityType) {
-          console.log('Shared with activity type: ' + result.activityType);
-        } else {
-          console.log('Shared');
-        }
-      } else if (result.action === Share.dismissedAction) {
-        console.log('Dismissed');
-      }
-    } catch (error) {
-      console.log('Error sharing:', error);
-    }
-  };
-
-  const openInMaps = async () => {
-    // Get destination coordinates
-    const facilityLat =
-      facilityDetails?.latitude || facilityDetails?.location?.lat;
-    const facilityLng =
-      facilityDetails?.longitude || facilityDetails?.location?.lng;
-
-    if (!facilityLat || !facilityLng) {
-      Alert.alert(
-        'Error',
-        'Location coordinates not available for this facility',
-      );
-      return;
-    }
-
-    const destination = `${facilityLat},${facilityLng}`;
-    const googleMapsWebUrl = `https://www.google.com/maps/dir/?api=1&destination=${destination}&travelmode=driving`;
-    const googleMapsAppUrl = `comgooglemaps://?daddr=${destination}&directionsmode=driving`;
-
-    try {
-      if (Platform.OS === 'ios') {
-        const canOpenGoogleMaps = await Linking.canOpenURL('comgooglemaps://');
-        if (canOpenGoogleMaps) {
-          await Linking.openURL(googleMapsAppUrl);
-        } else {
-          await Linking.openURL(googleMapsWebUrl);
-        }
-      } else {
-        await Linking.openURL(googleMapsWebUrl);
-      }
-    } catch (err) {
-      console.error('Error opening Google Maps:', err);
-      Alert.alert('Error', 'Failed to open Google Maps');
-    }
-  };
-
-  useEffect(() => {
-    console.log('favorites', JSON.stringify(favorites, null, 2));
-    console.log('facilityDetails', facilityDetails);
-    console.log('id', id);
-
-    favorites?.find((f: any) => f?.facility.id == id)
-      ? setIsFavorited(true)
-      : setIsFavorited(false);
-  }, []);
+  const currentDay = new Date().toLocaleDateString('en-US', {weekday: 'long'});
 
   useEffect(() => {
     if (id) {
@@ -437,841 +67,429 @@ const FacilityDetails: React.FC<FacilityDetailsProps> = ({
         () => setLoading(true),
         (successData: any) => {
           setFacilityDetails(successData);
-          // getCompletePlaceDetails(successData.facility_name);
-          // hasWhatsapp if tel exists or whatsapp exists
-          const telParsed =
-            (successData?.tel ? parsePhoneNumbers(successData?.tel) : []) || [];
-          setHasWhatsapp(
-            (Array.isArray(telParsed) && telParsed.length > 0) ||
-              !!successData?.whatsapp,
-          );
-          if (
-            !(
-              (Array.isArray(telParsed) && telParsed.length > 0) ||
-              !!successData?.whatsapp
-            )
-          ) {
-            setActionType('call');
-          }
-          setLoading(false);
-          logActivity(
-            {
-              user_id: userData?.id || '',
-              user_name: `${userData?.first_name || ''} ${
-                userData?.last_name || ''
-              }`,
-              type: 'facility',
-              description: `User has viewed Facility Details`,
-              reference: `${successData?.facility_name || ''}`,
-              reference_id: id || '',
-            },
-            () => {
-              console.log('Logging Facility Details activity...');
-            },
-            data => {
-              console.log(
-                'Facility Details activity logged successfully:',
-                data,
-              );
-            },
-            error => {
-              console.error('Error logging Facility Details activity:', error);
-            },
-          );
-        },
-        (error: any) => {
-          console.log('Error while fetching facility details', error);
           setLoading(false);
         },
+        () => setLoading(false),
       );
-      checkFavoriteStatus(
-        userData?.id,
-        id as string,
-        () => {},
-        (successData: any) => {},
-        (error: any) => {
-          console.error('Error fetching favorite status:', error);
-        },
-      );
-      if (favorites) {
-        const currentFavorite = favorites?.find(
-          (f: any) => f?.facility_id == id,
-        );
-        if (currentFavorite) {
-          setCurFav(currentFavorite);
-        } else {
-          setCurFav(null);
-        }
-      }
     }
   }, [id]);
 
-  const handleCopyNumber = (number: string) => {
-    Clipboard.setString(number);
-    setIsModalVisible(false);
-    toast.show('Number copied to clipboard', {
-      type: 'success',
-      placement: 'top',
-      duration: 4000,
-      animationType: 'slide-in',
-    });
-  };
-
-  const images = [
-    require('../../assets/healthCareCenter.jpeg'),
-    require('../../assets/healthCareCenter.jpeg'),
-    require('../../assets/healthCareCenter.jpeg'),
-    require('../../assets/healthCareCenter.jpeg'),
-  ];
-
-  const handleSnap = (index: number) => {
-    setCurrentIndex(index);
-  };
-
   useEffect(() => {
-    const getLatLong = async () => {
-      const {data, error} = await supabase
-        .from('healthcare_profiles')
-        .select('latitude, longitude')
-        .not('latitude', 'is', null)
-        .not('longitude', 'is', null)
-        .eq('status', 'Approved')
-        .eq('id', id);
+    favorites?.find((f: any) => f?.facility.id == id)
+      ? setIsFavorited(true)
+      : setIsFavorited(false);
+  }, [favorites, id]);
 
-      if (error) {
-        console.error(error);
-        return;
-      }
-
-      if (data) {
-        setDestination(data[0] || null);
-      }
-    };
-
-    getLatLong();
-
-    const requestLocationPermission = async () => {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-        );
-        return granted === PermissionsAndroid.RESULTS.GRANTED;
-      }
-      return true; // iOS handles permissions automatically
-    };
-
-    const getLocation = async () => {
-      // If location was passed from previous screen, use it
-      if (passedLocation?.latitude && passedLocation?.longitude) {
-        console.log(
-          '📍 [FACILITY DETAILS] Using passed location:',
-          passedLocation,
-        );
-        setCurrentLocation(passedLocation);
-        setLoading(false);
-        return;
-      }
-
-      // Otherwise, get location from device
-      console.log(
-        '📍 [FACILITY DETAILS] No passed location, getting from device...',
-      );
-      const hasPermission = await requestLocationPermission();
-      if (!hasPermission) {
-        console.log('Permission denied');
-        setLoading(false);
-        return;
-      }
-
-      Geolocation.getCurrentPosition(
-        position => {
-          console.log('📍 [FACILITY DETAILS] Got device location:', {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-          setCurrentLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-          setLoading(false);
-        },
-        error => {
-          console.log('Error:', error.message);
-          setLoading(false);
-        },
-        {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
-      );
-    };
-
-    getLocation();
-  }, []);
-
-  // 🛑 Now a second useEffect that waits for both destination and currentLocation
-  useEffect(() => {
-    const getDistanceDuration = async () => {
-      // Only proceed if both locations are valid (not null)
-      if (
-        currentLocation?.latitude &&
-        currentLocation?.longitude &&
-        destination?.latitude &&
-        destination?.longitude
-      ) {
-        const currentLocationString = `${currentLocation.latitude},${currentLocation.longitude}`;
-
-        // Check if location has changed significantly (more than 100 meters)
-        const shouldRecalculate =
-          !lastCalculatedLocation ||
-          Math.abs(currentLocation.latitude - lastCalculatedLocation.latitude) >
-            0.001 || // ~100m
-          Math.abs(
-            currentLocation.longitude - lastCalculatedLocation.longitude,
-          ) > 0.001;
-
-        if (shouldRecalculate) {
-          const origin = currentLocationString;
-          const destinations = `${destination.latitude},${destination.longitude}`;
-
-          try {
-            // First, try to get cached distance data
-            const cachedDistance = await DistanceCache.getCachedDistance(
-              id as string,
-              currentLocation.latitude,
-              currentLocation.longitude,
-            );
-
-            if (cachedDistance) {
-              // Use cached data
-              setDistance(cachedDistance.distance);
-              setDuration(cachedDistance.duration);
-              setLastCalculatedLocation(currentLocation);
-              console.log('✅ Using cached distance data');
-            } else {
-              // Calculate new distance and cache it
-              console.log('🔄 Calculating distance and duration...');
-              console.log('📍 Location changed, recalculating...');
-              console.log('📍 From:', origin, 'To:', destinations);
-
-              const {distance, duration} = await fetchDistanceAndDuration(
-                origin,
-                destinations,
-              );
-
-              setDistance(distance);
-              setDuration(duration);
-              setLastCalculatedLocation(currentLocation);
-
-              // Cache the new distance data
-              await DistanceCache.setCachedDistance(
-                id as string,
-                currentLocation.latitude,
-                currentLocation.longitude,
-                distance,
-                duration,
-              );
-
-              console.log('✅ Distance calculated and cached successfully');
-            }
-          } catch (error) {
-            console.error('❌ Error calculating distance:', error);
-          }
-        } else {
-          console.log('📍 Location unchanged, using cached distance');
-        }
-      } else {
-        console.log('⏳ Waiting for valid location data...', {
-          currentLocation: currentLocation
-            ? `${currentLocation.latitude},${currentLocation.longitude}`
-            : 'null',
-          destination: destination
-            ? `${destination.latitude},${destination.longitude}`
-            : 'null',
-        });
-      }
-    };
-
-    getDistanceDuration();
-  }, [currentLocation, destination, lastCalculatedLocation, id]); // ✅ Depend on location changes and facility ID
-
-  const handleToggleFacilityFavorite = async facilityId => {
+  const handleToggleFavorite = async () => {
     setIsFavorited(!isFavorited);
-    logActivity(
-      {
-        user_id: userData?.id || '',
-        user_name: `${userData?.first_name || ''} ${userData?.last_name || ''}`,
-        type: 'facility',
-        description: `User has ${
-          !isFavorited ? 'added' : 'removed'
-        } the facility ${!isFavorited ? 'to' : 'from'} favorites`,
-        reference: `${facilityDetails?.facility_name || ''}`,
-        reference_id: id || '',
-      },
-      () => {
-        console.log('Logging toggle Favorites activity...');
-      },
-      data => {
-        console.log('Favorites toggle activity logged successfully:', data);
-      },
-      error => {
-        console.error('Error logging Favorites toggle activity:', error);
-      },
-    );
-    if (setFavorites && isFavorited) {
-      setFavorites((prev: any) => {
-        return prev?.filter((facility: any) => facility?.facility_id !== id);
-      });
-    } else if (setFavorites && !isFavorited && curFav) {
-      setFavorites((prev: any) => {
-        return [{...curFav}, ...prev];
-      });
-    }
-    await addFavoriteFacility(facilityId);
+    await addFavoriteFacility(id);
     toggleFacilityFavorite(
       userData?.id,
-      id as string,
+      id,
       () => {},
-      (successData: any) => {
-        console.log('response', successData);
-      },
-      (error: any) => {
-        console.log('Error', error);
-      },
+      () => {},
+      () => {},
     );
   };
 
-  useEffect(() => {
-    const fetchReviewData = async () => {
-      if (!facilityDetails?.id) {
-        return;
-      }
-      try {
-        setLoading(true);
-        const data = await getFacilityRatingReview(facilityDetails.id);
-        setReviewData(data);
-        setRefresh(false);
-      } catch (error) {
-        console.error(error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        message: `Check out ${facilityDetails?.facility_name}\n\nAddress: ${
+          facilityDetails?.gps_address || facilityDetails?.location
+        }`,
+      });
+    } catch (error) {
+      console.log('Error sharing:', error);
+    }
+  };
 
-    fetchReviewData();
-  }, [facilityDetails, refresh]);
+  const openInMaps = () => {
+    const destination = `${facilityDetails?.latitude},${facilityDetails?.longitude}`;
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
+    Linking.openURL(url);
+  };
+
+  const handleContact = () => {
+    setIsModalVisible(true);
+  };
+
+  const dialNumber = (number: string) => {
+    Linking.openURL(`tel:${number}`);
+  };
+  const WEEK_DAYS = [
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ] as const;
 
   const StarRating = ({rating}: {rating: number}) => {
-    const fullStars = Math.floor(rating); // Full stars count
-    const hasHalfStar = rating % 1 !== 0; // Check for half-star
-    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0); // Remaining stars
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 !== 0;
+    const emptyStars = 5 - fullStars - (hasHalfStar ? 1 : 0);
 
     return (
-      <View style={{flexDirection: 'row'}}>
-        {/* Full Stars */}
+      <View style={styles.starContainer}>
         {Array(fullStars)
           .fill(0)
-          .map((_, index) => (
+          .map((_, i) => (
             <FontAwesome
-              key={`full-${index}`}
+              key={`full-${i}`}
               name="star"
-              size={15}
-              color="#ffc107"
-              style={{marginHorizontal: 3}}
+              size={14}
+              color="#FFA500"
             />
           ))}
-
-        {/* Half Star */}
         {hasHalfStar && (
-          <FontAwesome
-            name="star-half-full"
-            size={15}
-            color="#ffc107"
-            style={{marginHorizontal: 3}}
-          />
+          <FontAwesome name="star-half-full" size={14} color="#FFA500" />
         )}
-
-        {/* Empty Stars */}
         {Array(emptyStars)
           .fill(0)
-          .map((_, index) => (
+          .map((_, i) => (
             <FontAwesome
-              key={`empty-${index}`}
+              key={`empty-${i}`}
               name="star-o"
-              size={15}
-              style={{marginHorizontal: 3}}
-              color="#ffc107"
+              size={14}
+              color="#FFA500"
             />
           ))}
       </View>
     );
   };
 
+  const InfoCard = ({icon, label, value, color = themeColors.primary}: any) => (
+    <View style={styles.infoCard}>
+      <View style={[styles.infoIconBox, {backgroundColor: `${color}15`}]}>
+        <MaterialIcon name={icon} size={20} color={color} />
+      </View>
+      <View style={styles.infoContent}>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.infoValue}>{value}</Text>
+      </View>
+    </View>
+  );
+
+  const SectionCard = ({
+    title,
+    icon,
+    children,
+    color = themeColors.primary,
+  }: any) => (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeader}>
+        <View style={[styles.sectionIconBox, {backgroundColor: `${color}15`}]}>
+          <MaterialIcon name={icon} size={22} color={color} />
+        </View>
+        <Text style={styles.sectionTitle}>{title}</Text>
+      </View>
+      <View style={styles.sectionContent}>{children}</View>
+    </View>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator color={themeColors.primary} size="large" />
+      </View>
+    );
+  }
+
+  console.log('Disease: ', facilityDetails);
+  const images = facilityDetails?.mediaUrls?.length
+    ? facilityDetails.mediaUrls
+    : [require('../../assets/healthCareCenter.jpeg')];
+
   return (
     <View style={styles.container}>
-      {loading ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator color={themeColors.primary} size={'large'} />
-        </View>
-      ) : !facilityDetails ? (
-        <View style={styles.noDataContainer}>
-          <Text style={styles.noDataText}>No record found</Text>
-        </View>
-      ) : (
-        <>
-          <ScrollView
-            contentContainerStyle={[
-              styles.scrollViewContent,
-              {paddingBottom: bottomBarHeight},
-            ]}
-            showsVerticalScrollIndicator={false}
-            showsHorizontalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl
-                refreshing={refresh}
-                onRefresh={() => setRefresh(!refresh)}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+          styles.scrollContent,
+          {paddingBottom: 80 + insets.bottom}, // ✅ Fix for Android nav bar
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refresh}
+            onRefresh={() => setRefresh(!refresh)}
+          />
+        }>
+        {/* Hero Image Carousel */}
+        <View style={styles.carouselContainer}>
+          <Carousel
+            width={SCREEN_WIDTH}
+            height={280}
+            data={images}
+            renderItem={({item}) => (
+              <Image
+                source={typeof item === 'string' ? {uri: item} : item}
+                style={styles.carouselImage}
               />
-            }>
-            <View style={[styles.carouselContainer, {width: width}]}>
-              <Carousel
-                loop
-                autoPlay={!(facilityDetails?.mediaUrls?.length > 0)}
-                width={width}
-                height={isTablet ? width * 0.4 : width * 0.6}
-                data={
-                  facilityDetails?.mediaUrls?.length > 0
-                    ? facilityDetails?.mediaUrls
-                    : images
-                }
-                scrollAnimationDuration={1000}
-                enabled={
-                  (facilityDetails?.mediaUrls?.length > 0
-                    ? facilityDetails?.mediaUrls.length
-                    : images.length) > 1
-                } // 👈 This disables scroll when only one item
-                renderItem={({item}) => (
-                  <Image
-                    source={
-                      //@ts-ignore
-                      facilityDetails?.mediaUrls?.length > 0
-                        ? {uri: item}
-                        : item // item can be a local require()
-                    }
-                    style={[
-                      styles.image,
-                      {
-                        width: width,
-                        height: isTablet ? width * 0.4 : width * 0.6,
-                        resizeMode: isTablet ? 'stretch' : 'cover',
-                      },
-                    ]}
-                  />
-                )}
-                onSnapToItem={handleSnap}
-              />
-              <FacilityRating
-                userReview={userReview ? userReview : undefined}
-                facilityId={facilityDetails.id}
-                facilityName={facilityDetails.facility_name}
-              />
+            )}
+            onSnapToItem={setCurrentIndex}
+          />
 
-              <TouchableOpacity
-                style={styles.favoritesIcon}
-                onPress={async () =>
-                  await handleToggleFacilityFavorite(facilityDetails?.id)
-                }>
-                <MaterialIcon
-                  name={isFavorited ? 'heart' : 'heart-outline'}
-                  size={isTablet ? 35 : 24}
-                  color={themeColors.primary}
-                />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.paginationContainer}>
-              {facilityDetails?.mediaUrls?.length
-                ? facilityDetails?.mediaUrls?.map((_, index: number) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.dot,
-                        {
-                          backgroundColor:
-                            index === currentIndex
-                              ? themeColors.primary
-                              : themeColors.white,
-                        },
-                      ]}
-                    />
-                  ))
-                : images.map((_, index: number) => (
-                    <View
-                      key={index}
-                      style={[
-                        styles.dot,
-                        {
-                          backgroundColor:
-                            index === currentIndex
-                              ? themeColors.primary
-                              : themeColors.white,
-                        },
-                      ]}
-                    />
-                  ))}
-            </View>
-            <View style={styles.facilityInfoContainer}>
-              <Text style={styles.facilityName}>
-                {facilityDetails.facility_name}{' '}
-                {facilityDetails?.ownership
-                  ? `(${facilityDetails?.ownership})`
-                  : ''}
-              </Text>
-              <Text style={styles.nhisAccredited}>
-                <Text style={{fontFamily: fonts.OpenSansBold}}>
-                  NHIS Accredited:
-                </Text>{' '}
-                {facilityDetails?.hospital_services?.find((service: string) =>
-                  service.includes('NHIS Accepted'),
-                )
-                  ? 'Yes'
-                  : 'No'}
-              </Text>
-              <View style={styles.addressContainer}>
-                {/* <Icon
-                  name="map-marker-alt"
-                  size={15}
-                  color={themeColors.primary}
-                /> */}
-                <Text style={styles.facilityAddress}>
-                  <Text style={{fontFamily: fonts.OpenSansBold}}>Address:</Text>{' '}
-                  {facilityDetails?.gps_address || facilityDetails?.location}
-                </Text>
-              </View>
-              <View style={styles.containerDistance}>
-                <View style={styles.infoRow}>
-                  <View style={styles.infoItem}>
-                    <Icon name="road" size={20} color={themeColors.primary} />
-                    <Text style={styles.infoText}>
-                      {distance || (
-                        <ActivityIndicator size={'small'} color={'green'} />
-                      )}
-                    </Text>
-                  </View>
-                  <View style={styles.infoItem}>
-                    <Icon name="car" size={20} color={themeColors.primary} />
-                    <Text style={styles.infoText}>
-                      {duration || (
-                        <ActivityIndicator size={'small'} color={'green'} />
-                      )}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Services</Text>
-              <Text style={styles.sectionContent}>
-                {facilityDetails?.hospital_amenities?.length
-                  ? facilityDetails?.hospital_amenities.join(', ')
-                  : 'N/A'}
-              </Text>
-            </View>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Facilities</Text>
-              <Text style={styles.sectionContent}>
-                {facilityDetails?.hospital_amenities &&
-                  facilityDetails?.hospital_amenities.join(', ')}
-              </Text>
-            </View>
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Working Hours</Text>
-              {Object?.entries(facilityDetails?.business_hours)?.length ? (
-                Object?.entries(facilityDetails?.business_hours)?.map(
-                  ([day, hours]: any) => (
-                    <Text
-                      key={day}
-                      style={[
-                        styles.sectionContent,
-                        day === currentDay
-                          ? {fontFamily: fonts.OpenSansBold}
-                          : null,
-                      ]}>
-                      {day.charAt(0).toUpperCase() + day.slice(1)}:{' '}
-                      {hours.opening} - {hours.closing}
-                    </Text>
-                  ),
-                )
-              ) : (
-                <Text style={styles.sectionContent}>N/A</Text>
-              )}
-            </View>
-            <View style={[styles.section, {paddingBottom: 0}]}>
-              <Text style={styles.sectionTitle}>Reviews</Text>
-              {/*{facilityData?.reviews?.length ? (
-                  facilityData?.reviews?.map((review: any, index) => (
-                    <View key={index} style={styles.reviewContainer}>
-                      <View
-                        style={{flexDirection: 'row', alignItems: 'center'}}>
-                        <Image
-                          source={{uri: review?.profilePhotoUrl}}
-                          width={30}
-                          height={30}
-                          style={{marginRight: 5}}
-                        />
-                        <View style={{alignItems: 'flex-start'}}>
-                          <Text style={styles.sectionContent}>
-                            {review?.authorName}
-                          </Text>
-                          <AirbnbRating
-                            isDisabled
-                            count={5}
-                            defaultRating={review?.rating || 0}
-                            size={10}
-                            showRating={false}
-                          />
-                        </View>
-                      </View>
-                      <Text
-                        style={[styles.sectionContent, {marginVertical: 5}]}>
-                        {review?.comment}
-                      </Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.sectionContent}>N/A</Text>
-                )} */}
-              <ScrollView
-                style={{flex: 1}}
-                horizontal
-                // pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={{
-                  paddingHorizontal: moderateScale(10),
-                  paddingBottom: moderateScale(10),
-                  gap: 15,
-                }}>
-                {reviewData.length > 0 &&
-                  reviewData.map((item, index) => (
-                    <View
-                      key={index}
-                      style={{
-                        width: Dimensions.get('window').width - 100,
-                        borderRadius: moderateScale(10),
-                        alignItems: 'center',
-                        gap: 5,
-                        justifyContent: 'flex-start',
-                        // backgroundColor: 'red',
-                      }}>
-                      <View style={{flexDirection: 'row'}}>
-                        {/* Avatar Image */}
-                        <Image
-                          source={{uri: item?.user_profiles?.avatar_url}}
-                          style={{
-                            height: verticalScale(50),
-                            width: verticalScale(50),
-                            borderRadius: moderateScale(25),
-                            marginRight: moderateScale(10),
-                          }}
-                        />
+          {/* Favorite Button */}
+          <TouchableOpacity
+            style={styles.favoriteButton}
+            onPress={handleToggleFavorite}>
+            <MaterialIcon
+              name={isFavorited ? 'heart' : 'heart-outline'}
+              size={28}
+              color={isFavorited ? '#ff4444' : '#fff'}
+            />
+          </TouchableOpacity>
 
-                        {/* User Info */}
-                        <View
-                          style={{
-                            flex: 1,
-                            justifyContent: 'center',
-                          }}>
-                          <Text
-                            style={{
-                              fontSize: moderateScale(16),
-                              fontWeight: 'bold',
-                              color: '#333',
-                            }}>
-                            {item?.user_profiles?.first_name}{' '}
-                            {item?.user_profiles?.last_name}
-                          </Text>
-                          <StarRating rating={item?.rating} />
-                        </View>
-                      </View>
-                      <View
-                        style={{
-                          backgroundColor: themeColors.primary,
-                          padding: 10,
-                          borderRadius: 20,
-                          borderTopLeftRadius: 0,
-                          alignSelf: 'flex-start',
-                          // maxWidth: '80%',
-                          width: '100%',
-                        }}>
-                        <Text
-                          style={{
-                            fontSize: size.default,
-                            color: themeColors.white,
-                            textAlign: 'justify',
-                            fontStyle: 'italic',
-                          }}>
-                          "
-                          {item.comment ||
-                            'No comment  No comment found No comment found No comment found No comment found '}
-                          "
-                        </Text>
-                      </View>
-                    </View>
-                  ))}
-              </ScrollView>
-            </View>
+          {/* Rating Badge */}
+          <View style={styles.ratingBadge}>
+            <FontAwesome name="star" size={16} color="#FFA500" />
+            <Text style={styles.ratingText}>
+              {facilityDetails?.avg_rating || '5.0'}
+            </Text>
+          </View>
 
-            {/* <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Comments</Text>
-              <Text style={styles.sectionContent}>
-                {facilityDetails?.comments || 'N/A'}
-              </Text>
-            </View> */}
-            <Modal
-              transparent={true}
-              visible={isModalVisible}
-              animationType="slide"
-              onRequestClose={() => setIsModalVisible(false)}>
+          {/* Pagination Dots */}
+          <View style={styles.paginationDots}>
+            {images.map((_, index) => (
               <View
-                style={[styles.modalOverlay, {width: width, height: height}]}>
-                <View style={styles.modalContainer}>
-                  {!actionType ? (
-                    <View style={{alignItems: 'center'}}>
-                      {getCallNumbers().length > 0 && (
-                        <TouchableOpacity
-                          style={[styles.button, {marginVertical: 15}]}
-                          onPress={() => handleActionPress('call')}>
-                          <Icon
-                            name="phone-alt"
-                            size={20}
-                            color={themeColors.primary}
-                          />
-                          <Text
-                            style={[
-                              styles.buttonText,
-                              {color: themeColors.primary},
-                            ]}
-                            onPress={() => handleActionPress('call')}>
-                            Call
-                          </Text>
-                        </TouchableOpacity>
-                      )}
-                      {hasWhatsapp && (
-                        <TouchableOpacity
-                          style={[styles.button, {marginVertical: 15}]}
-                          onPress={() => handleActionPress('whatsapp')}>
-                          <Icon
-                            name="whatsapp"
-                            size={20}
-                            color={themeColors.primary}
-                          />
-                          <Text
-                            style={[
-                              styles.buttonText,
-                              {color: themeColors.primary},
-                            ]}
-                            onPress={() => handleActionPress('whatsapp')}>
-                            WhatsApp
-                          </Text>
-                        </TouchableOpacity>
-                      )}
+                key={index}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor:
+                      index === currentIndex ? '#fff' : 'rgba(255,255,255,0.4)',
+                  },
+                ]}
+              />
+            ))}
+          </View>
+        </View>
+
+        {/* Main Content */}
+        <View style={styles.contentContainer}>
+          {/* Facility Name & Basic Info */}
+          <View style={styles.headerCard}>
+            <Text style={styles.facilityName}>
+              {facilityDetails?.facility_name}
+            </Text>
+            <Text style={styles.infoLabel}>
+              {facilityDetails?.facility_type}
+            </Text>
+          </View>
+
+          {/* Quick Info Cards */}
+          <View style={styles.quickInfoContainer}>
+            <View style={styles.quickInfoItem}>
+              <InfoCard
+                icon="hospital-building"
+                label="NHIS Status"
+                value={
+                  facilityDetails?.hospital_services?.find((s: string) =>
+                    s.includes('NHIS'),
+                  )
+                    ? 'Accredited'
+                    : 'Not Accredited'
+                }
+                color="#10b981"
+              />
+            </View>
+
+            <View style={styles.quickInfoItem}>
+              <InfoCard
+                icon="map-marker"
+                label="Address"
+                value={facilityDetails?.gps_address || 'N/A'}
+                color={themeColors.darkBlue}
+              />
+            </View>
+          </View>
+
+          {/* Distance & Duration */}
+          <View style={styles.distanceCard}>
+            <View style={styles.distanceItem}>
+              <MaterialIcon name="road" size={24} color={themeColors.primary} />
+              <Text style={styles.distanceText}>{distance}</Text>
+            </View>
+            <View style={styles.divider} />
+            <View style={styles.distanceItem}>
+              <MaterialIcon name="car" size={24} color={themeColors.primary} />
+              <Text style={styles.distanceText}>{duration}</Text>
+            </View>
+          </View>
+
+          {/* Amenities Section */}
+          {facilityDetails?.hospital_amenities?.length > 0 && (
+            <SectionCard
+              title="Amenities"
+              icon="medical-bag"
+              color={themeColors.darkBlue}>
+              <View style={styles.tagsContainer}>
+                {facilityDetails.hospital_amenities.map(
+                  (service: string, index: number) => (
+                    <View key={index} style={styles.tag}>
+                      <Text style={styles.tagText}>{service}</Text>
                     </View>
-                  ) : (
-                    <>
-                      <Text style={styles.modalTitle}>
-                        {actionType === 'call'
-                          ? 'Select a Number to Call'
-                          : 'Select a Number for WhatsApp'}
-                      </Text>
-                      {(actionType === 'call'
-                        ? getCallNumbers()
-                        : getWhatsappNumbers()
-                      ).map((number: string, index: number) => (
-                        <View key={index} style={styles.modalItemContainer}>
-                          <TouchableOpacity
-                            style={styles.modalItem}
-                            onPress={() => handleNumberSelect(number)}>
-                            <Text
-                              style={styles.modalItemText}
-                              onPress={() => handleNumberSelect(number)}>
-                              {number}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      ))}
-                    </>
-                  )}
-                  <TouchableOpacity
-                    style={styles.modalCancel}
-                    onPress={() => {
-                      setIsModalVisible(false);
-                      if (hasWhatsapp) {
-                        setActionType(null);
-                      }
-                    }}>
-                    <Text
-                      style={styles.modalCancelText}
-                      onPress={() => {
-                        setIsModalVisible(false);
-                        if (hasWhatsapp) {
-                          setActionType(null);
-                        }
-                      }}>
-                      Cancel
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            </Modal>
-          </ScrollView>
-          <View
-            onLayout={e => {
-              setBottomBarHeight(e.nativeEvent.layout.height);
-            }}
-            style={[styles.fixedButtonsContainer, {height: iheight}]}>
-            <TouchableOpacity
-              style={[styles.button, {marginBottom: imarginBottom}]}
-              onPress={() => setIsModalVisible(true)}>
-              <Icon name="phone-alt" size={20} color={themeColors.white} />
-              <Text style={styles.buttonText}>Contact</Text>
-            </TouchableOpacity>
-            <View
-              style={{
-                backgroundColor: 'white',
-                height: 40,
-                width: 2,
-              }}>
-              <Text></Text>
-            </View>
-            <TouchableOpacity
-              disabled={!distance}
-              style={[styles.button, {marginBottom: imarginBottom}]}
-              onPress={openInMaps}>
-              <Icon name="map-marker-alt" size={20} color={themeColors.white} />
-              <Text style={styles.buttonText}>
-                Direction{' '}
-                {distance || (
-                  <ActivityIndicator size={'small'} color={'#fff'} />
+                  ),
                 )}
-              </Text>
-            </TouchableOpacity>
-            <View
-              style={{
-                backgroundColor: 'white',
-                height: 40,
-                width: 2,
-              }}>
-              <Text></Text>
-            </View>
+              </View>
+            </SectionCard>
+          )}
+
+          {/* Services Section */}
+          {facilityDetails?.hospital_services?.length > 0 && (
+            <SectionCard
+              title="Services"
+              icon="account-wrench"
+              color={themeColors.primary}>
+              <View style={styles.tagsContainer}>
+                {facilityDetails.hospital_services.map(
+                  (service: string, index: number) => (
+                    <View key={index} style={styles.tag}>
+                      <Text style={styles.tagText}>{service}</Text>
+                    </View>
+                  ),
+                )}
+              </View>
+            </SectionCard>
+          )}
+
+          {/* Working Hours */}
+          {facilityDetails?.business_hours && (
+            <SectionCard
+              title="Working Hours"
+              icon="clock-outline"
+              color={themeColors.primary}>
+              {WEEK_DAYS.map(day => {
+                const hours = facilityDetails.business_hours[day];
+
+                return (
+                  <View
+                    key={day}
+                    style={[
+                      styles.hourRow,
+                      day === currentDay && styles.currentDayRow,
+                    ]}>
+                    <Text
+                      style={[
+                        styles.dayText,
+                        day === currentDay && styles.currentDayText,
+                      ]}>
+                      {day.charAt(0).toUpperCase() + day.slice(1)}
+                    </Text>
+
+                    <Text
+                      style={[
+                        styles.hourText,
+                        day === currentDay && styles.currentHourText,
+                      ]}>
+                      {hours ? `${hours.opening} – ${hours.closing}` : 'Closed'}
+                    </Text>
+                  </View>
+                );
+              })}
+            </SectionCard>
+          )}
+
+          {/* Reviews Section */}
+          <SectionCard
+            title="Reviews"
+            icon="comment-text-multiple"
+            color={themeColors.black}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.reviewsScroll}>
+              {reviewData.length > 0 ? (
+                reviewData.map((review: any, index) => (
+                  <View key={index} style={styles.reviewCard}>
+                    <View style={styles.reviewHeader}>
+                      <Image
+                        source={{uri: review?.user_profiles?.avatar_url}}
+                        style={styles.reviewAvatar}
+                      />
+                      <View style={styles.reviewUserInfo}>
+                        <Text style={styles.reviewUserName}>
+                          {review?.user_profiles?.first_name}{' '}
+                          {review?.user_profiles?.last_name}
+                        </Text>
+                        <StarRating rating={review?.rating || 0} />
+                      </View>
+                    </View>
+                    <Text style={styles.reviewComment}>
+                      "{review?.comment}"
+                    </Text>
+                  </View>
+                ))
+              ) : (
+                <Text style={styles.noReviewsText}>No reviews yet</Text>
+              )}
+            </ScrollView>
+          </SectionCard>
+        </View>
+      </ScrollView>
+
+      {/* Fixed Bottom Actions - ✅ Fixed for Android */}
+      <View
+        style={[
+          styles.bottomActions,
+          {paddingBottom: Math.max(insets.bottom, 10)}, // ✅ Respects Android nav bar
+        ]}>
+        <TouchableOpacity style={styles.actionButton} onPress={handleContact}>
+          <MaterialIcon name="phone" size={22} color="#fff" />
+          <Text style={styles.actionText}>Contact</Text>
+        </TouchableOpacity>
+
+        <View style={styles.actionDivider} />
+
+        <TouchableOpacity style={styles.actionButton} onPress={openInMaps}>
+          <MaterialIcon name="directions" size={22} color="#fff" />
+          <Text style={styles.actionText}>Direction</Text>
+        </TouchableOpacity>
+
+        <View style={styles.actionDivider} />
+
+        <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
+          <MaterialIcon name="share-variant" size={22} color="#fff" />
+          <Text style={styles.actionText}>Share</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Contact Modal */}
+      <Modal
+        transparent
+        visible={isModalVisible}
+        animationType="slide"
+        onRequestClose={() => setIsModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <Text style={styles.modalTitle}>Contact Facility</Text>
             <TouchableOpacity
-              style={[styles.button, {marginBottom: imarginBottom}]}
-              onPress={handleShare}>
-              <Icon name="share-alt" size={20} color={themeColors.white} />
-              <Text style={styles.buttonText}>Share</Text>
+              style={styles.modalButton}
+              onPress={() => {
+                setIsModalVisible(false);
+                dialNumber(facilityDetails?.contact_num || '');
+              }}>
+              <MaterialIcon
+                name="phone"
+                size={24}
+                color={themeColors.primary}
+              />
+              <Text style={styles.modalButtonText}>Call</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modalButton, {marginTop: 10}]}
+              onPress={() => setIsModalVisible(false)}>
+              <Text style={styles.modalCancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
-        </>
-      )}
+        </View>
+      </Modal>
     </View>
   );
 };
-
-export default FacilityDetails;
 
 const styles = StyleSheet.create({
   container: {
@@ -1283,207 +501,380 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  noDataContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  noDataText: {
-    fontSize: size.lg,
-    fontFamily: fonts.OpenSansRegular,
-    color: themeColors.darkGray,
-  },
-  scrollViewContent: {
+  scrollContent: {
     flexGrow: 1,
-    paddingBottom: 40,
   },
   carouselContainer: {
     position: 'relative',
-    // width,
-    // height: width * 0.6,
+    width: SCREEN_WIDTH,
+    height: 280,
   },
-  image: {
-    // width: 500,
-    // height: 300 * 0.6,
+  carouselImage: {
+    width: SCREEN_WIDTH,
+    height: 280,
     resizeMode: 'cover',
   },
-  ratingIcon: {
-    display: 'flex',
+  favoriteButton: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backdropFilter: 'blur(10px)',
+  },
+  ratingBadge: {
+    position: 'absolute',
+    top: 15,
+    left: 15,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    position: 'absolute',
-    top: 10,
-    left: 10,
-    backgroundColor: themeColors.white,
-    padding: 8,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
-    elevation: 3,
+    gap: 6,
   },
-  favoritesIcon: {
+  ratingText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: fonts.OpenSansBold,
+  },
+  paginationDots: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: themeColors.white,
-    padding: 8,
-    borderRadius: 20,
-    elevation: 3,
-  },
-  paginationContainer: {
+    bottom: 15,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    marginVertical: 10,
+    gap: 6,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginHorizontal: 4,
   },
-  facilityInfoContainer: {
-    backgroundColor: themeColors.white,
-    padding: 15,
-    marginHorizontal: 15,
-    marginTop: 15,
-    borderRadius: 8,
-    elevation: 3,
+  contentContainer: {
+    padding: 20,
+  },
+  headerCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+      },
+      android: {elevation: 4},
+    }),
   },
   facilityName: {
-    fontSize: size.md,
+    fontSize: 24,
     fontFamily: fonts.OpenSansBold,
-    color: themeColors.darkGray,
+    color: '#1E293B',
+    marginBottom: 8,
   },
-  addressContainer: {
+  ownershipBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  ownershipText: {
+    fontSize: 12,
+    fontFamily: fonts.OpenSansMedium,
+    color: '#0369A1',
+  },
+  quickInfoContainer: {
+    flexWrap: 'wrap',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  quickInfoItem: {
+    width: '48%', // two columns
+  },
+  infoCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    // marginTop: 5,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 1},
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {elevation: 2},
+    }),
   },
-  facilityAddress: {
-    fontSize: size.sl,
+  infoIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoContent: {
+    flex: 1,
+  },
+  infoLabel: {
+    fontSize: 12,
     fontFamily: fonts.OpenSansRegular,
-    color: themeColors.darkGray,
-    // marginLeft: 5,
+    color: '#64748B',
+    marginBottom: 2,
   },
-  nhisAccredited: {
-    fontSize: size.sl,
-    fontFamily: fonts.OpenSansRegular,
-    color: themeColors.darkGray,
+  infoValue: {
+    fontSize: 14,
+    fontFamily: fonts.OpenSansMedium,
+    color: '#1E293B',
   },
-  section: {
-    margin: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: themeColors.white,
-    paddingBottom: 15,
+  distanceCard: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 1},
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: {elevation: 2},
+    }),
+  },
+  distanceItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  distanceText: {
+    fontSize: 16,
+    fontFamily: fonts.OpenSansMedium,
+    color: '#1E293B',
+  },
+  divider: {
+    width: 1,
+    height: 30,
+    backgroundColor: '#E2E8F0',
+  },
+  sectionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.08,
+        shadowRadius: 6,
+      },
+      android: {elevation: 3},
+    }),
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   sectionTitle: {
-    // marginBottom: 5,
-    fontSize: size.lg,
-    color: themeColors.darkGray,
+    fontSize: 18,
     fontFamily: fonts.OpenSansBold,
-    textTransform: 'uppercase',
+    color: '#1E293B',
   },
-  sectionContent: {
+  sectionContent: {},
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tag: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  tagText: {
+    fontSize: 13,
     fontFamily: fonts.OpenSansRegular,
-    fontSize: size.sl,
-    color: themeColors.darkGray,
+    color: '#475569',
   },
-  reviewContainer: {
-    paddingVertical: 15,
+  hourRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  fixedButtonsContainer: {
+  currentDayRow: {
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderBottomWidth: 0,
+  },
+  dayText: {
+    fontSize: 14,
+    fontFamily: fonts.OpenSansRegular,
+    color: '#64748B',
+  },
+  currentDayText: {
+    fontFamily: fonts.OpenSansBold,
+    color: '#92400E',
+  },
+  hourText: {
+    fontSize: 14,
+    fontFamily: fonts.OpenSansRegular,
+    color: '#475569',
+  },
+  currentHourText: {
+    fontFamily: fonts.OpenSansBold,
+    color: '#92400E',
+  },
+  reviewsScroll: {
+    gap: 12,
+  },
+  reviewCard: {
+    width: SCREEN_WIDTH - 100,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    padding: 16,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  reviewAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 12,
+  },
+  reviewUserInfo: {
+    flex: 1,
+  },
+  reviewUserName: {
+    fontSize: 15,
+    fontFamily: fonts.OpenSansMedium,
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  starContainer: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  reviewComment: {
+    fontSize: 14,
+    fontFamily: fonts.OpenSansRegular,
+    color: '#475569',
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  noReviewsText: {
+    fontSize: 14,
+    fontFamily: fonts.OpenSansRegular,
+    color: '#94A3B8',
+    textAlign: 'center',
+  },
+  bottomActions: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     flexDirection: 'row',
-    justifyContent: 'space-around',
     backgroundColor: themeColors.primary,
-    paddingVertical: 10,
-    paddingHorizontal: 10,
-    borderTopWidth: 1,
-    borderTopColor: themeColors.white,
-    width: '100%',
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: -4},
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+      },
+      android: {elevation: 8},
+    }),
   },
-  button: {
-    flexDirection: 'row',
+  actionButton: {
+    flex: 1,
     alignItems: 'center',
+    gap: 4,
   },
-  buttonText: {
-    marginLeft: 5,
-    color: themeColors.white,
+  actionText: {
+    fontSize: 13,
     fontFamily: fonts.OpenSansMedium,
-    fontSize: size.md,
+    color: '#fff',
+  },
+  actionDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(255,255,255,0.3)',
   },
   modalOverlay: {
-    // flex: 1,
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContainer: {
     width: '80%',
-    backgroundColor: themeColors.white,
-    padding: 20,
-    // borderRadius: 10,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
   },
   modalTitle: {
-    fontSize: size.lg,
+    fontSize: 20,
     fontFamily: fonts.OpenSansBold,
+    color: '#1E293B',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 10,
+  },
+  modalButtonText: {
+    fontSize: 16,
+    fontFamily: fonts.OpenSansMedium,
     color: themeColors.primary,
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  modalItem: {
-    paddingVertical: 10,
-  },
-  modalItemText: {
-    fontSize: size.md,
-    fontFamily: fonts.OpenSansRegular,
-    color: themeColors.darkGray,
-    textAlign: 'center',
-  },
-  modalCancel: {
-    paddingVertical: 10,
-    marginTop: 10,
   },
   modalCancelText: {
-    fontSize: size.md,
-    fontFamily: fonts.OpenSansBold,
-    color: themeColors.white,
+    fontSize: 16,
+    fontFamily: fonts.OpenSansMedium,
+    color: '#64748B',
     textAlign: 'center',
-    backgroundColor: themeColors.primary,
-    padding: 5,
-    borderRadius: 10,
-  },
-  modalItemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: themeColors.lightGray,
-    justifyContent: 'center',
-  },
-  copyButton: {
-    marginLeft: 10,
-    padding: 5,
-    borderRadius: 5,
-    // backgroundColor: themeColors.lightGray,
-  },
-  containerDistance: {
-    marginTop: 10,
-  },
-  infoRow: {
-    flexDirection: 'row',
-  },
-  infoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  infoText: {
-    marginLeft: 5,
-    fontSize: size.sl,
-    fontFamily: fonts.OpenSansRegular,
-    color: themeColors.darkGray,
   },
 });
+
+export default FacilityDetails;

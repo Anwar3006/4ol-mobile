@@ -426,6 +426,20 @@ const Route = () => {
     getPeriodData();
   }, [userData?.id]);
 
+  // 🔧 DEV MODE: Bypass authentication for testing
+  // Comment out this block and uncomment the original code below to restore auth
+  useEffect(() => {
+    if (!userData?.id) {
+      // Set mock user data to bypass auth
+      dispatch(setUserData({
+        id: 'dev-user-123',
+        email: 'dev@test.com',
+        name: 'Dev User',
+        // Add other required user fields here
+      }));
+    }
+  }, []);
+
   if (loading) {
     return (
       <View style={styles.loaderContainer}>
@@ -438,19 +452,22 @@ const Route = () => {
     <NavigationContainer
       ref={navigationRef}
       onReady={() => console.log('Navigation is ready')}>
+      {/* 🔧 DEV MODE: Always show main app */}
+      <AppNavigation />
+      
+      {/* 🔧 ORIGINAL AUTH CODE - Uncomment to restore authentication
       {isBiometricUserAvailable && !routeHandlingBiometric ? (
         <LoginScreen />
       ) : isBiometricUserAvailable && routeHandlingBiometric ? (
-        // Show loading while Route handles biometric on resume
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color={themeColors.primary} />
         </View>
       ) : userData?.id ? (
-        // Change: Don't create another NavigationContainer in AppNavigation
         <AppNavigation />
       ) : (
         <AuthStackNavigation />
       )}
+      */}
     </NavigationContainer>
   );
 };
