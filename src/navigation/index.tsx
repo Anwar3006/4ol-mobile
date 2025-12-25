@@ -431,12 +431,14 @@ const Route = () => {
   useEffect(() => {
     if (!userData?.id) {
       // Set mock user data to bypass auth
-      dispatch(setUserData({
-        id: 'dev-user-123',
-        email: 'dev@test.com',
-        name: 'Dev User',
-        // Add other required user fields here
-      }));
+      dispatch(
+        setUserData({
+          id: 'dev-user-123',
+          email: 'dev@test.com',
+          name: 'Dev User',
+          // Add other required user fields here
+        }),
+      );
     }
   }, []);
 
@@ -454,8 +456,8 @@ const Route = () => {
       onReady={() => console.log('Navigation is ready')}>
       {/* 🔧 DEV MODE: Always show main app */}
       <AppNavigation />
-      
-      {/* 🔧 ORIGINAL AUTH CODE - Uncomment to restore authentication
+
+      {/* 🔧 ORIGINAL AUTH CODE - Uncomment to restore authentication */}
       {isBiometricUserAvailable && !routeHandlingBiometric ? (
         <LoginScreen />
       ) : isBiometricUserAvailable && routeHandlingBiometric ? (
@@ -467,7 +469,9 @@ const Route = () => {
       ) : (
         <AuthStackNavigation />
       )}
-      */}
+
+      {/* Bypass authentication for dev */}
+      {/* </NavigationContainer> */}
     </NavigationContainer>
   );
 };
