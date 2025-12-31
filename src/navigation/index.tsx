@@ -455,7 +455,7 @@ const Route = () => {
       ref={navigationRef}
       onReady={() => console.log('Navigation is ready')}>
       {/* 🔧 DEV MODE: Always show main app */}
-      <AppNavigation />
+      {/* <AppNavigation /> */}
 
       {/* 🔧 ORIGINAL AUTH CODE - Uncomment to restore authentication */}
       {isBiometricUserAvailable && !routeHandlingBiometric ? (
@@ -471,7 +471,6 @@ const Route = () => {
       )}
 
       {/* Bypass authentication for dev */}
-      {/* </NavigationContainer> */}
     </NavigationContainer>
   );
 };

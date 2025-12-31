@@ -18,11 +18,10 @@ import {
 } from '../../utils/metrics';
 
 interface CustomInputProps extends TextInputProps {
-  label?: string; // Optional label for better UX
+  label?: string;
   icon?: string;
   error?: string;
   touched?: boolean;
-  editable?: boolean;
 }
 
 const CustomInput: React.FC<CustomInputProps> = ({
@@ -35,19 +34,12 @@ const CustomInput: React.FC<CustomInputProps> = ({
   touched,
   icon,
   editable = true,
-  multiline = false,
-  numberOfLines = 1,
   ...props
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
 
-  // Determine border color based on state
-  const getBorderColor = () => {
-    if (error && touched) return 'red';
-    if (isFocused) return themeColors.primary;
-    return '#E0E0E0'; // Elegant light gray
-  };
+  const isError = error && touched;
 
   return (
     <View style={styles.container}>
@@ -57,12 +49,13 @@ const CustomInput: React.FC<CustomInputProps> = ({
         style={[
           styles.inputWrapper,
           {
-            borderColor: getBorderColor(),
-            backgroundColor: editable ? '#FFFFFF' : '#F5F5F5',
-            // Increase height and align items to top for multiline
-            minHeight: multiline ? verticalScale(100) : verticalScale(55),
-            alignItems: multiline ? 'flex-start' : 'center',
-            paddingTop: multiline ? verticalScale(12) : 0,
+            borderColor: isError
+              ? 'red'
+              : isFocused
+              ? themeColors.primary
+              : '#C4C4C4',
+            backgroundColor: editable ? '#FFFFFF' : '#F8F9FA',
+            opacity: editable ? 1 : 0.8,
           },
         ]}>
         {icon && (
@@ -70,18 +63,12 @@ const CustomInput: React.FC<CustomInputProps> = ({
             name={icon}
             size={20}
             color={isFocused ? themeColors.primary : '#9E9E9E'}
-            style={[
-              styles.iconStyle,
-              multiline && {marginTop: verticalScale(2)},
-            ]}
+            style={styles.iconStyle}
           />
         )}
 
         <TextInput
-          style={[
-            styles.input,
-            {textAlignVertical: multiline ? 'top' : 'center'},
-          ]}
+          style={styles.input}
           value={value}
           placeholder={placeholder}
           placeholderTextColor="#BDBDBD"
@@ -90,76 +77,73 @@ const CustomInput: React.FC<CustomInputProps> = ({
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           editable={editable}
-          multiline={multiline}
-          numberOfLines={numberOfLines}
-          autoCorrect={false}
+          autoCapitalize="none"
           {...props}
         />
 
         {secureTextEntry && (
-          <TouchableOpacity
-            style={styles.eyeIcon}
-            onPress={() => setShowPassword(!showPassword)}>
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
             <Icon
-              name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-              size={22}
+              name={showPassword ? 'eye-off' : 'eye'}
+              size={20}
               color="#9E9E9E"
             />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Elegant Error Message */}
-      {error && touched ? (
-        <Text style={styles.errorText}>{error}</Text>
-      ) : (
-        <View style={styles.errorSpacer} />
-      )}
+      {isError && <Text style={styles.errorText}>{error}</Text>}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%', // Responsive width
-    marginBottom: verticalScale(5),
+    width: horizontalScale(330), // Fix the width here
+    marginBottom: verticalScale(12),
+    alignSelf: 'center',
   },
   label: {
     fontFamily: fonts.OpenSansBold,
     fontSize: 14,
-    color: themeColors.darkGray,
+    color: themeColors.gray,
     marginBottom: verticalScale(6),
-    marginLeft: horizontalScale(4),
   },
   inputWrapper: {
     flexDirection: 'row',
-    borderRadius: moderateScale(10), // Elegant subtle rounding instead of pill
-    borderWidth: 1.5,
-    paddingHorizontal: horizontalScale(12),
+    alignItems: 'center',
+    borderRadius: moderateScale(12),
+    borderWidth: 1,
+    paddingHorizontal: horizontalScale(15),
+    height: verticalScale(55),
+    // Standard Cross-Platform Shadow
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   input: {
     flex: 1,
     fontSize: 16,
     color: '#333',
     fontFamily: fonts.OpenSansRegular,
-    paddingVertical:
-      Platform.OS === 'ios' ? verticalScale(12) : verticalScale(8),
+    height: '100%',
   },
   iconStyle: {
     marginRight: horizontalScale(10),
   },
-  eyeIcon: {
-    paddingLeft: horizontalScale(10),
-  },
   errorText: {
     color: 'red',
     fontSize: 12,
-    fontFamily: fonts.OpenSansRegular,
-    marginTop: verticalScale(4),
-    marginLeft: horizontalScale(4),
-  },
-  errorSpacer: {
-    height: verticalScale(18),
+    marginTop: 4,
+    marginLeft: 4,
   },
 });
 

@@ -6,6 +6,7 @@ import {
   Image,
   KeyboardAvoidingView,
   Dimensions,
+  Platform,
 } from 'react-native';
 import React, {useEffect, useRef, useState} from 'react';
 import {themeColors} from '../../theme/colors';
@@ -19,7 +20,11 @@ import {
   ensureCameraPermission,
   ensurePhotoLibraryPermission,
 } from '../../utils/permissions';
-import {horizontalScale, verticalScale} from '../../utils/metrics';
+import {
+  horizontalScale,
+  moderateScale,
+  verticalScale,
+} from '../../utils/metrics';
 import CameraIcon from 'react-native-vector-icons/FontAwesome5';
 import CustomInput from '../../components/common/CustomInput';
 import {Formik} from 'formik';
@@ -122,7 +127,7 @@ const Profile = () => {
     }
   };
 
-  console.log('~save iamge url-', saveimageUrl);
+  console.log('~user', userData);
   const handleimageUpload = async path => {
     await uploadAvatar(
       path,
@@ -357,8 +362,8 @@ const Profile = () => {
                 onChangeText={handleChange('first_name')}
                 secureTextEntry={false}
                 //  isError={isError}
-                error={errors?.first_name}
-                touched={touched.first_name}
+                error={errors?.first_name as string}
+                touched={touched.first_name as boolean}
                 editable={isDisabledField}
                 // icon=''
                 // isError=''
@@ -371,8 +376,8 @@ const Profile = () => {
                 onChangeText={handleChange('last_name')}
                 secureTextEntry={false}
                 // isError={isError}
-                error={errors?.last_name}
-                touched={touched.last_name}
+                error={errors?.last_name as string}
+                touched={touched.last_name as boolean}
                 editable={isDisabledField}
 
                 // focus={isDisabledField}
@@ -384,12 +389,11 @@ const Profile = () => {
                     style={[
                       styles.pickerContainer,
                       {
-                        boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
                         flexDirection: 'row',
                         alignItems: 'center',
                         backgroundColor: isDisabledField
                           ? themeColors.white
-                          : 'lightgrey',
+                          : '#FFFFFF',
                       },
                     ]}>
                     <MaterialCommunityIcons
@@ -418,7 +422,7 @@ const Profile = () => {
                         {
                           backgroundColor: isDisabledField
                             ? themeColors.white
-                            : 'lightgrey',
+                            : '#FFFFFF',
                         },
                       ]}
                       placeholderStyle={{color: themeColors.black}}
@@ -442,7 +446,7 @@ const Profile = () => {
                         {
                           backgroundColor: isDisabledField
                             ? themeColors.white
-                            : 'lightgrey',
+                            : '#FFFFFF',
                         },
                       ]}>
                       <Text style={styles.datePickerText}>
@@ -486,17 +490,22 @@ const Profile = () => {
                   alignItems: 'center',
                   borderRadius: 50,
                   padding: 3,
-                  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-                  shadowColor: '#000',
-                  shadowOffset: {width: 0, height: 4},
-                  shadowOpacity: 0.3,
-                  shadowRadius: 4,
-                  elevation: 5,
+                  ...Platform.select({
+                    ios: {
+                      shadowColor: '#000',
+                      shadowOffset: {width: 0, height: 2},
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                    },
+                    android: {
+                      elevation: 2,
+                    },
+                  }),
                   backgroundColor: !isDisabledField
-                    ? 'lightgray'
+                    ? '#FFFFFF'
                     : themeColors.white,
-                  borderWidth: 2,
-                  borderColor: themeColors.gray,
+                  borderWidth: 1,
+                  borderColor: '#C4C4C4',
                   marginBottom: 20,
                   overflow: 'hidden',
                   alignSelf: 'center',
@@ -522,7 +531,7 @@ const Profile = () => {
                     styles.regionDropdown,
                     {
                       backgroundColor: !isDisabledField
-                        ? 'lightgray'
+                        ? '#FFFFFF'
                         : themeColors.white,
                     },
                   ]}
@@ -690,12 +699,20 @@ const styles = StyleSheet.create({
     width: horizontalScale(330),
   },
   pickerContainer: {
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    borderRadius: 50,
+    borderWidth: 1,
+    borderColor: '#C4C4C4',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+    borderRadius: moderateScale(12),
     overflow: 'hidden',
   },
   picker: {
@@ -711,12 +728,20 @@ const styles = StyleSheet.create({
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-    borderRadius: 50,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+    borderRadius: moderateScale(12),
+    borderColor: '#C4C4C4',
+    borderWidth: 1,
     paddingHorizontal: horizontalScale(10),
   },
   datePickerText: {
@@ -746,7 +771,7 @@ const styles = StyleSheet.create({
     height: 50,
     width: '100%',
     paddingHorizontal: 15,
-    borderRadius: 50,
+    borderRadius: 10,
   },
   regionDropdown: {
     flex: 1,
