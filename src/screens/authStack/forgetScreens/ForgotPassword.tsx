@@ -18,7 +18,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {validateEmail} from '../../../utils/helpers';
 import {sendOtpToEmail, signInWithPhoneNumber} from '../../../services/auth';
 import {useToast} from 'react-native-toast-notifications';
-import DeviceCountry from 'react-native-device-country';
+import * as Localization from 'expo-localization';
 import ForgetEmailAddress from '../../../components/auth/forget/ForgetEmailAddress';
 import ForgetPhoneNumber from '../../../components/auth/forget/ForgetPhoneNumber';
 
@@ -36,14 +36,14 @@ const ForgotPasswordScreen: React.FC<ForgotPasswordScreenProps> = ({
   const [countryCode, setCountryCode] = useState<any>();
 
   useEffect(() => {
-    DeviceCountry.getCountryCode()
-      .then(result => {
-        setCountryCode(result?.code?.toUpperCase() || 'GH');
-      })
-      .catch(e => {
-        setCountryCode('GH');
-        console.log('Error while getting country', e);
-      });
+    try {
+      const locales = Localization.getLocales();
+      const region = locales?.[0]?.regionCode?.toUpperCase() || 'GH';
+      setCountryCode(region);
+    } catch (e) {
+      setCountryCode('GH');
+      console.log('Error while getting country', e);
+    }
   }, []);
 
   // const handleSetNewPin = () => {

@@ -1,8 +1,8 @@
 import axios from 'axios';
 import moment from 'moment';
 import {Platform} from 'react-native';
-import DeviceInfo from 'react-native-device-info';
-import {supabase} from '../utils/supabaseClient';
+// import DeviceInfo from 'react-native-device-info';
+import {supabase} from '../../lib/supabase';
 
 export const logActivity = async (
   activity: {
@@ -26,21 +26,21 @@ export const logActivity = async (
         : moment().format('DD-MM-YYYY HH:mm:ss');
 
     activity.timestamp = formattedTimestamp;
-    const deviceInfo = {
-      deviceId: DeviceInfo.getDeviceId() || '',
-      deviceName: (await DeviceInfo.getDeviceName()) || '',
-      systemName: DeviceInfo.getSystemName() || '',
-      systemVersion: DeviceInfo.getSystemVersion() || '',
-      model: DeviceInfo.getModel() || '',
-      manufacturer: (await DeviceInfo.getManufacturer()) || '',
-      isTablet: DeviceInfo.isTablet() || false,
-    };
+    // const deviceInfo = {
+    //   deviceId: DeviceInfo.getDeviceId() || '',
+    //   deviceName: (await DeviceInfo.getDeviceName()) || '',
+    //   systemName: DeviceInfo.getSystemName() || '',
+    //   systemVersion: DeviceInfo.getSystemVersion() || '',
+    //   model: DeviceInfo.getModel() || '',
+    //   manufacturer: (await DeviceInfo.getManufacturer()) || '',
+    //   isTablet: DeviceInfo.isTablet() || false,
+    // };
     const response = await axios.get('https://api.ipify.org?format=json');
     const ip = response?.data?.ip || '';
     const activityLog = {
       ...activity,
       ip,
-      device_info: deviceInfo,
+      device_info: null,
       created_at: moment(new Date()).valueOf(),
       updated_at: moment(new Date()).valueOf(),
       created_by: activity.user_id,

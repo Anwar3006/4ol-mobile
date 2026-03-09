@@ -39,7 +39,7 @@ import TrackPeriod from '../screens/periodsTrackerScreens/TrackPeriod';
 import DashboardPeriods from '../screens/periodsTrackerScreens/DashboardPeriods';
 import {useDispatch, useSelector} from 'react-redux';
 import {user} from '../store/selectors';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 import {setPeriodTracker} from '../store/slices/periodTracker';
 import TrackAge from '../screens/periodsTrackerScreens/TrackAge';
 import DashboardCalenderView from '../screens/periodsTrackerScreens/DashboardCalenderView';

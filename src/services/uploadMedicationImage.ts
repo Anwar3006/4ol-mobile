@@ -1,4 +1,4 @@
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 import RNFS from 'react-native-fs';
 import {decode} from 'base64-arraybuffer';
 

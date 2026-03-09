@@ -14,7 +14,7 @@ import {
 import {themeColors} from '../../../theme/colors';
 import {fonts} from '../../../theme/fonts';
 import Carousel from 'react-native-reanimated-carousel';
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   getAllBannerAds,

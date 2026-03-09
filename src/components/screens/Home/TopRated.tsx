@@ -17,7 +17,7 @@ import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {SCREENS} from '../../../constants/screens';
 import {getTopRatedFacility} from '../../../services/facility';
 import {truncateString} from '../../../utils/helpers';
-import useLocation from '../../../hooks/useLocation';
+// import useLocation from '../../../hooks/useLocation';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {useWindowDimensions} from 'react-native';
 interface TopRatednavigationParams {
@@ -33,7 +33,7 @@ const TopRated = () => {
   const {width, height} = useWindowDimensions();
   const [loading, setLoading] = useState(false);
   const [facilities, setFacilities] = useState<any>([]);
-  const {location, locationError, retryLocation} = useLocation();
+  // const {location, locationError, retryLocation} = useLocation();
   const [itemWidth, setItemWidth] = useState(177);
   const navigation = useNavigation<NavigationProp<TopRatednavigationParams>>();
   const itemHeight = width >= 600 ? 200 : 200;

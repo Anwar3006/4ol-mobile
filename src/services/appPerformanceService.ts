@@ -1,5 +1,5 @@
 import moment from 'moment';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 import DeviceInfo from 'react-native-device-info';
 import axios from 'axios';
 import {Platform} from 'react-native';

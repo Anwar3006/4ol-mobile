@@ -1,5 +1,5 @@
 import {limit} from '../../config/variables';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 
 export const getDiseaseListByType = async (
   type: string,

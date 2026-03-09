@@ -1,6 +1,19 @@
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 
-export const tables = [
+export const tables: Array<Record<string, string[]>> = [
+  {
+    conditions: [
+      'id',
+      'name',
+      'description',
+      'about',
+      'treating',
+      'symptoms',
+      'prevention',
+      'diagnosis',
+      'complications',
+    ],
+  },
   {
     illness_and_conditions: [
       'id',
@@ -36,7 +49,7 @@ export const tables = [
     ],
   },
   {
-    healthcare_profiles: [
+    facility_profile: [
       'id',
       'facility_name',
       'facility_type',

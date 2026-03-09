@@ -23,7 +23,7 @@ import {getUserProfile, login} from '../../services/auth';
 import {useToast} from 'react-native-toast-notifications';
 import {useDispatch, useSelector} from 'react-redux';
 import {isBiometricUser, setUserData} from '../../store/slices/User';
-import TouchID from 'react-native-touch-id';
+import * as LocalAuthentication from 'expo-local-authentication';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import PhoneNumberComponent from '../../components/auth/PhoneNumberComponent';
 import EmailAddressComponent from '../../components/auth/EmailAdress';
@@ -105,7 +105,16 @@ const LoginScreen = () => {
     };
 
     try {
-      await TouchID.isSupported();
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!compatible || !enrolled) {
+        console.log('Biometric authentication not supported or not enrolled');
+        setError(
+          'Biometric authentication is not available or has not been set up on this device.',
+        );
+        dispatch(isBiometricUser(false));
+        return;
+      }
     } catch (err) {
       console.log('Biometric authentication not supported:', err);
       setError(
@@ -120,55 +129,60 @@ const LoginScreen = () => {
     // notificationListeners();
     // if (fcm_token) {
 
-    TouchID.authenticate('', optionalConfigObject)
-      .then((success: any) => {
-        console.log(
-          'Biometric authentication success, fetching profile for user:',
+    const result = await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Authenticate to access the app',
+      cancelLabel: 'Cancel',
+      fallbackLabel: 'Show Passcode',
+      disableDeviceFallback: true,
+    });
+
+    if (result.success) {
+      console.log(
+        'Biometric authentication success, fetching profile for user:',
+        userId,
+      );
+      if (userId) {
+        getUserProfile(
+          //@ts-ignore
+          fcm_token,
           userId,
-        );
-        if (userId) {
-          getUserProfile(
-            //@ts-ignore
-            fcm_token,
-            userId,
-            () => setLoading(true),
-            async (successData: any) => {
-              dispatch(isBiometricUser(false));
+          () => setLoading(true),
+          async (successData: any) => {
+            dispatch(isBiometricUser(false));
 
-              console.log('~ SUCCESS_DATA :', successData);
-              await AsyncStorage.setItem('isLoggedIn', JSON.stringify(true));
-              await AsyncStorage.setItem(
-                'isAuthenticated',
-                JSON.stringify(true),
-              );
+            console.log('~ SUCCESS_DATA :', successData);
+            await AsyncStorage.setItem('isLoggedIn', JSON.stringify(true));
+            await AsyncStorage.setItem(
+              'isAuthenticated',
+              JSON.stringify(true),
+            );
 
-              dispatch(setUserData(successData));
-              setLoading(false);
-              // Ensure Route switches from LoginScreen to the main app navigator
-              dispatch(isBiometricUser(false));
-            },
-            (error: any) => {
-              console.log(
-                'Error while fetching user after biometric success:',
-                error,
-              );
-              console.log('Error while fetching user:', error);
-              setLoading(false);
-            },
-          );
-        } else {
-          console.log(
-            'Biometric authentication succeeded but no user_id found in storage.',
-          );
-        }
-      })
-      .catch((error: any) => {
-        setError(
-          'Biometric authentication is not available or has not been set up on this device.',
+            dispatch(setUserData(successData));
+            setLoading(false);
+            // Ensure Route switches from LoginScreen to the main app navigator
+            dispatch(isBiometricUser(false));
+          },
+          (error: any) => {
+            console.log(
+              'Error while fetching user after biometric success:',
+              error,
+            );
+            console.log('Error while fetching user:', error);
+            setLoading(false);
+          },
         );
-        console.log('errorBioMetric', error);
-        dispatch(isBiometricUser(false));
-      });
+      } else {
+        console.log(
+          'Biometric authentication succeeded but no user_id found in storage.',
+        );
+      }
+    } else {
+      setError(
+        'Biometric authentication is not available or has not been set up on this device.',
+      );
+      console.log('errorBioMetric', result.error);
+      dispatch(isBiometricUser(false));
+    }
     // }
   };
 

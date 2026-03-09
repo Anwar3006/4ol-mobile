@@ -1,4 +1,4 @@
-import {Image, useWindowDimensions} from 'react-native';
+import {Image} from 'react-native';
 import {CategoryItem, TopRatedItem} from '../interfaces';
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import MaterialIcon from 'react-native-vector-icons/MaterialIcons';
@@ -6,10 +6,7 @@ import IoniIcon from 'react-native-vector-icons/Ionicons';
 import MaterialCommunityIcon from 'react-native-vector-icons/MaterialCommunityIcons';
 import FontistoIcon from 'react-native-vector-icons/Fontisto';
 import {themeColors} from '../theme/colors';
-import {SCREENS} from './screens';
-import {horizontalScale, verticalScale} from '../utils/metrics';
 import {useResponsive} from '../hooks/useIconResposive';
-import {get} from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 // import {width} from '../theme/fontStyle'
 
 // Inside your component where you use categories

@@ -88,3 +88,19 @@ After setting up the database:
 - All users with the three roles can see and chat with each other
 - Messages are stored with timestamps and read status
 
+
+
+
+
+
+
+are completely shift from redux to tanstack and zustand like the new
+   project. You are to fix errors in the old project to ensure it compiles
+   and builds smoothly. The old project codebase:
+   /Users/anwarsadat/Desktop/WORK/4-Our-Life-App, the new project codebase:
+   /Users/anwarsadat/Desktop/WORK/4OL_full/apps/mobile, investigate and make
+   the transition. The tab navigation of the old project is located at:
+   @/Users/anwarsadat/Desktop/WORK/4-Our-Life-App/src/navigation/BottomTabNav
+   igation.tsx, you must refactor this codebase to look like the tab
+   navigation of the new codebase and move it into the (auth)/(tabs) of the
+   old codebase 

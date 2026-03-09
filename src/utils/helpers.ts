@@ -1,6 +1,8 @@
 // import {ENCRYPT_KEY} from '../../config/variables';
-import {ENCRYPT_KEY} from '@env';
+import Constants from 'expo-constants';
 import CryptoJS from 'crypto-js';
+
+const ENCRYPT_KEY = Constants.expoConfig?.extra?.ENCRYPT_KEY ?? '';
 
 export const validateEmail = (email: string) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;

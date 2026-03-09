@@ -1,7 +1,7 @@
 import {Alert} from 'react-native';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 import {refreshAllNotifications} from './scheduleNotifications';
-import {stat} from 'react-native-fs';
+
 
 export const markasComplete = async (medicationId: any) => {
   try {

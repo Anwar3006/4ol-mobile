@@ -1,27 +1,22 @@
-module.exports = {
-  presets: ['module:@react-native/babel-preset'],
-  plugins: [
-    'react-native-reanimated/plugin',
-    [
-      'module:react-native-dotenv',
-      {
-        moduleName: '@env',
-        path: '.env',
-      },
+module.exports = function (api) {
+  api.cache(true);
+  return {
+    presets: [
+      ["babel-preset-expo", { jsxImportSource: "nativewind" }],
+      "nativewind/babel",
     ],
-    [
-      'module-resolver',
-      {
-        alias: {
-          '@react-native-async-storage/async-storage':
-            './node_modules/@react-native-async-storage/async-storage',
-        },
-      },
+    plugins: [
+      [
+        "module-resolver",
+        {
+          alias: {
+            "@react-native-firebase/app": "./src/mocks/firebase.js",
+            "@react-native-firebase/messaging": "./src/mocks/firebase-messaging.js",
+            "@notifee/react-native": "./src/mocks/notifee.js"
+          }
+        }
+      ],
+      "react-native-reanimated/plugin"
     ],
-  ],
-  env: {
-    production: {
-      plugins: ['react-native-paper/babel'],
-    },
-  },
+  };
 };

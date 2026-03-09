@@ -1,4 +1,4 @@
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 
 export const searchDiseasesORSymptoms = async (
   search_text: string,

@@ -1,5 +1,5 @@
 import moment from 'moment';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {decryptPassword, encryptPassword} from '../utils/helpers';
 import {logActivity} from './activityLogsService';
@@ -255,40 +255,25 @@ export const login = async (
   }
 };
 
+/**
+ * Fetches the user profile from Supabase.
+ * Push token saving is handled by NotificationContext — not here.
+ */
 export const getUserProfile = async (
-  fcm_token: undefined | string,
+  _pushToken: undefined | string, // kept for backward-compat; no longer used here
   id: undefined | string,
   loadCallback: CallableFunction,
   successCallback: CallableFunction,
   errorCallback: CallableFunction,
 ): Promise<void> => {
   try {
-    console.log('~ fcmtoken in api:', fcm_token);
-
-    // Loading callback ko pehle trigger kar rahe hain
     loadCallback();
 
-    // FCM token ko update kar rahe hain agar available hai
-    const {data: updateUserFcm, error: fetchErrorFcm} = await supabase
-      .from('user_profiles')
-      .update({fcm_token: fcm_token}) // Agar token null hai to bhi update karega
-      .eq('id', id);
-
-    if (fetchErrorFcm) {
-      console.error(
-        'Error while updating FCM token (continuing to fetch profile):',
-        fetchErrorFcm,
-      );
-    } else {
-      console.log('~ updateUserFcm:', updateUserFcm);
-    }
-
-    // User profile ko fetch kar rahe hain
     const {data: userProfile, error: fetchError} = await supabase
       .from('user_profiles')
       .select('*')
       .eq('id', id)
-      .single(); // Single user ko return karega
+      .single();
 
     if (fetchError) {
       console.error('Error while fetching user profile:', fetchError);
@@ -296,7 +281,6 @@ export const getUserProfile = async (
       return;
     }
 
-    // Agar user profile mila hai
     if (userProfile?.id) {
       await AsyncStorage.setItem('user_id', userProfile.id);
       successCallback(userProfile);

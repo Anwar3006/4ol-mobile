@@ -1,73 +1,93 @@
-import messaging from '@react-native-firebase/messaging';
-import notifee, {
-  AndroidImportance,
-  AndroidVisibility,
-} from '@notifee/react-native';
-import {Platform} from 'react-native';
+/**
+ * notificationServiceHelper.ts
+ *
+ * Helpers for requesting notification permission and displaying
+ * immediate (non-scheduled) notifications via expo-notifications.
+ *
+ * Previously relied on @react-native-firebase/messaging — fully replaced
+ * with expo-notifications.
+ */
 
-const requestPermissionAndGetToken = async () => {
-  const authStatus = await messaging().requestPermission();
-  const enabled =
-    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-    authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
-  if (enabled) {
-    console.log('Authorization Status :', authStatus);
-    return await getFcmToken();
-  } else {
-    console.log('Notification permissions not granted.');
-    return null; // Return null if not authorized
+/**
+ * Requests notification permission (if not already granted) and returns
+ * whether the user authorised notifications.
+ */
+export const requestPermissionAndGetToken = async (): Promise<boolean> => {
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
   }
+
+  const enabled = finalStatus === 'granted';
+  console.log('[Notifications] Permission status:', finalStatus);
+  return enabled;
 };
 
-const getFcmToken = async () => {
-  try {
-    const token = await messaging().getToken();
-    console.log('FCM Token:', token);
-    return token; // Token ko return karna
-  } catch (error) {
-    console.log('Error retrieving FCM token:', error);
-    return null; // Agar error ho toh null return karna
-  }
-};
-
-const displayNotification = async (data: any) => {
+/**
+ * Displays an immediate (trigger-less) notification using the supplied
+ * remote-message-style data object (matches the shape previously received
+ * from firebase messaging).
+ */
+export const displayNotification = async (data: {
+  notification?: { title?: string; body?: string };
+  [key: string]: any;
+}): Promise<void> => {
+  // Ensure Android channel exists
   if (Platform.OS === 'android') {
-    await notifee.requestPermission();
+    await Notifications.setNotificationChannelAsync('default', {
+      name: 'Default',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: [0, 250, 250, 250],
+      sound: 'default',
+    });
   }
 
-  const channelId = await notifee.createChannel({
-    id: 'default 1',
-    name: 'default Channel 1',
-    sound: 'default',
-    importance: AndroidImportance.HIGH,
-    vibration: true,
-  });
-
-  await notifee.displayNotification({
-    title: data?.notification?.title,
-    body: data?.notification?.body,
-    android: {
-      channelId,
-      visibility: AndroidVisibility.PUBLIC,
-      pressAction: {
-        id: 'default',
-      },
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: data?.notification?.title ?? 'Notification',
+      body: data?.notification?.body ?? '',
+      sound: 'default',
+      data: data,
     },
+    trigger: null, // null = display immediately
   });
 };
 
-const notificationListeners = () => {
-  const unsubscribe = messaging().onMessage(async remoteMessage => {
-    console.log('🚀 ~ unsubscribe ~ remoteMessage:', remoteMessage);
-    await displayNotification(remoteMessage);
-  });
+/**
+ * Starts listening for incoming notifications while the app is in the
+ * foreground. Returns an unsubscribe function — call it when the component
+ * that registered the listener unmounts.
+ */
+export const notificationListeners = (): (() => void) => {
+  // Foreground notification received
+  const receivedSub = Notifications.addNotificationReceivedListener(
+    (notification) => {
+      console.log('[Notifications] Received in foreground:', notification);
+      displayNotification({
+        notification: {
+          title: notification.request.content.title ?? undefined,
+          body: notification.request.content.body ?? undefined,
+        },
+        ...((notification.request.content.data as object) ?? {}),
+      });
+    },
+  );
 
-  messaging().onNotificationOpenedApp(remoteMessage => {
-    console.log('🚀 ~ messaging ~ remoteMessage:', remoteMessage);
-  });
+  // User tapped a notification (foreground or background)
+  const responseSub = Notifications.addNotificationResponseReceivedListener(
+    (response) => {
+      console.log('[Notifications] User tapped notification:', response);
+    },
+  );
 
-  return unsubscribe; // Return unsubscribe function
+  return () => {
+    receivedSub.remove();
+    responseSub.remove();
+  };
 };
-
-export {requestPermissionAndGetToken, notificationListeners};

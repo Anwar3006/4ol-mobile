@@ -1682,7 +1682,7 @@ import Icon from 'react-native-vector-icons/MaterialIcons';
 import {deleteMedicationReminder} from '../../services/medication';
 import {Toast} from 'react-native-toast-notifications';
 import {ActivityIndicator} from 'react-native-paper';
-import {supabase} from '../../utils/supabaseClient';
+import {supabase} from '../../../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useCallback} from 'react';
 import {useWindowDimensions} from 'react-native';

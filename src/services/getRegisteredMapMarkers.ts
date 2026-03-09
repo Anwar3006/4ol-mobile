@@ -1,4 +1,4 @@
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 
 export const getMapMarkerDetails = async ({
   region = null,

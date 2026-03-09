@@ -29,7 +29,7 @@ import {
   moderateScale,
   verticalScale,
 } from '../../utils/metrics';
-import {supabase} from '../../utils/supabaseClient';
+import {supabase} from '../../../lib/supabase';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import MedicationDetailsModal from '../../components/shared-components/MedicationDetailsModal';
 import {useSelector} from 'react-redux';

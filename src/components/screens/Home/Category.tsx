@@ -371,6 +371,8 @@ const Category = () => {
     setContainerWidth(width);
   }, []);
 
+  
+
   // Function to decide how many icons per row
   const getItemsPerRow = (screenWidth: number) => {
     if (screenWidth >= 1600) return 12;
@@ -400,9 +402,11 @@ const Category = () => {
     <View style={styles.container} onLayout={handleLayout}>
       <View style={styles.header}>
         <Text style={styles.headingLabel}>Category</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
+
+        {/* Hidden for now - Uncomment later */}
+        {/* <TouchableOpacity onPress={() => navigation.navigate('Categories')}>
           <Text style={styles.seeAll}>See all</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       {containerWidth > 0 && (

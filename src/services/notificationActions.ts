@@ -1,34 +1,42 @@
-import notifee, {Event, EventDetail, EventType} from '@notifee/react-native';
+/**
+ * notificationActions.ts
+ *
+ * Handles notification action button presses (Complete / Skip / Snooze)
+ * and notification tap navigation.
+ *
+ * Previously imported @react-native-firebase/messaging for getInitialNotification.
+ * Replaced entirely with expo-notifications.
+ */
+
+import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { navigationRef } from './NavigationRef';
+import { supabase } from '../../lib/supabase';
+import { SCREENS } from '../constants/screens';
 import {
   markasComplete,
   markasSkip,
   markasSnooze,
 } from './notificationButtonPress';
-import {SCREENS} from '../constants/screens';
-import {Linking} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {navigationRef} from './NavigationRef';
-import {supabase} from '../utils/supabaseClient';
-import messaging from '@react-native-firebase/messaging';
+import { refreshAllNotifications } from './scheduleNotifications';
 
+// ─── Handle action button presses ────────────────────────────────────────────
 export const handleNotificationAction = async ({
   notification,
   pressAction,
 }: {
   notification: any;
-  pressAction: any;
+  pressAction: { id: string };
 }) => {
   try {
     if (!notification || !pressAction) {
       throw new Error('Invalid notification action data');
     }
-    console.log('I AM RUNNING FROM NOTIFICATIONACTIONS==>');
-    console.log('NOTIFICATION EVENT==>', notification, pressAction);
+
+    console.log('[NotificationActions] Action press:', pressAction.id, notification);
 
     const medicationId = notification?.data?.medicationId;
-    if (!medicationId) {
-      throw new Error('Missing medicationId in notification data');
-    }
+    if (!medicationId) throw new Error('Missing medicationId in notification data');
 
     switch (pressAction.id) {
       case 'complete':
@@ -41,296 +49,185 @@ export const handleNotificationAction = async ({
         await markasSnooze(medicationId);
         break;
       default:
-        console.warn('Unknown action type:', pressAction.id);
+        console.warn('[NotificationActions] Unknown action type:', pressAction.id);
     }
   } catch (error: any) {
-    console.error('Notification action failed:', {
+    console.error('[NotificationActions] Action failed:', {
       error: error.message,
       notificationId: notification?.id,
       action: pressAction?.id,
-      timestamp: new Date().toISOString(),
     });
   } finally {
     try {
       if (notification?.id) {
-        await notifee.cancelNotification(notification.id);
+        await Notifications.cancelScheduledNotificationAsync(notification.id);
       }
     } catch (cancelError: any) {
-      console.error('Failed to cancel notification:', cancelError.message);
+      console.error('[NotificationActions] Failed to cancel notification:', cancelError.message);
     }
   }
 };
 
+// ─── Handle notification tap (navigate to medication details) ─────────────────
 export const handleNotificationPress = async (notification: any) => {
   const medicationId = notification?.data?.medicationId;
   if (!medicationId) {
-    throw new Error('Missing medicationId in notification data');
+    console.warn('[NotificationActions] No medicationId found in notification data');
+    return;
   }
 
-  // Store complete notification data including all needed fields
   await AsyncStorage.setItem(
     'pendingNotification',
     JSON.stringify({
       ...notification.data,
-      // Add critical fields that might be needed
       medicationId,
       notificationId: notification.id,
       timestamp: new Date().toISOString(),
     }),
   );
 
-  // Check if navigation is ready
-
   await handlePendingNotification();
 };
+
+// ─── Handle app opened from killed state via notification tap ─────────────────
 export const handlePendingNotification = async () => {
   try {
-    let notificationData = null;
+    let notificationData: any = null;
 
-    // 1. Check if app was opened from killed state via FCM
-    const initialNotification = await messaging().getInitialNotification();
-    if (initialNotification?.data) {
-      notificationData = initialNotification.data;
+    // 1. Check if the app was opened by tapping a notification (cold start)
+    const lastResponse = await Notifications.getLastNotificationResponseAsync();
+    if (lastResponse?.notification?.request?.content?.data) {
+      notificationData = lastResponse.notification.request.content.data;
     }
 
-    // 2. If not from killed state, check AsyncStorage (for background cases)
+    // 2. Fall back to AsyncStorage (background-to-foreground taps)
     if (!notificationData) {
       const pending = await AsyncStorage.getItem('pendingNotification');
-      if (pending) {
-        notificationData = JSON.parse(pending);
-      }
+      if (pending) notificationData = JSON.parse(pending);
     }
 
     if (!notificationData?.medicationId) return;
 
-    const medicationId = notificationData.medicationId;
+    const { medicationId } = notificationData;
 
-    // Wait until navigation is ready
-    let tries = 0;
-    const maxMs = 5000;
+    // Wait until the navigation container is ready (max 5 s)
     const startedAt = Date.now();
+    const MAX_WAIT_MS = 5000;
+    const POLL_INTERVAL_MS = 200;
+
     const interval = setInterval(async () => {
-      if (navigationRef.current?.isReady()) {
-        clearInterval(interval);
-        if (Date.now() - startedAt > maxMs) {
-          return;
+      if (!navigationRef.current?.isReady()) {
+        if (Date.now() - startedAt > MAX_WAIT_MS) {
+          clearInterval(interval);
+          console.warn('[NotificationActions] Navigation not ready after 5 s');
         }
-        // Navigate to a loading screen first
+        return;
+      }
+
+      clearInterval(interval);
+
+      // Navigate to a loading state first so the user sees something immediately
+      navigationRef.current.navigate('MedicationDetailsView', {
+        isLoading: true,
+        medication: {
+          id: medicationId,
+          medication_name: 'Loading…',
+          medication_type: 'TABLET',
+        },
+      });
+
+      try {
+        const { data: medication, error } = await supabase
+          .from('medication_reminders')
+          .select('*')
+          .eq('id', medicationId)
+          .single();
+
+        if (error) throw error;
+
         navigationRef.current.navigate('MedicationDetailsView', {
-          isLoading: true,
+          isLoading: false,
+          medication,
+        });
+      } catch (fetchError) {
+        console.error('[NotificationActions] Failed to fetch medication:', fetchError);
+        navigationRef.current.navigate('MedicationDetailsView', {
+          isLoading: false,
           medication: {
             id: medicationId,
-            medication_name: 'Loading...',
-            medication_type: 'TABLET',
+            medication_type: notificationData.medication_type || 'TABLET',
+            medication_name: notificationData.medication_name || 'Medication',
           },
         });
-
-        try {
-          const {data: medication, error} = await supabase
-            .from('medication_reminders')
-            .select('*')
-            .eq('id', medicationId)
-            .single();
-
-          if (error) throw error;
-
-          navigationRef.current.navigate('MedicationDetailsView', {
-            isLoading: false,
-            medication,
-          });
-        } catch (error) {
-          console.error('Failed to fetch medication:', error);
-          navigationRef.current.navigate('MedicationDetailsView', {
-            isLoading: false,
-            medication: {
-              id: medicationId,
-              medication_type: notificationData.medication_type || 'TABLET',
-              medication_name: notificationData.medication_name || 'Medication',
-            },
-          });
-        }
-
-        // Clear pending notification
-        await AsyncStorage.removeItem('pendingNotification');
       }
 
-      tries++;
-      if (tries > 25) {
-        // ~5 seconds max
-        clearInterval(interval);
-        console.warn('Navigation not ready after 5s');
-      }
-    }, 200);
-    // Safety timeout to clear interval if never ready
-    setTimeout(() => clearInterval(interval), 6000);
+      await AsyncStorage.removeItem('pendingNotification');
+    }, POLL_INTERVAL_MS);
+
+    // Safety net: ensure the interval is cleared even if something goes wrong
+    setTimeout(() => clearInterval(interval), MAX_WAIT_MS + 1000);
   } catch (error) {
-    console.error('Failed to handle pending notification:', error);
+    console.error('[NotificationActions] Failed to handle pending notification:', error);
     await AsyncStorage.removeItem('pendingNotification');
   }
 };
 
-// export const handlePendingNotification = async () => {
-//   try {
-//     const pendingNotification = await AsyncStorage.getItem(
-//       'pendingNotification',
-//     );
-//     if (!pendingNotification) return;
+// ─── Register foreground + response listeners ─────────────────────────────────
+/**
+ * Call once at app startup (e.g. in _layout.tsx) to wire up foreground
+ * notification handling and action-button responses.
+ *
+ * Returns a cleanup function — call it when the root component unmounts.
+ */
+export const setupNotificationHandlers = (
+): (() => void) => {
+  // Fires when user taps a notification OR presses an action button
+  const responseSub = Notifications.addNotificationResponseReceivedListener(
+    async (response) => {
+      const actionIdentifier = response.actionIdentifier;
+      const notification = response.notification.request.content;
 
-//     const notificationData = JSON.parse(pendingNotification);
-//     const medicationId = notificationData.medicationId;
-
-//     if (!medicationId) {
-//       await AsyncStorage.removeItem('pendingNotification');
-//       return;
-//     }
-
-//     // Navigate to loading screen first
-//     navigationRef.current?.navigate('MedicationDetailsView', {
-//       isLoading: true,
-//       medication: {
-//         id: medicationId,
-//         medication_name: 'Loading...',
-//         medication_type: 'TABLET',
-//       },
-//     });
-
-//     // Then fetch the actual data
-//     // const medication = await getMedicationById(medicationId);
-
-//     try {
-//       const {data: medication, error} = await supabase
-//         .from('medication_reminders')
-//         .select('*')
-//         .eq('id', medicationId)
-//         .single();
-
-//       if (error) throw error;
-
-//       if (navigationRef.current?.isReady()) {
-//         navigationRef.current?.navigate('MedicationDetailsView', {
-//           isLoading: false,
-//           medication: medication,
-//         });
-//       }
-//     } catch (error) {
-//       console.error('Failed to fetch medication:', error);
-//       // Fallback to showing basic data
-
-//       // Navigate again with actual data
-//       navigationRef.current?.navigate('MedicationDetailsView', {
-//         isLoading: false,
-//         medication: {
-//           id: medicationId,
-//           // Ensure all required fields exist
-//           medication_type: notificationData.medication_type || 'TABLET',
-//           medication_name: notificationData.medication_name || 'Medication',
-//           // Add other required fields with defaults
-//         },
-//       });
-
-//       // Clear the pending notification
-//       await AsyncStorage.removeItem('pendingNotification');
-//     }
-//   } catch (error) {
-//     console.error('Failed to handle pending notification:', error);
-//     // Fallback to home screen
-//     await AsyncStorage.removeItem('pendingNotification');
-//   }
-// };
-
-// const getMedicationById = async (medicationId: string) => {
-//   try {
-//     // Try to get from cache first
-//     const cachedData = await AsyncStorage.getItem(`medication_${medicationId}`);
-//     if (cachedData) return JSON.parse(cachedData);
-
-//     // Fetch from Supabase
-//     const {data, error} = await supabase
-//       .from('medication_reminders')
-//       .select('*')
-//       .eq('id', medicationId)
-//       .single();
-
-//     if (error) throw error;
-
-//     // Cache the data
-//     await AsyncStorage.setItem(
-//       `medication_${medicationId}`,
-//       JSON.stringify(data),
-//     );
-
-//     return data;
-//   } catch (error) {
-//     console.error('Failed to fetch medication:', error);
-//     // Return minimal data structure
-//     return {
-//       id: medicationId,
-//       medication_type: 'TABLET',
-//       medication_name: 'Medication Reminder',
-//       // Add other required minimal fields
-//     };
-//   }
-// };
-
-const navigateToMedicationDetails = async (medicationId: string) => {
-  try {
-    // const item = await getMedicationById(medicationId);
-    navigationRef.current?.navigate('MedicationDetailsView', {
-      isLoading: true,
-      medication: {
-        id: medicationId,
-        medication_type: 'Tablet',
-        medication_name: 'Loading...',
-      },
-    });
-
-    const item = await getMedicationById(medicationId);
-
-    // Navigate again with full data
-    navigationRef.current?.navigate('MedicationDetailsView', {
-      isLoading: false,
-      medication: item,
-    });
-  } catch (error) {
-    console.error('Navigation failed:', error);
-    // Fallback to home screen if navigation fails
-    navigationRef.current?.navigate(SCREENS.HOME);
-  }
-};
-
-export const setupNotificationHandlers = () => {
-  // Foreground event handler
-  notifee.onForegroundEvent(async (event: any) => {
-    try {
-      if (event.type === EventType.ACTION_PRESS) {
-        await handleNotificationAction(event.detail as EventDetail);
-      } else if (event.type === EventType.PRESS) {
-        handleNotificationPress(event.detail.notification);
+      if (
+        actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER &&
+        actionIdentifier !== Notifications.DISMISS_ACTION_IDENTIFIER
+      ) {
+        // Action button pressed (complete / skip / snooze)
+        await handleNotificationAction({
+          notification: { id: response.notification.request.identifier, data: notification.data },
+          pressAction: { id: actionIdentifier },
+        });
+      } else if (actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER) {
+        // Normal tap on the notification
+        await handleNotificationPress({
+          id: response.notification.request.identifier,
+          data: notification.data,
+        });
       }
-    } catch (error: any) {
-      console.error('Foreground notification handler failed:', error.message);
-    }
-  });
+    },
+  );
+
+  return () => {
+    responseSub.remove();
+  };
 };
 
-export const setupNotificationCategories = async () => {
-  await notifee.setNotificationCategories([
+// ─── Register notification categories (action buttons) ───────────────────────
+export const setupNotificationCategories = async (): Promise<void> => {
+  await Notifications.setNotificationCategoryAsync('medication_actions', [
     {
-      id: 'user_actions',
-      actions: [
-        {
-          id: 'complete',
-          title: 'Complete',
-        },
-        {
-          id: 'skip',
-          title: 'Skip',
-        },
-        {
-          id: 'snooze',
-          title: 'Snooze (15m)',
-        },
-      ],
+      identifier: 'complete',
+      buttonTitle: 'Complete',
+      options: { isDestructive: false, isAuthenticationRequired: false },
+    },
+    {
+      identifier: 'skip',
+      buttonTitle: 'Skip',
+      options: { isDestructive: false, isAuthenticationRequired: false },
+    },
+    {
+      identifier: 'snooze',
+      buttonTitle: 'Snooze (15m)',
+      options: { isDestructive: false, isAuthenticationRequired: false },
     },
   ]);
 };

@@ -27,7 +27,7 @@ import CheckboxItem from '../../components/reusable_component/CheckboxItem';
 import {BusinessSignUpSchema, NavigationStackParams} from '../../interfaces';
 import useGhanaPostGPS from '../../hooks/useGhanaPostGPS';
 import {useToast} from 'react-native-toast-notifications';
-import {supabase} from '../../utils/supabaseClient';
+import {supabase} from '../../../lib/supabase';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {encryptPassword, splitFullName} from '../../utils/helpers';
 import moment from 'moment';

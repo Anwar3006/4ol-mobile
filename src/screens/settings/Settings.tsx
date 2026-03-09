@@ -21,12 +21,12 @@ import {fonts} from '../../theme/fonts';
 import {Share} from 'react-native';
 import {Linking} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import TouchID from 'react-native-touch-id';
+import * as LocalAuthentication from 'expo-local-authentication';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {NavigationStackParams} from '../../interfaces';
 import {logActivity} from '../../services/activityLogsService';
 import {user} from '../../store/selectors';
-import {supabase} from '../../utils/supabaseClient';
+import {supabase} from '../../../lib/supabase';
 
 const SettingsScreen = () => {
   const userData: any = useSelector(user);
@@ -50,8 +50,9 @@ const SettingsScreen = () => {
 
   const toggleSwitch = async () => {
     try {
-      const isBiometricSupported = await TouchID.isSupported();
-      if (!isBiometricSupported) {
+      const compatible = await LocalAuthentication.hasHardwareAsync();
+      const enrolled = await LocalAuthentication.isEnrolledAsync();
+      if (!compatible || !enrolled) {
         toast.show(
           'Biometric authentication is not available or has not been set up on this device.',
           {

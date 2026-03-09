@@ -41,8 +41,10 @@ import ProfileCustomButton from '../../components/reusable_component/ProfileCust
 import {updateProfile, uploadAvatar} from '../../services/profile';
 import {setUserData, setAvatarImage} from '../../store/slices/User';
 import {Dispatch, UnknownAction} from '@reduxjs/toolkit';
-import {SUPABASE_URL} from '@env';
-import DeviceCountry from 'react-native-device-country';
+import Constants from 'expo-constants';
+import * as Localization from 'expo-localization';
+
+const SUPABASE_URL = Constants.expoConfig?.extra?.SUPABASE_URL;
 import moment from 'moment';
 import {logActivity} from '../../services/activityLogsService';
 import {regionNames} from '../../constants/Regions';
@@ -71,14 +73,14 @@ const Profile = () => {
   console.log('~ image-path :', imagePath);
 
   useEffect(() => {
-    DeviceCountry.getCountryCode()
-      .then(result => {
-        setCountryCode(result?.code?.toUpperCase() || 'GH');
-      })
-      .catch(e => {
-        setCountryCode('GH');
-        console.log('Error while getting country', e);
-      });
+    try {
+      const locales = Localization.getLocales();
+      const region = locales?.[0]?.regionCode?.toUpperCase() || 'GH';
+      setCountryCode(region);
+    } catch (e) {
+      setCountryCode('GH');
+      console.log('Error while getting country', e);
+    }
   }, []);
 
   const openGallery = async () => {

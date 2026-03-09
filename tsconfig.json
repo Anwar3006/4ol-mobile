@@ -1,15 +1,22 @@
-// {
-//   "extends": "@react-native/typescript-config/tsconfig.json"
-// }
-
 {
   "compilerOptions": {
-    "jsx": "react-native", 
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "strict": true,
     "moduleResolution": "node",
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    }
+  },
+  "extends": "expo/tsconfig.base",
+  "include": [
+    "**/*.ts",
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts",
+    "nativewind-env.d.ts"
+  ]
 }
-

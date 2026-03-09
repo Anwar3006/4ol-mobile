@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {themeColors} from '../../theme/colors';
-import {supabase} from '../../utils/supabaseClient';
+import {supabase} from '../../../lib/supabase';
 import {useSelector} from 'react-redux';
 import {user} from '../../store/selectors';
 import {fetchFavorites, toggleFacilityFavorite} from '../../services/profile';

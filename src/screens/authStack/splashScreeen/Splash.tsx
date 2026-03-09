@@ -9,7 +9,7 @@ import {
   Dimensions,
 } from 'react-native';
 import AppIntroSlider from 'react-native-app-intro-slider';
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import {themeColors} from '../../../theme/colors';
 import {size} from '../../../theme/fontStyle';
 import {SCREENS} from '../../../constants/screens';

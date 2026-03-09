@@ -1,122 +1,40 @@
-// import notifee, {EventType} from '@notifee/react-native';
-// import {
-//   handleNotificationAction,
-//   handleNotificationPress,
-// } from './notificationActions';
+/**
+ * notifeeBackgroundHandler.ts
+ *
+ * Background notification handler.
+ * Previously used @notifee/react-native — fully replaced with expo-notifications.
+ *
+ * expo-notifications handles background notification responses automatically
+ * via the addNotificationResponseReceivedListener registered in
+ * notificationActions.ts (setupNotificationHandlers). That listener fires
+ * whether the app is in the foreground, background, or being re-opened from
+ * a cold start.
+ *
+ * This file is kept as a clear documentation layer and exports a helper to
+ * configure expo-notifications' global foreground presentation behaviour,
+ * which must be called before any notification can be displayed.
+ */
 
-// export async function onBackgroundEvent(event: any) {
-//   try {
-//     if (event.type === EventType.ACTION_PRESS) {
-//       await handleNotificationAction(event.detail);
-//     } else if (event.type === EventType.PRESS) {
-//       await handleNotificationPress(event.detail.notification);
-//     }
-//   } catch (error: any) {
-//     console.error('Background notification handler failed:', error.message);
-//   } finally {
-//     return Promise.resolve();
-//   }
-// }
+import * as Notifications from 'expo-notifications';
 
-// notifee.onBackgroundEvent(onBackgroundEvent);
-
-// import notifee, {EventType} from '@notifee/react-native';
-// import {
-//   handleNotificationAction,
-//   handleNotificationPress,
-// } from './notificationActions';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// export async function onBackgroundEvent(event: any) {
-//   try {
-//     if (event.type === EventType.ACTION_PRESS) {
-//       await handleNotificationAction(event.detail);
-//     } else if (event.type === EventType.PRESS) {
-//       // For killed state, we need to store the notification data
-//       // and handle it when the app fully initializes
-//       const notification = event.detail.notification;
-//       if (notification?.data?.medicationId) {
-//         await AsyncStorage.setItem(
-//           'pendingNotification',
-//           JSON.stringify(notification.data),
-//         );
-//       }
-//       // Then let the normal press handler continue
-//       await handleNotificationPress(notification);
-//     }
-//   } catch (error: any) {
-//     console.error('Background notification handler failed:', error.message);
-//   }
-// }
-// // Register the headless task
-// notifee.onBackgroundEvent(onBackgroundEvent);
-
-// // src/services/notifeeBackgroundHandler.ts
-// import notifee, {EventType} from '@notifee/react-native';
-// import {
-//   handleNotificationAction,
-//   handleNotificationPress,
-// } from './notificationActions';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-// import {navigate} from './NavigationRef';
-
-// notifee.onBackgroundEvent(async ({type, detail}) => {
-//   try {
-//     if (type === EventType.ACTION_PRESS) {
-//       await handleNotificationAction(detail);
-//       // navigate('MedicationDetail', {id: detail.notification?.data?.id});
-//     } else if (type === EventType.PRESS) {
-//       const notification = detail.notification;
-
-//       // Save for killed state redirect
-//       if (notification?.data?.medicationId) {
-//         await AsyncStorage.setItem(
-//           'notificationRedirect',
-//           JSON.stringify({
-//             page: 'MedicationDetailPage',
-//             data: notification.data,
-//           }),
-//         );
-//       }
-
-//       // Handle normal press (optional)
-//       await handleNotificationPress(notification);
-//     }
-//   } catch (error: any) {
-//     console.error('Background notification handler failed:', error.message);
-//   }
-// });
-
-import notifee, {EventType} from '@notifee/react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  handleNotificationAction,
-  handleNotificationPress,
-} from './notificationActions';
-
-export const onBackgroundEvent = async ({
-  type,
-  detail,
-}: {
-  type: EventType;
-  detail: any;
-}) => {
-  try {
-    if (type === EventType.ACTION_PRESS) {
-      await handleNotificationAction(detail);
-    } else if (type === EventType.PRESS) {
-      const notification = detail.notification;
-
-      if (notification?.data?.medicationId) {
-        await AsyncStorage.setItem(
-          'pendingNotification',
-          JSON.stringify(notification.data),
-        );
-      }
-
-      await handleNotificationPress(notification);
-    }
-  } catch (error: any) {
-    console.error('Background notification handler failed:', error.message);
-  }
+/**
+ * Configures how expo-notifications presents notifications while the app
+ * is in the FOREGROUND.
+ *
+ * Call this once — as early as possible in the app lifecycle (before the
+ * root Slot/Stack is rendered). In Expo Router apps the ideal place is
+ * the top of `app/_layout.tsx`, outside of any component.
+ *
+ * shouldShowAlert  — display the notification banner while app is active
+ * shouldPlaySound  — play the notification sound while app is active
+ * shouldSetBadge   — update the app badge count while app is active
+ */
+export const configureForegroundNotificationBehaviour = (): void => {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+    }),
+  });
 };

@@ -1,5 +1,5 @@
 import moment from 'moment';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 import {limit, SUPABASE_URL} from '../../config/variables';
 import RNFS from 'react-native-fs';
 import {decode} from 'base64-arraybuffer';

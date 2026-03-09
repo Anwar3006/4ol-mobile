@@ -1,4 +1,4 @@
-const districts_regions = [
+export const districts_regions = [
   {
     name: 'Ahafo',
     location: {

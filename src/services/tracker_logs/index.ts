@@ -1,4 +1,4 @@
-import {supabase} from '../../utils/supabaseClient';
+import {supabase} from '../../../lib/supabase';
 
 export const store_periodTracker_Details = async (
   period_Tracker_Data: any,

@@ -1,6 +1,6 @@
 import {THIS_IS_MAP_KEY, limit} from '../../config/variables';
 import useLocation from '../hooks/useLocation';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 
 export const getFacilityListByCategory = async (
   category: string,

@@ -9,7 +9,7 @@ import {
 } from '../../utils/metrics';
 
 import {fonts} from '../../theme/fonts';
-import {supabase} from '../../utils/supabaseClient';
+import {supabase} from '../../../lib/supabase';
 import {useSelector} from 'react-redux';
 import {user} from '../../store/selectors';
 import {ActivityIndicator} from 'react-native-paper';

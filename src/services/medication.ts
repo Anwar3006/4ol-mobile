@@ -1,5 +1,5 @@
 import moment from 'moment';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 
 export const storeMedicationDetails = async (
   medicationData: any,

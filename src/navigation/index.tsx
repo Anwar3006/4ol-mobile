@@ -9,19 +9,19 @@ import {isBiometricUser, setUserData} from '../store/slices/User';
 import {Dispatch, UnknownAction} from '@reduxjs/toolkit';
 import {ActivityIndicator, AppState, StyleSheet, View} from 'react-native';
 import {themeColors} from '../theme/colors';
-import TouchID from 'react-native-touch-id';
+import * as LocalAuthentication from 'expo-local-authentication';
 import {size} from '../theme/fontStyle';
 import {fonts} from '../theme/fonts';
 import LoginScreen from '../screens/authStack/Login';
 import {NavigationContainer} from '@react-navigation/native';
-import messaging from '@react-native-firebase/messaging';
+// import messaging from '@react-native-firebase/messaging';
 import {notificationListeners} from '../utils/notificationServiceHelper';
 import {setPeriodTracker} from '../store/slices/periodTracker';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 import {logDAU, logDownloads, logMAU} from '../services/appPerformanceService';
 import React from 'react';
 import {navigationRef} from '../services/NavigationRef';
-import {checkRedirect} from '../services/checkRedirect';
+// import {checkRedirect} from '../services/checkRedirect';
 import * as Sentry from '@sentry/react-native';
 const Route = () => {
   const optionalConfigObject = {
@@ -220,16 +220,18 @@ const Route = () => {
         : false;
 
       if (userId && isLoggedIn && biometricEnabled) {
-        TouchID.authenticate(
-          'Authenticate to access the app',
-          optionalConfigObject,
-        )
-          .then(async (success: any) => {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: 'Authenticate to access the app',
+          cancelLabel: 'Cancel',
+          fallbackLabel: 'Show Passcode',
+          disableDeviceFallback: true,
+        });
+
+        if (result.success) {
             Sentry.addBreadcrumb({
               message: 'Biometric authentication successful',
               category: 'auth',
             });
-            console.log('success biometric', success);
             console.log('Biometric authentication success');
             setIsModalVisible(false);
             await AsyncStorage.setItem('isAuthenticated', JSON.stringify(true));
@@ -237,10 +239,9 @@ const Route = () => {
             setRouteHandlingBiometric(false);
             await AsyncStorage.removeItem('routeBiometricInProgress');
             dispatch(isBiometricUser(false));
-          })
-          .catch(async (error: any) => {
+        } else {
             // Capture biometric errors
-            Sentry.captureException(error, {
+            Sentry.captureException(new Error(result.error || 'Biometric auth failed'), {
               tags: {
                 component: 'biometric-auth',
                 userId: userId,
@@ -264,11 +265,11 @@ const Route = () => {
             }, 500);
             // await AsyncStorage.removeItem('isLoggedIn');
             dispatch(setUserData(''));
-            console.log('Biometric authentication failed', error);
+            console.log('Biometric authentication failed', result.error);
             setIsModalVisible(true);
             // Don't set isBiometricUser(true) here - let user use modal retry first
             // Only show LoginScreen if user navigates there manually or modal retry fails multiple times
-          });
+        }
       } else {
         // Clear the flag if conditions aren't met
         setRouteHandlingBiometric(false);
@@ -317,10 +318,10 @@ const Route = () => {
           }
         };
 
-        const authStatus = await messaging().requestPermission();
-        const enabled =
-          authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-          authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+        // const authStatus = await messaging().requestPermission();
+        // const enabled =
+          // authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+          // authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
         let token: any = null;
         if (enabled) {

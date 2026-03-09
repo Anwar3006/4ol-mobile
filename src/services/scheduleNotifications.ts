@@ -1,73 +1,124 @@
-import notifee, {
-  TriggerType,
-  TimestampTrigger,
-  AndroidImportance,
-  AndroidStyle,
-} from '@notifee/react-native';
+/**
+ * scheduleNotifications.ts
+ *
+ * Local medication reminder scheduling.
+ * Previously used @notifee/react-native — fully replaced with expo-notifications.
+ *
+ * Key mapping:
+ *   notifee.createChannel()             → Notifications.setNotificationChannelAsync()
+ *   notifee.createTriggerNotification() → Notifications.scheduleNotificationAsync()
+ *   notifee.getTriggerNotifications()   → Notifications.getAllScheduledNotificationsAsync()
+ *   notifee.cancelNotification()        → Notifications.cancelScheduledNotificationAsync()
+ *   notifee.getChannels()               → (not needed — expo manages channels internally)
+ */
+
+import * as Notifications from 'expo-notifications';
 import moment from 'moment';
-import {themeColors} from '../../src/theme/colors';
-import {SCREENS} from '../constants/screens';
-import {ensureNotificationPermission} from '../utils/permissions';
+import { Platform } from 'react-native';
+import { themeColors } from '../../src/theme/colors';
+import { ensureNotificationPermission } from '../utils/permissions';
 
-export const clearAllNotifications = async () => {
+// ─── Channel IDs ─────────────────────────────────────────────────────────────
+const MEDICATION_CATEGORY_ID = 'medication_actions';
+
+// ─── Set up notification categories (action buttons) once ────────────────────
+/**
+ * Call this once at app startup (e.g. in _layout.tsx).
+ * Sets up the iOS notification categories and Android action buttons for
+ * medication reminders (Complete / Skip / Snooze).
+ */
+export const setupNotificationCategories = async (): Promise<void> => {
+  await Notifications.setNotificationCategoryAsync(MEDICATION_CATEGORY_ID, [
+    {
+      identifier: 'complete',
+      buttonTitle: 'Complete',
+      options: { isDestructive: false, isAuthenticationRequired: false },
+    },
+    {
+      identifier: 'skip',
+      buttonTitle: 'Skip',
+      options: { isDestructive: false, isAuthenticationRequired: false },
+    },
+    {
+      identifier: 'snooze',
+      buttonTitle: 'Snooze (15m)',
+      options: { isDestructive: false, isAuthenticationRequired: false },
+    },
+  ]);
+};
+
+// ─── Clear all scheduled notifications ───────────────────────────────────────
+export const clearAllNotifications = async (): Promise<boolean> => {
   try {
-    const scheduledNotifications = await notifee.getTriggerNotifications();
-    console.log(
-      `Clearing ${scheduledNotifications.length} existing notifications`,
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    console.log(`[Notifications] Clearing ${scheduled.length} scheduled notifications`);
+
+    await Promise.all(
+      scheduled.map((n) =>
+        Notifications.cancelScheduledNotificationAsync(n.identifier),
+      ),
     );
 
-    const cancelPromises = scheduledNotifications.map(notification =>
-      notifee.cancelNotification(notification.notification.id),
-    );
-
-    await Promise.all(cancelPromises);
-
-    const channels = await notifee.getChannels();
-
-    const channelPromises = channels.map(channel =>
-      notifee.deleteChannel(channel.id),
-    );
-
-    await Promise.all(channelPromises);
-
-    console.log('Successfully cleared all notifications and channels');
+    console.log('[Notifications] All scheduled notifications cleared');
     return true;
   } catch (error) {
-    console.error('Error clearing notifications:', error);
+    console.error('[Notifications] Error clearing notifications:', error);
     return false;
   }
 };
 
+// ─── Create (or refresh) an Android notification channel ─────────────────────
 export const createMedicationChannel = async (
   medicationId: string,
   medicationName: string,
   color: string,
-) => {
+): Promise<string> => {
+  if (Platform.OS !== 'android') {
+    return `medication_${medicationId}`;
+  }
+
   try {
     const channelId = `medication_${medicationId}`;
 
-    await notifee.createChannel({
-      id: channelId,
+    await Notifications.setNotificationChannelAsync(channelId, {
       name: `${medicationName} Reminders`,
-      lights: true,
-      sound: 'default',
-      vibration: true,
-      importance: AndroidImportance.HIGH,
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
       lightColor: color || themeColors.primary,
+      sound: 'default',
+      enableVibrate: true,
+      enableLights: true,
     });
 
     return channelId;
   } catch (error) {
-    console.error('Error creating notification channel:', error);
+    console.error('[Notifications] Error creating channel:', error);
     return 'default';
   }
 };
 
-const parseTimestamp = (timestampStr: string): Date => {
-  const date = moment(timestampStr).toDate();
-  return date;
+// ─── Parse timestamp helper ───────────────────────────────────────────────────
+const parseTimestamp = (timestampStr: string): Date =>
+  moment(timestampStr).toDate();
+
+// ─── Type label helper ────────────────────────────────────────────────────────
+const getTypeLabel = (type: string, count: number): string => {
+  if (!type) return 'unit(s)';
+  const isSingular = count === 1;
+
+  switch (type.toUpperCase()) {
+    case 'TABLET':    return isSingular ? 'tablet' : 'tablets';
+    case 'CAPSULE':   return isSingular ? 'capsule' : 'capsules';
+    case 'INJECTION': return isSingular ? 'injection' : 'injections';
+    case 'SPRAY':     return isSingular ? 'spray' : 'sprays';
+    case 'DROPS':     return 'drops';
+    case 'SOLUTION':  return 'ml';
+    case 'HERBS':     return isSingular ? 'sachet' : 'sachets';
+    default:          return 'unit(s)';
+  }
 };
 
+// ─── Schedule a single notification ──────────────────────────────────────────
 export const scheduleNotification = async (
   medicationId: string,
   medicationName: string,
@@ -78,158 +129,72 @@ export const scheduleNotification = async (
   channelId: string,
   color: string,
   imageUrl?: string,
-) => {
+): Promise<string | null> => {
   try {
     const date = parseTimestamp(timestamp);
     const now = new Date();
 
-    if (date < now) {
-      console.log(
-        `Skipping past timestamp for ${medicationName}: ${timestamp}`,
-      );
+    if (date <= now) {
+      console.log(`[Notifications] Skipping past timestamp for ${medicationName}: ${timestamp}`);
       return null;
     }
 
     let medicineInfo = '';
-    if (dose) {
-      medicineInfo += `${dose} (dosage) `;
-    }
+    if (dose) medicineInfo += `${dose} (dosage) `;
+    if (amount) medicineInfo += `${amount} ${getTypeLabel(medicationType, amount)}`;
 
-    if (amount) {
-      const typeLabel = getTypeLabel(medicationType, amount);
-      medicineInfo += `${amount} ${typeLabel}`;
-    }
+    const notificationIdentifier = `${medicationId}_${date.getTime()}`;
 
-    const trigger: TimestampTrigger = {
-      type: TriggerType.TIMESTAMP,
-      timestamp: date.getTime(),
-    };
-    const data = {
-      type: 'medication-reminder',
-      medicationId,
-      screen: 'Details',
-    };
-
-    try {
-      // Create the notification with simple launch configuration
-      const notificationId = await notifee.createTriggerNotification(
-        {
-          id: `${medicationId}_${date.getTime()}`,
-          title: `Time to take ${medicationName}`,
-          body: medicineInfo
-            ? `Take ${medicineInfo}`
-            : 'Time for your medication',
-          data,
+    const notificationId = await Notifications.scheduleNotificationAsync({
+      identifier: notificationIdentifier,
+      content: {
+        title: `Time to take ${medicationName}`,
+        body: medicineInfo ? `Take ${medicineInfo}` : 'Time for your medication',
+        sound: 'default',
+        categoryIdentifier: MEDICATION_CATEGORY_ID,
+        data: {
+          type: 'medication-reminder',
+          medicationId,
+          screen: 'Details',
+          medication_name: medicationName,
+          medication_type: medicationType,
+        },
+        ...(Platform.OS === 'android' && {
           android: {
-            sound: 'default',
-            smallIcon: 'ic_notification',
-            actions: [
-              {
-                title: 'Complete',
-                pressAction: {id: 'complete'},
-              },
-              {
-                title: 'Skip',
-                pressAction: {id: 'skip'},
-              },
-              {
-                title: 'Snooze (15m)',
-                pressAction: {id: 'snooze'},
-              },
-            ],
             channelId,
             color: color || '#9c27b0',
-            importance: AndroidImportance.HIGH,
-            pressAction: {
-              id: 'default',
-              launchActivity: 'default', // Launch the main activity when pressed
-            },
-            fullScreenAction: {
-              id: 'default',
-              launchActivity: 'default',
-            },
-            ...(imageUrl && {largeIcon: imageUrl}),
-            style: imageUrl
-              ? {
-                  type: AndroidStyle.BIGPICTURE,
-                  picture: imageUrl,
-                  largeIcon: null,
-                }
-              : undefined,
+            smallIcon: 'ic_notification',
+            ...(imageUrl && { largeIcon: imageUrl }),
           },
-          ios: {
-            sound: 'default',
-            categoryId: 'user_actions',
-            attachments: imageUrl
-              ? [
-                  {
-                    url: imageUrl,
-                    thumbnailHidden: false,
-                  },
-                ]
-              : [],
-            foregroundPresentationOptions: {
-              badge: true,
-              sound: true,
-              banner: true,
-            },
-          },
-        },
-        trigger,
-      );
+        }),
+        ...(imageUrl && {
+          attachments: [{ uri: imageUrl }],
+        }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date,
+      },
+    });
 
-      // console.log(
-      //   `Scheduled notification for ${medicationName} at ${date.toLocaleString()}`,
-      // );
-      console.log('I AM RUNNING===>>from trigger notification');
-      return notificationId;
-    } catch (error) {
-      console.log('Trigger notification Error;', error);
-      console.log('Trigger notification not runed;');
-    }
+    console.log(`[Notifications] Scheduled "${medicationName}" at ${date.toLocaleString()} (id: ${notificationId})`);
+    return notificationId;
   } catch (error: any) {
-    console.error('Error scheduling notification:', error);
-    console.error('Error scheduling notification:', error.message, error.stack);
+    console.error('[Notifications] Error scheduling notification:', error.message, error.stack);
     return null;
   }
 };
 
-const getTypeLabel = (type: string, count: number): string => {
-  if (!type) return 'unit(s)';
-
-  const isSingular = count === 1;
-
-  switch (type.toUpperCase()) {
-    case 'TABLET':
-      return isSingular ? 'tablet' : 'tablets';
-    case 'CAPSULE':
-      return isSingular ? 'capsule' : 'capsules';
-    case 'INJECTION':
-      return isSingular ? 'injection' : 'injections';
-    case 'SPRAY':
-      return isSingular ? 'spray' : 'sprays';
-    case 'DROPS':
-      return 'drops';
-    case 'SOLUTION':
-      return 'ml';
-    case 'HERBS':
-      return isSingular ? 'sachet' : 'sachets';
-    default:
-      return 'unit(s)';
-  }
-};
-
-export const scheduleMedicationReminders = async medication => {
-  if (!medication || !medication.id || !medication.medication_name) {
-    console.error('Invalid medication data');
+// ─── Schedule all reminders for one medication ────────────────────────────────
+export const scheduleMedicationReminders = async (medication: any): Promise<string[]> => {
+  if (!medication?.id || !medication?.medication_name) {
+    console.error('[Notifications] Invalid medication data');
     return [];
   }
 
   const hasPermission = await ensureNotificationPermission();
   if (!hasPermission) {
-    console.warn(
-      `Notification permission denied. Skipping scheduling for ${medication.medication_name}`,
-    );
+    console.warn(`[Notifications] Permission denied — skipping ${medication.medication_name}`);
     return [];
   }
 
@@ -242,75 +207,57 @@ export const scheduleMedicationReminders = async medication => {
       medication_dose,
       reminder_timestamps,
       color,
-      imageUrl, // Add imageUrl
+      imageUrl,
     } = medication;
 
-    if (
-      !reminder_timestamps ||
-      !Array.isArray(reminder_timestamps) ||
-      reminder_timestamps.length === 0
-    ) {
-      console.log(`No timestamps for ${medication_name}, skipping`);
+    if (!Array.isArray(reminder_timestamps) || reminder_timestamps.length === 0) {
+      console.log(`[Notifications] No timestamps for ${medication_name}, skipping`);
       return [];
     }
 
     const channelId = await createMedicationChannel(id, medication_name, color);
 
-    const notificationPromises = reminder_timestamps.map(timestamp =>
-      scheduleNotification(
-        id,
-        medication_name,
-        medication_type,
-        timestamp,
-        medication_amount,
-        medication_dose,
-        channelId,
-        color,
-        imageUrl, // Pass imageUrl to the function
+    const ids = await Promise.all(
+      reminder_timestamps.map((ts: string) =>
+        scheduleNotification(
+          id,
+          medication_name,
+          medication_type,
+          ts,
+          medication_amount,
+          medication_dose,
+          channelId,
+          color,
+          imageUrl,
+        ),
       ),
     );
 
-    const notificationIds = await Promise.all(notificationPromises);
-    const validIds = notificationIds.filter(id => id !== null);
-
-    // console.log(
-    //   `Scheduled ${validIds.length} notifications for ${medication_name}`,
-    // );
+    const validIds = ids.filter((id): id is string => id !== null);
     return validIds;
   } catch (error) {
-    console.error(
-      `Error scheduling reminders for ${medication.medication_name}:`,
-      error,
-    );
+    console.error(`[Notifications] Error scheduling reminders for ${medication.medication_name}:`, error);
     return [];
   }
 };
 
-export const refreshAllNotifications = async medications => {
+// ─── Refresh all notifications (clear then reschedule) ───────────────────────
+export const refreshAllNotifications = async (medications: any[]): Promise<boolean> => {
   try {
     await clearAllNotifications();
 
-    if (
-      !medications ||
-      !Array.isArray(medications) ||
-      medications.length === 0
-    ) {
-      console.log('No medications to schedule notifications for');
+    if (!Array.isArray(medications) || medications.length === 0) {
+      console.log('[Notifications] No medications to schedule');
       return false;
     }
 
-    const results = await Promise.all(
-      medications.map(med => scheduleMedicationReminders(med)),
-    );
-
+    const results = await Promise.all(medications.map(scheduleMedicationReminders));
     const totalScheduled = results.reduce((sum, ids) => sum + ids.length, 0);
 
-    console.log(
-      `Successfully scheduled ${totalScheduled} notifications for ${medications.length} medications`,
-    );
+    console.log(`[Notifications] Scheduled ${totalScheduled} notifications for ${medications.length} medications`);
     return true;
   } catch (error) {
-    console.error('Error refreshing notifications:', error);
+    console.error('[Notifications] Error refreshing notifications:', error);
     return false;
   }
 };

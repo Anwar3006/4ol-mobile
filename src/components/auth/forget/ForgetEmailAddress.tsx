@@ -1,123 +1,125 @@
-import {KeyboardAvoidingView, StyleSheet, Text, View} from 'react-native';
-import React, {useRef, useState} from 'react';
+import React, { useState } from 'react';
+import { StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useToast } from 'react-native-toast-notifications';
+
+// Common Components
 import CustomInput from '../../common/CustomInput';
-import {Formik} from 'formik';
 import CustomButton from '../../common/CustomButton';
-import {size} from '../../../theme/fontStyle';
-import {themeColors} from '../../../theme/colors';
-import {verticalScale} from '../../../utils/metrics';
-import {login, sendOtpToEmail} from '../../../services/auth';
-import PhoneInput from 'react-native-phone-number-input';
-import {setUserData} from '../../../store/slices/User';
-import {useDispatch} from 'react-redux';
-import {Dispatch, UnknownAction} from '@reduxjs/toolkit';
-import {useNavigation} from '@react-navigation/native';
-import {SCREENS} from '../../../constants/screens';
-import {
-  validationForgetEmailSchema,
-  validationLoginSchema,
-} from '../../../validation';
-import {ForgetEmailAddressSchema} from '../../../interfaces';
-import {ToastType, useToast} from 'react-native-toast-notifications';
-// import ErrorIcon from 'react-native-vector-icons/MaterialIcons';
+
+// Utilities & Services
+import { verticalScale } from '../../../utils/metrics';
+import { size } from '../../../theme/fontStyle';
+import { themeColors } from '../../../theme/colors';
+import { sendOtpToEmail } from '../../../services/auth';
+
+/**
+ * 1. Define the Zod Schema
+ * This replaces your validationForgetEmailSchema (Formik/Yup style)
+ */
+const schema = z.object({
+  emailOrPhone: z
+    .string()
+    .min(1, 'Email or Phone is required')
+    .email('Invalid email address'), // Customize this if you allow phone numbers too
+});
+
+type FormData = z.infer<typeof schema>;
 
 interface Props {
-  option: string | undefined;
-  countryCode: string | boolean | undefined;
-  setCountryCode: any;
+  option?: string;
+  countryCode?: string | boolean;
+  setCountryCode?: any;
 }
 
-const handleSendCode = async (values: any) => {
-  console.log('handlesendCode', values);
-};
-
-const ForgetEmailAddress = ({option, countryCode, setCountryCode}: Props) => {
-  const phoneInput = useRef<PhoneInput>(null);
-  const navigation = useNavigation<any>();
-  const [isError, setError] = useState<string | undefined>('');
-  const dispatch = useDispatch<Dispatch<UnknownAction>>();
+const ForgetEmailAddress = ({ option, countryCode, setCountryCode }: Props) => {
+  const router = useRouter();
+  const toast = useToast();
   const [loading, setLoading] = useState<boolean>(false);
-  const toast: ToastType = useToast();
 
-  const handleSubmit = async (values: ForgetEmailAddressSchema) => {
-    console.log('~email adrees values :', values);
+  /**
+   * 2. Initialize React Hook Form
+   */
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<FormData>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      emailOrPhone: '',
+    },
+  });
 
+  /**
+   * 3. Handle Submit
+   */
+  const onSubmit = async (values: FormData) => {
+    setLoading(true);
+    
     await sendOtpToEmail(
       values.emailOrPhone,
-      () => {
-        setLoading(true);
-      },
-
+      () => setLoading(true),
       () => {
         setLoading(false);
         toast.show('OTP sent successfully', {
           type: 'success',
           placement: 'top',
           duration: 4000,
-          animationType: 'slide-in',
         });
-        navigation.navigate('OtpVerification', {
-          email: values.emailOrPhone,
-          forgot: true,
+        router.push({
+          pathname: '/(app)/(public)/OtpVerification',
+          params: {
+            email: values.emailOrPhone,
+            forgot: 'true',
+          },
         });
       },
       (error: any) => {
         setLoading(false);
-        toast.show(error.message, {
+        toast.show(error.message || 'Something went wrong', {
           type: 'danger',
           placement: 'top',
           duration: 4000,
-          animationType: 'slide-in',
         });
-        console.log('Error while sending OTP:', error);
-        // setError(error.message);
-      },
+      }
     );
   };
 
   return (
     <>
-      <Formik
-        initialValues={{
-          emailOrPhone: '',
-        }}
-        onSubmit={handleSubmit}
-        validationSchema={validationForgetEmailSchema}>
-        {({
-          errors,
-          values,
-          handleChange,
-          handleReset,
-          handleSubmit,
-          resetForm,
-          touched,
-          setSubmitting,
-          isSubmitting,
-        }) => (
-          <>
-            <CustomInput
-              placeholder="Email Address"
-              value={values.emailOrPhone}
-              onChangeText={handleChange('emailOrPhone')}
-              secureTextEntry={false}
-              // isError={isError}
-              icon="at"
-              editable={true}
-              error={errors?.emailOrPhone}
-              touched={touched.emailOrPhone}
-            />
-
-            <CustomButton
-              text="Send Code"
-              onPress={handleSubmit}
-              loading={loading}
-              extraStyle={{
-                marginTop: verticalScale(30),
-              }}
-            />
-          </>
+      {/* 4. Use the Controller component 
+          This wraps your CustomInput to bridge it with React Hook Form
+      */}
+      <Controller
+        control={control}
+        name="emailOrPhone"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <CustomInput
+            placeholder="Email Address"
+            value={value}
+            onBlur={onBlur}
+            onChangeText={onChange}
+            secureTextEntry={false}
+            icon="at"
+            editable={!loading}
+            error={errors.emailOrPhone?.message} // Pass the Zod error message
+            touched={!!errors.emailOrPhone}      // If there is an error, consider it touched
+          />
         )}
-      </Formik>
+      />
+
+      <CustomButton
+        text="Send Code"
+        onPress={handleSubmit(onSubmit)}
+        loading={loading}
+        extraStyle={{
+          marginTop: verticalScale(30),
+        }}
+      />
     </>
   );
 };

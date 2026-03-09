@@ -37,7 +37,7 @@ import {user} from '../store/selectors';
 import {NavigationProp, useNavigation} from '@react-navigation/native';
 import {hours, minutes} from '../constants';
 import {notification_firebase_api} from '../services/notificationService';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 import {ScheduleObject, SelectedDay} from '../interfaces';
 import {scheduleMedicationNotifications} from '../services/medicationReminderService';
 // import {notification_firebase_Api} from '../services/notificationService';

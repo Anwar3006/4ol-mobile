@@ -1,5 +1,5 @@
 import moment from 'moment';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 
 export const getBannerAds = async () => {
   const today = moment().utc().format('YYYY-MM-DD HH:mm:ssZ');

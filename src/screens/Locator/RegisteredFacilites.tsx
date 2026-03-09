@@ -54,7 +54,7 @@ import type {AppDispatch} from '../../store/index';
 import ModalCache from '../../utils/modalCache';
 import {useWindowDimensions} from 'react-native';
 import {THIS_IS_MAP_KEY} from '../../../config/variables';
-import {supabase} from '../../utils/supabaseClient';
+import {supabase} from '../../../lib/supabase';
 
 // Supabase Edge Function API guard
 const checkApiAllowed = async (action: string) => {

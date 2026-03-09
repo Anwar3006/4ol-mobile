@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {supabase} from '../utils/supabaseClient';
+import {supabase} from '../../lib/supabase';
 import {limit} from '../../config/variables';
 
 export const getFavoriteFacilities = async (page: number = 1) => {
