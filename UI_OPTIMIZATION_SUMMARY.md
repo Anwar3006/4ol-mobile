@@ -203,3 +203,16 @@ TOTAL: 2 API calls per session
 ---
 
 **Perfect combination**: Your preferred UI + Optimized performance! 🎉
+
+
+
+
+
+
+Issues with app on android:
+When we first launch the app we must start from the GetStarted screen but we dont. We are taken to the Login screen instead.
+After Login we are directed to the GetStarted screen, which is the inverse of what we want.
+This is how is looks on ipad-like device, the categorySmall cards' icon and text are small we need to increase them.
+We can also increase the height and width of CampaignBox abit, perhaps by a scale factor that matches the width and we use this same scale factor for the CategorySmall card icon and text.
+
+As at now, it compiles for Android but fails for IOS because of AirMaps issues

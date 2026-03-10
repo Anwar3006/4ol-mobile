@@ -1,86 +1,138 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  useWindowDimensions,
-  KeyboardAvoidingView,
-  ScrollView,
-  Platform,
   TouchableOpacity,
-  Image,
-  TouchableWithoutFeedback,
-  Keyboard,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import LoginForm from '@/components/auth/LoginForm';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { authClient } from '@/lib/auth-client';
+import { CustomInput } from '@/components/CustomInput';
+import { BiometricLoginButton } from '@/components/auth/BiometricLoginButton';
+import * as Sentry from '@sentry/react-native';
 
-const LoginScreen = () => {
-  const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const router = useRouter();
+const loginSchema = z.object({
+  email: z.string().email('Enter a valid email address'),
+  password: z.string().min(1, 'Password is required'),
+});
 
-  // Logic for Responsiveness/Foldables
-  const isLargeScreen = width > 600;
+type LoginFormValues = z.infer<typeof loginSchema>;
+
+export default function LoginForm() {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: '', password: '' },
+  });
+
+  const onSubmit = async (data: LoginFormValues) => {
+    setIsLoading(true);
+    try {
+      const result = await authClient.signIn.email({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+      });
+
+      if (result.error) {
+        Alert.alert(
+          'Sign In Failed',
+          result.error.message ?? 'Invalid email or password.',
+        );
+        Sentry.captureMessage('Login failed', {
+          level: 'warning',
+          extra: { error: result.error.message, email: data.email },
+        });
+      }
+      // On success the AuthProvider's navigation guard will automatically
+      // redirect to the correct screen — no manual router.push needed here.
+    } catch (err: any) {
+      Sentry.captureException(err, {
+        tags: { section: 'auth', action: 'sign_in' },
+      });
+      Alert.alert(
+        'Connection Error',
+        'Unable to reach the server. Check your internet connection and try again.',
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Called by BiometricLoginButton after successful biometric auth
+  const handleBiometricSuccess = async (credentials: {
+    email: string;
+    password: string;
+  }) => {
+    setValue('email', credentials.email);
+    setValue('password', credentials.password);
+    await onSubmit(credentials);
+  };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={{ flex: 1, backgroundColor: 'white' }}
-    >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          contentContainerStyle={{
-            flexGrow: 1,
-            paddingTop: insets.top + 40,
-            paddingBottom: insets.bottom + 20,
-            paddingHorizontal: isLargeScreen ? width * 0.2 : 24,
-            justifyContent: 'center',
-          }}
-          showsVerticalScrollIndicator={false}
-        >
-          {/* Back Button */}
-          <TouchableOpacity
-            onPress={() => router.back()}
-            className="absolute top-12 left-6 h-12 w-12 rounded-full bg-gray-100 items-center justify-center"
-          >
-            <Ionicons name="arrow-back" size={24} color="#10b981" />
-          </TouchableOpacity>
+    <View className="gap-y-4">
+      {/* Email */}
+      <Controller
+        control={control}
+        name="email"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <CustomInput
+            label="Email Address"
+            placeholder="you@example.com"
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            onBlur={onBlur}
+            onChangeText={onChange}
+            value={value}
+            error={errors.email?.message}
+            icon="mail-outline"
+          />
+        )}
+      />
 
-          {/* Branding Header */}
-          <View className="mb-10 items-center">
-            <View className="w-24 h-24 rounded-3xl items-center justify-center mb-6 shadow-sm overflow-hidden">
-              <Image
-                source={require('@/assets/images/logo.png')}
-                style={{ width: '100%', height: '100%' }}
-                resizeMode="contain"
-              />
-            </View>
-            <Text className="text-4xl font-black text-black tracking-tighter text-center">
-              Welcome Back<Text className="text-emerald-500">.</Text>
-            </Text>
-            <Text className="text-gray-400 mt-2 text-lg text-center">
-              Sign in to manage your green projects.
-            </Text>
-          </View>
+      {/* Password */}
+      <Controller
+        control={control}
+        name="password"
+        render={({ field: { onChange, onBlur, value } }) => (
+          <CustomInput
+            label="Password"
+            placeholder="••••••••"
+            secureTextEntry
+            onBlur={onBlur}
+            onChangeText={onChange}
+            value={value}
+            error={errors.password?.message}
+            icon="lock-closed-outline"
+          />
+        )}
+      />
 
-          {/* Form Card */}
-          <View className="bg-white p-6 rounded-[40px] shadow-2xl border border-gray-50">
-            <LoginForm />
-          </View>
+      {/* Submit */}
+      <TouchableOpacity
+        onPress={handleSubmit(onSubmit)}
+        disabled={isLoading}
+        activeOpacity={0.8}
+        className="mt-2 h-16 w-full items-center justify-center rounded-2xl bg-emerald-600 shadow-sm"
+      >
+        {isLoading ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <Text className="text-lg font-bold text-white">Sign In</Text>
+        )}
+      </TouchableOpacity>
 
-          {/* Footer Navigation */}
-          <TouchableOpacity 
-            onPress={() => router.push('/ForgotPassword')} 
-            className="mt-8 items-center"
-          >
-            <Text className="text-emerald-600 font-bold">Forgot Password?</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </TouchableWithoutFeedback>
-    </KeyboardAvoidingView>
+      {/* Biometric login — renders nothing if not available/enabled */}
+      <BiometricLoginButton onSuccess={handleBiometricSuccess} />
+    </View>
   );
-};
-
-export default LoginScreen;
+}

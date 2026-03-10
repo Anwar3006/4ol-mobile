@@ -1,21 +1,20 @@
 import '@/global.css';
-import {useBiometricAuth} from '@/hooks/use-biometric-auth';
-import {useUserProfile} from '@/hooks/use-userProfile';
-import {useUserMode} from '@/store/useUserMode';
-import {Stack, useRouter, useSegments} from 'expo-router';
+import { useUserProfile } from '@/hooks/use-userProfile';
+import { useUserMode } from '@/store/useUserMode';
+import { Stack, useRouter, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import {useEffect, useState} from 'react';
-import Animated, {FadeIn} from 'react-native-reanimated';
+import { useEffect, useRef, useState } from 'react';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import useUserStore from '@/store/use-userstore';
-import {authClient} from '@/lib/auth-client';
+import { authClient } from '@/lib/auth-client';
 import LoadingScreen from '@/components/LoadingScreen';
 
-SplashScreen.setOptions({duration: 200, fade: true});
+SplashScreen.setOptions({ duration: 200, fade: true });
 
 export default function AppLayout() {
   return (
     <AuthProvider>
-      <Stack screenOptions={{headerShown: false}}>
+      <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(public)" />
         <Stack.Screen name="(auth)" />
       </Stack>
@@ -24,25 +23,47 @@ export default function AppLayout() {
 }
 
 /**
- * AuthProvider — single source of truth for auth + mode routing.
+ * AuthProvider — single source of truth for auth + mode + onboarding routing.
+ *
+ * Decision order (highest → lowest priority):
+ *  1. Session still loading → LoadingScreen (5s safety timeout)
+ *  2. First launch → GetStarted
+ *  3. Not authenticated → Login
+ *  4. Authenticated but profile not yet loaded → wait (prevents ibpTabs flicker)
+ *  5. Authenticated + profile loaded → redirect to correct tab group
  */
-function AuthProvider({children}: {children: React.ReactNode}) {
+function AuthProvider({ children }: { children: React.ReactNode }) {
   const segments = useSegments();
   const router = useRouter();
-  const {setUser, logoutUser, hasSeenOnboarding} = useUserStore();
-  const {currentMode, setMode} = useUserMode();
+  const { setUser, logoutUser, hasSeenOnboarding } = useUserStore();
+  const { currentMode, setMode } = useUserMode();
 
-  const {data: sessionData, isPending: isSessionLoading} = authClient.useSession();
-  const {data: userProfile} = useUserProfile(sessionData?.user?.id ?? '');
+  const { data: sessionData, isPending: isSessionLoading } =
+    authClient.useSession();
 
-  const [isReady, setIsReady] = useState(false);
+  // Only fetch profile when we have a user ID
+  const userId = sessionData?.user?.id ?? '';
+  const { data: userProfile, isLoading: isProfileLoading } =
+    useUserProfile(userId);
 
-  // ── Sync profile & derive mode ──────────────────────────────────────────
+  // ── Safety timeout: if BetterAuth isPending never resolves, unblock after 5s ──
+  const [sessionTimedOut, setSessionTimedOut] = useState(false);
+  useEffect(() => {
+    if (!isSessionLoading) return;
+    const t = setTimeout(() => {
+      console.warn('[AuthProvider] Session timed out — proceeding as unauthenticated.');
+      setSessionTimedOut(true);
+    }, 5000);
+    return () => clearTimeout(t);
+  }, [isSessionLoading]);
+
+  // ── Sync profile to store + derive authoritative mode ────────────────────
   useEffect(() => {
     if (userProfile) {
       setUser(userProfile);
-      const isBusinessProvider = userProfile.user_type === 'business_provider';
-      setMode(isBusinessProvider ? 'business' : 'user');
+      // ALWAYS derive mode from the server-side user_type field, never MMKV,
+      // so a stale "business" mode from a previous session never leaks.
+      setMode(userProfile.user_type === 'business_provider' ? 'business' : 'user');
     }
 
     if (!sessionData && !isSessionLoading) {
@@ -51,9 +72,10 @@ function AuthProvider({children}: {children: React.ReactNode}) {
     }
   }, [userProfile, sessionData, isSessionLoading]);
 
-  // ── Navigation guard ──────────────────────────────────────────────────────
+  // ── Navigation guard ─────────────────────────────────────────────────────
   useEffect(() => {
-    if (isSessionLoading) return;
+    // Wait for session to resolve (or timeout)
+    if (isSessionLoading && !sessionTimedOut) return;
 
     const pathString = segments.join('/');
     const inPublicGroup = pathString.includes('(public)');
@@ -63,37 +85,43 @@ function AuthProvider({children}: {children: React.ReactNode}) {
     const inModal = pathString.includes('(modal)');
     const isAuthenticated = !!sessionData?.user;
 
-    // 1. Handle Unauthenticated State
+    // ── 1. FIRST LAUNCH ONBOARDING ─────────────────────────────────────────
+    // Must come before auth check so unauthenticated first-time users see
+    // GetStarted rather than Login.
+    if (!hasSeenOnboarding) {
+      if (!pathString.includes('GetStarted') && !pathString.includes('index')) {
+        router.replace('/(app)/(public)/GetStarted');
+      }
+      return;
+    }
+
+    // ── 2. UNAUTHENTICATED ─────────────────────────────────────────────────
     if (!isAuthenticated) {
       if (!inPublicGroup) {
         router.replace('/(app)/(public)/Login');
       }
-      setIsReady(true);
       return;
     }
 
-    // 2. Handle Authenticated but not in Auth Group
+    // ── 3. AUTHENTICATED — wait for profile before mode-based routing ───────
+    // Without this guard, the navigation runs with the stale MMKV mode value
+    // (potentially "business") before the server profile loads, causing a
+    // visible flicker: ibpTabs → Home.
+    // Exception: if userId exists but profile is still loading, hold.
+    if (userId && isProfileLoading) return;
+
+    // ── 4. AUTHENTICATED but outside auth group ────────────────────────────
     if (!inAuthGroup) {
-      if (currentMode === 'business') {
-        router.replace('/(app)/(auth)/(ibpTabs)');
-      } else {
-        router.replace('/(app)/(auth)/(tabs)/Home');
-      }
-      setIsReady(true);
+      router.replace(
+        currentMode === 'business'
+          ? '/(app)/(auth)/(ibpTabs)'
+          : '/(app)/(auth)/(tabs)/Home',
+      );
       return;
     }
 
-    // 3. Handle Onboarding
-    if (!hasSeenOnboarding && !inPublicGroup && !inModal) {
-      // Correctly check if we're already on GetStarted to avoid loops
-      if (!pathString.includes('GetStarted')) {
-        router.replace('/(app)/(public)/GetStarted');
-      }
-      setIsReady(true);
-      return;
-    }
-
-    // 4. Mode-based Redirection
+    // ── 5. AUTHENTICATED in auth group — enforce mode matching ──────────────
+    // Skip modals; they float above the navigator.
     if (!inModal) {
       if (currentMode === 'business' && !inIbpTabs) {
         router.replace('/(app)/(auth)/(ibpTabs)');
@@ -101,11 +129,20 @@ function AuthProvider({children}: {children: React.ReactNode}) {
         router.replace('/(app)/(auth)/(tabs)/Home');
       }
     }
+  }, [
+    sessionData,
+    segments,
+    isSessionLoading,
+    sessionTimedOut,
+    currentMode,
+    hasSeenOnboarding,
+    userProfile,
+    isProfileLoading,
+    userId,
+  ]);
 
-    setIsReady(true);
-  }, [sessionData, segments, isSessionLoading, currentMode, hasSeenOnboarding]);
-
-  if (isSessionLoading || !isReady) {
+  // Block rendering only while session is genuinely loading
+  if (isSessionLoading && !sessionTimedOut) {
     return <LoadingScreen />;
   }
 
