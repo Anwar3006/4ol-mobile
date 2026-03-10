@@ -24,7 +24,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { CustomInput } from "../CustomInput";
-import { MapFilters, getCategoryMeta, CATEGORIES } from "./MapFilters";
+import { MapFilters, getCategoryMeta, CategoryIcon, CATEGORIES } from "./MapFilters";
 import { useRouter } from "expo-router";
 import * as Location from "expo-location";
 
@@ -87,168 +87,7 @@ const MapToast = ({ message, visible }: ToastProps) => {
 // ---------------------------------------------------------------------------
 // Popup Card Component
 // ---------------------------------------------------------------------------
-interface PopupProps {
-  feature: any;
-  onDismiss: () => void;
-  onView: (id: string) => void;
-}
-
-const FacilityPopup = ({ feature, onDismiss, onView }: PopupProps) => {
-  const props = feature.properties ?? {};
-  const lat: number = feature.geometry.coordinates[1];
-  const lng: number = feature.geometry.coordinates[0];
-  const name: string = props.name ?? "Unknown Facility";
-  const facilityType: string = props.facility_type ?? "";
-  const district: string = props.district ?? props.area ?? "";
-  const postCode: string = props.post_code ?? "";
-  const imageUrl: string | null = props.featured_image_url ?? null;
-  const id: string = props.id ?? "";
-  const meta = getCategoryMeta(facilityType);
-  const readableType = facilityType.replace(/_/g, " ").replace(/\//g, " / ");
-
-  return (
-    <Animated.View
-      entering={FadeInDown.duration(280).springify()}
-      exiting={FadeOutDown.duration(200)}
-      style={{
-        position: "absolute",
-        bottom: 24,
-        left: 16,
-        right: 16,
-        zIndex: 100,
-      }}
-    >
-      <View
-        style={{
-          backgroundColor: "white",
-          borderRadius: 20,
-          overflow: "hidden",
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.18,
-          shadowRadius: 12,
-          elevation: 10,
-        }}
-      >
-        {/* Image */}
-        {imageUrl ? (
-          <Image
-            source={{ uri: imageUrl }}
-            style={{ width: "100%", height: 140 }}
-            resizeMode="cover"
-          />
-        ) : (
-          <View
-            style={{
-              width: "100%",
-              height: 110,
-              backgroundColor: meta.color + "22",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <Ionicons name={meta.icon as any} size={40} color={meta.color} />
-          </View>
-        )}
-
-        {/* Dismiss Button */}
-        <TouchableOpacity
-          onPress={onDismiss}
-          style={{
-            position: "absolute",
-            top: 10,
-            right: 10,
-            backgroundColor: "rgba(0,0,0,0.4)",
-            borderRadius: 14,
-            width: 28,
-            height: 28,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
-        >
-          <Ionicons name="close" size={16} color="white" />
-        </TouchableOpacity>
-
-        {/* Content */}
-        <View style={{ padding: 16 }}>
-          {/* Facility type badge */}
-          <View
-            style={{
-              alignSelf: "flex-start",
-              backgroundColor: meta.color + "1a",
-              borderRadius: 8,
-              paddingHorizontal: 8,
-              paddingVertical: 2,
-              marginBottom: 6,
-            }}
-          >
-            <Text style={{ fontSize: 10, fontWeight: "700", color: meta.color, textTransform: "capitalize" }}>
-              {readableType}
-            </Text>
-          </View>
-
-          {/* Name */}
-          <Text style={{ fontSize: 17, fontWeight: "800", color: "#0f172a", marginBottom: 4 }} numberOfLines={1}>
-            {name}
-          </Text>
-
-          {/* Address row */}
-          {(district || postCode) ? (
-            <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 12 }}>
-              <Ionicons name="location-outline" size={13} color="#94a3b8" />
-              <Text style={{ fontSize: 13, color: "#64748b", marginLeft: 4 }}>
-                {[district, postCode].filter(Boolean).join("  ·  ")}
-              </Text>
-            </View>
-          ) : (
-            <View style={{ height: 12 }} />
-          )}
-
-          {/* Action Buttons */}
-          <View style={{ flexDirection: "row", gap: 10 }}>
-            {/* Visit – opens Google Maps */}
-            <TouchableOpacity
-              onPress={() => openInMaps(lat, lng, name)}
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#10b981",
-                borderRadius: 12,
-                paddingVertical: 11,
-                gap: 6,
-              }}
-            >
-              <Ionicons name="navigate" size={16} color="white" />
-              <Text style={{ color: "white", fontWeight: "700", fontSize: 13 }}>Visit</Text>
-            </TouchableOpacity>
-
-            {/* View – opens facility detail page */}
-            <TouchableOpacity
-              onPress={() => id && onView(id)}
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#f1f5f9",
-                borderRadius: 12,
-                paddingVertical: 11,
-                gap: 6,
-                borderWidth: 1,
-                borderColor: "#e2e8f0",
-              }}
-            >
-              <Ionicons name="eye-outline" size={16} color="#0f172a" />
-              <Text style={{ color: "#0f172a", fontWeight: "700", fontSize: 13 }}>View</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Animated.View>
-  );
-};
+// FacilityPopup has been removed and merged into Marker Callout
 
 // ---------------------------------------------------------------------------
 // Main Map Container
@@ -263,7 +102,6 @@ const MapContainer = () => {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedFeature, setSelectedFeature] = useState<any>(null);
   const [isNearMeActive, setIsNearMeActive] = useState(false);
 
   // Toast state
@@ -288,29 +126,42 @@ const MapContainer = () => {
     longitudeDelta: 0.15,
   });
 
+  const [nearMeBounds, setNearMeBounds] = useState<{
+    minLng: number; minLat: number; maxLng: number; maxLat: number; zoom: number;
+  } | null>(null);
+
   const viewportBounds = useMemo(
     () => ({
-      minLng: region.longitude - region.longitudeDelta,
-      minLat: region.latitude - region.latitudeDelta,
-      maxLng: region.longitude + region.longitudeDelta,
-      maxLat: region.latitude + region.latitudeDelta,
+      // Fetch a slightly larger area (1.2x) than visible to improve stability at edges
+      minLng: region.longitude - region.longitudeDelta * 0.6,
+      minLat: region.latitude - region.latitudeDelta * 0.6,
+      maxLng: region.longitude + region.longitudeDelta * 0.6,
+      maxLat: region.latitude + region.latitudeDelta * 0.6,
       zoom: calcZoom(region.longitudeDelta),
     }),
     [region.latitude, region.longitude, region.latitudeDelta, region.longitudeDelta],
   );
 
-  const [nearMeBounds, setNearMeBounds] = useState<{
-    minLng: number; minLat: number; maxLng: number; maxLat: number; zoom: number;
-  } | null>(null);
-
   const activeBounds = isNearMeActive && nearMeBounds ? nearMeBounds : viewportBounds;
 
-  const { data: geojson, isFetching } = useGetFacilitiesMapData({
-    ...activeBounds,
-    enabled: true,
-  });
+  // Debounce the bounds updates to prevent flickering and excessive network requests
+  const [debouncedBounds, setDebouncedBounds] = useState(activeBounds);
 
-  console.log("GeoJson: ", geojson)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedBounds(activeBounds);
+    }, 400); 
+    return () => clearTimeout(handler);
+  }, [activeBounds]);
+
+  const { data: geojson, isFetching } = useGetFacilitiesMapData({
+    ...debouncedBounds,
+    enabled: true,
+    filters: {
+      facilityName: searchQuery || undefined,
+      facilityType: selectedCategory !== "all" && selectedCategory !== "near_me" ? selectedCategory : undefined,
+    },
+  });
 
   // ---------------------------------------------------------------------------
   // "Near Me" handler
@@ -340,7 +191,6 @@ const MapContainer = () => {
     setNearMeBounds(newBounds);
     setIsNearMeActive(true);
     setSelectedCategory("near_me");
-    setSelectedFeature(null);
 
     mapRef.current?.animateToRegion(
       {
@@ -362,7 +212,6 @@ const MapContainer = () => {
       setNearMeBounds(null);
     }
     setSelectedCategory(id);
-    setSelectedFeature(null);
   }, []);
 
   // ---------------------------------------------------------------------------
@@ -415,28 +264,53 @@ const MapContainer = () => {
           tracksViewChanges={false}
           flat={false}
           onPress={(e) => {
-            // Prevent the MapView.onPress from clearing the popup
-            markerJustTapped.current = true;
-            setSelectedFeature(feature);
+             // markerJustTapped is still used to suppress general MapView.onPress
+             markerJustTapped.current = true;
           }}
         >
-          {/* Callout renders the popup bubble directly above the marker */}
-          <Callout tooltip onPress={() => id && router.push(`/Facility/${id}` as any)}>
+          {/* Callout renders the rich popup bubble directly above the marker */}
+          <Callout 
+            tooltip 
+            onPress={() => id && router.push(`/Facility/${id}` as any)}
+          >
             <View
               style={{
                 backgroundColor: "white",
-                borderRadius: 14,
+                borderRadius: 16,
                 padding: 12,
-                width: 220,
+                width: 240,
                 shadowColor: "#000",
-                shadowOffset: { width: 0, height: 3 },
+                shadowOffset: { width: 0, height: 4 },
                 shadowOpacity: 0.15,
-                shadowRadius: 8,
+                shadowRadius: 10,
                 elevation: 8,
                 borderWidth: 1,
                 borderColor: "#f1f5f9",
               }}
             >
+              {/* Image Preview or Icon */}
+              {feature.properties?.featured_image_url ? (
+                <Image
+                  source={{ uri: feature.properties.featured_image_url }}
+                  style={{ width: "100%", height: 80, borderRadius: 10, marginBottom: 8 }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View 
+                  style={{ 
+                    width: "100%", 
+                    height: 40, 
+                    backgroundColor: meta.color + "1a", 
+                    borderRadius: 8, 
+                    justifyContent: "center", 
+                    alignItems: "center",
+                    marginBottom: 8
+                  }}
+                >
+                  <CategoryIcon icon={meta.icon} library={(meta as any).library ?? "MaterialIcons"} size={20} color={meta.color} />
+                </View>
+              )}
+
               {/* Type badge */}
               <View
                 style={{
@@ -452,10 +326,15 @@ const MapContainer = () => {
                   {feature.properties?.facility_type?.replace(/_/g, " ") ?? ""}
                 </Text>
               </View>
+
               {/* Name */}
-              <Text style={{ fontSize: 13, fontWeight: "800", color: "#0f172a", marginBottom: 3 }} numberOfLines={1}>
+              <Text 
+                style={{ fontSize: 14, fontWeight: "800", color: "#0f172a", marginBottom: 3 }} 
+                numberOfLines={1}
+              >
                 {feature.properties?.name ?? "Unknown"}
               </Text>
+
               {/* Address */}
               {(feature.properties?.district || feature.properties?.post_code) && (
                 <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
@@ -465,25 +344,37 @@ const MapContainer = () => {
                   </Text>
                 </View>
               )}
+
               {/* Tap hint */}
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                <Ionicons name="eye-outline" size={12} color={meta.color} />
-                <Text style={{ fontSize: 11, color: meta.color, fontWeight: "700" }}>Tap to view details</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#f1f5f9", paddingTop: 8 }}>
+                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                   <Ionicons name="eye-outline" size={12} color="#10b981" />
+                   <Text style={{ fontSize: 11, color: "#10b981", fontWeight: "700" }}>Details</Text>
+                 </View>
+                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                   <Ionicons name="navigate-outline" size={12} color="#3b82f6" />
+                   <Text style={{ fontSize: 11, color: "#3b82f6", fontWeight: "700" }}>Directions</Text>
+                 </View>
               </View>
             </View>
+
             {/* Callout arrow */}
             <View
               style={{
                 alignSelf: "center",
                 width: 0,
                 height: 0,
-                borderLeftWidth: 8,
-                borderRightWidth: 8,
-                borderTopWidth: 10,
+                borderLeftWidth: 10,
+                borderRightWidth: 10,
+                borderTopWidth: 12,
                 borderLeftColor: "transparent",
                 borderRightColor: "transparent",
                 borderTopColor: "white",
                 marginTop: -1,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 2,
               }}
             />
           </Callout>
@@ -505,7 +396,7 @@ const MapContainer = () => {
                 elevation: 5,
               }}
             >
-              <Ionicons name={meta.icon as any} size={17} color="white" />
+              <CategoryIcon icon={meta.icon} library={(meta as any).library ?? "MaterialIcons"} size={17} color="white" />
             </View>
             {/* Pin stem */}
             <View
@@ -543,12 +434,11 @@ const MapContainer = () => {
         pitchEnabled={false}
         customMapStyle={mapOptions.styles}
         onPress={() => {
-          // Only dismiss the popup if the tap was NOT on a marker
+          // Only dismiss the callout if the tap was NOT on a marker
           if (markerJustTapped.current) {
             markerJustTapped.current = false;
             return;
           }
-          setSelectedFeature(null);
         }}
       >
         {renderedMarkers}
@@ -613,14 +503,7 @@ const MapContainer = () => {
         </View>
       </View>
 
-      {/* Facility Popup */}
-      {selectedFeature && (
-        <FacilityPopup
-          feature={selectedFeature}
-          onDismiss={() => setSelectedFeature(null)}
-          onView={(id) => router.push(`/Facility/${id}`)}
-        />
-      )}
+      {/* Facility Popup removed */}
     </View>
   );
 };

@@ -40,7 +40,7 @@ target '4OurLife' do
   end
 
 # @generated begin react-native-maps - expo prebuild (DO NOT MODIFY) sync-e9cc66c360abe50bc66d89fffb3c55b034d7d369
-  pod 'react-native-google-maps', path: File.dirname(`node --print "require.resolve('react-native-maps/package.json')"`)
+  pod 'react-native-google-maps', path: File.dirname(`node --print "require.resolve('react-native-maps/package.json')"`), :modular_headers => false
 # @generated end react-native-maps
   config = use_native_modules!(config_command)
 
@@ -56,20 +56,34 @@ target '4OurLife' do
   )
 
   post_install do |installer|
+    # NON_MODULAR_HEADERS_FIX_START
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        config.build_settings['GCC_WARN_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'NO'
+        config.build_settings['DEFINES_MODULE'] = 'YES'
+        
+        cflags = config.build_settings['OTHER_CFLAGS'] || ['$(inherited)']
+        if cflags.is_a?(String)
+          cflags = [cflags]
+        end
+        unless cflags.include?('-Wno-non-modular-include-in-framework-module')
+          cflags << '-Wno-non-modular-include-in-framework-module'
+        end
+        config.build_settings['OTHER_CFLAGS'] = cflags
+      end
+    end
+    # NON_MODULAR_HEADERS_FIX_END
+
+    
+
+    
+
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
-
-    # Fix: react-native-maps non-modular header errors when use_frameworks! is enabled
-    installer.pods_project.targets.each do |target|
-      if ['react-native-maps', 'react-native-google-maps'].include?(target.name)
-        target.build_configurations.each do |config|
-          config.build_settings['DEFINES_MODULE'] = 'NO'
-        end
-      end
-    end
   end
 end

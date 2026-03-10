@@ -19,6 +19,22 @@ export default function MedicationsLayout() {
       />
 
       <Stack.Screen
+        name="WorkoutList"
+        options={{
+          title: "Workout Reminders",
+          headerShown: false,
+        }}
+      />
+
+      <Stack.Screen
+        name="Calendar"
+        options={{
+          title: "Calendar",
+          headerShown: false,
+        }}
+      />
+
+      <Stack.Screen
         name="[id]"
         options={{
           title: "Medication Details",

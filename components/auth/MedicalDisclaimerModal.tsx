@@ -1,5 +1,13 @@
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+  Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface MedicalDisclaimerModalProps {
@@ -14,29 +22,41 @@ export const MedicalDisclaimerModal: React.FC<MedicalDisclaimerModalProps> = ({
   return (
     <Modal
       animationType="slide"
-      transparent={true}
+      transparent
       visible={visible}
-      onRequestClose={() => {}} // Block back button closing
+      statusBarTranslucent={Platform.OS === 'android'}
+      onRequestClose={() => {}}
     >
-      <View style={styles.centeredView}>
-        <View style={styles.modalView}>
+      <View style={styles.overlay}>
+        <View style={styles.card}>
           <View style={styles.iconContainer}>
             <Ionicons name="medical" size={40} color="#059669" />
           </View>
-          
-          <Text style={styles.modalTitle}>Medical Disclaimer</Text>
-          
-          <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
-            <Text style={styles.modalText}>
-              The content provided in this application is for educational and informational purposes only. It is not intended to be a substitute for professional medical advice, diagnosis, or treatment.
-            </Text>
-            
-            <Text style={styles.modalText}>
-              Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition. Never disregard professional medical advice or delay in seeking it because of something you have read on this application.
+
+          <Text style={styles.title}>Medical Disclaimer</Text>
+
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
+            nestedScrollEnabled
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.body}>
+              The content provided in this application is for educational and
+              informational purposes only. It is not intended to be a substitute
+              for professional medical advice, diagnosis, or treatment.
             </Text>
 
-            <Text style={styles.modalText}>
-              If you think you may have a medical emergency, call your doctor or emergency services immediately.
+            <Text style={styles.body}>
+              Always seek the advice of your physician or other qualified health
+              provider with any questions you may have regarding a medical
+              condition. Never disregard professional medical advice or delay in
+              seeking it because of something you have read on this application.
+            </Text>
+
+            <Text style={styles.body}>
+              If you think you may have a medical emergency, call your doctor or
+              emergency services immediately.
             </Text>
           </ScrollView>
 
@@ -44,8 +64,10 @@ export const MedicalDisclaimerModal: React.FC<MedicalDisclaimerModalProps> = ({
             style={styles.button}
             onPress={onAcknowledge}
             activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="I Understand & Agree"
           >
-            <Text style={styles.buttonText}>I Understand & Agree</Text>
+            <Text style={styles.buttonText}>I Understand &amp; Agree</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -54,27 +76,24 @@ export const MedicalDisclaimerModal: React.FC<MedicalDisclaimerModalProps> = ({
 };
 
 const styles = StyleSheet.create({
-  centeredView: {
+  overlay: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
     padding: 20,
   },
-  modalView: {
+  card: {
     width: '100%',
     backgroundColor: 'white',
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
     maxHeight: '80%',
   },
   iconContainer: {
@@ -83,7 +102,7 @@ const styles = StyleSheet.create({
     borderRadius: 50,
     marginBottom: 16,
   },
-  modalTitle: {
+  title: {
     marginBottom: 16,
     textAlign: 'center',
     fontSize: 22,
@@ -95,9 +114,9 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: 8,
   },
-  modalText: {
+  body: {
     marginBottom: 12,
     fontSize: 16,
     lineHeight: 24,
@@ -112,6 +131,10 @@ const styles = StyleSheet.create({
     elevation: 2,
     width: '100%',
     alignItems: 'center',
+  },
+  buttonPressed: {
+    backgroundColor: '#047857',
+    opacity: 0.9,
   },
   buttonText: {
     color: 'white',

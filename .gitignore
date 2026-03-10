@@ -82,3 +82,5 @@ expo-env.d.ts
 .expo
 ios
 android
+
+google-services.json

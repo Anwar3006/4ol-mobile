@@ -11,28 +11,24 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FlashList } from "@shopify/flash-list";
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import {
-  useMedicationReminders,
-  useDeleteMedication,
-} from "@/hooks/use-medication-reminder";
+import { useWorkoutReminders, useDeleteWorkout } from "@/hooks/use-workout-reminder";
 import { authClient } from "@/lib/auth-client";
 import { router, useLocalSearchParams } from "expo-router";
-import { MedicationFAB } from "@/components/MedicationFAB";
 import { CalendarView } from "@/components/CalendarView";
 import { NotesModal } from "@/components/NotesModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type MedicationItem = {
+type WorkoutItem = {
   id: string;
-  drug_name?: string;
-  drug_type?: string;
-  dosage_amount?: string;
-  start_date?: string;
-  end_date?: string;
+  workout_type?: string;
+  duration?: string;
+  time?: string;
+  days?: string[];
+  goals?: string;
 };
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
-export default function MedicationsScreen() {
+export default function WorkoutListScreen() {
   const { tab } = useLocalSearchParams<{ tab?: string }>();
   const [activeTab, setActiveTab] = useState<"active" | "calendar">(
     tab === "calendar" ? "calendar" : "active"
@@ -45,18 +41,18 @@ export default function MedicationsScreen() {
   const { data: session } = authClient.useSession();
   const userId = session?.user.id || "";
 
-  // ── Modal state — lifted to screen level ─────────────────────────────────
-  const [actionTarget, setActionTarget] = useState<MedicationItem | null>(null);
-  const [deleteTarget, setDeleteTarget]  = useState<MedicationItem | null>(null);
+  // ── Modal state — all lifted to screen level ──────────────────────────────
+  const [actionTarget, setActionTarget] = useState<WorkoutItem | null>(null);
+  const [deleteTarget, setDeleteTarget]  = useState<WorkoutItem | null>(null);
   const [noteTarget, setNoteTarget]       = useState<string | undefined>();
   const [isNoteVisible, setIsNoteVisible] = useState(false);
 
-  const { mutate: deleteMedication, isPending: isDeleting } = useDeleteMedication();
+  const { mutate: deleteWorkout, isPending: isDeleting } = useDeleteWorkout();
 
-  const { data, isLoading, isFetching } = useMedicationReminders({
+  const { data, isLoading, isFetching } = useWorkoutReminders({
     limit, page, userId, status: true,
   });
-  const [allMeds, setAllMeds] = useState<MedicationItem[]>([]);
+  const [allWorkouts, setAllWorkouts] = useState<WorkoutItem[]>([]);
 
   useEffect(() => {
     if (tab === "calendar") setActiveTab("calendar");
@@ -65,13 +61,13 @@ export default function MedicationsScreen() {
 
   useEffect(() => {
     if (data) {
-      if (page === 1) setAllMeds(data);
-      else setAllMeds((prev) => [...prev, ...data]);
+      if (page === 1) setAllWorkouts(data);
+      else setAllWorkouts((prev) => [...prev, ...data]);
     }
   }, [data, page]);
 
   // ── Callbacks passed down to cards ────────────────────────────────────────
-  const handleMenuPress = useCallback((item: MedicationItem) => {
+  const handleMenuPress = useCallback((item: WorkoutItem) => {
     setActionTarget(item);
   }, []);
 
@@ -83,14 +79,14 @@ export default function MedicationsScreen() {
 
   const handleDeleteConfirm = useCallback(() => {
     if (!deleteTarget) return;
-    deleteMedication(deleteTarget.id, {
+    deleteWorkout(deleteTarget.id, {
       onSuccess: () => setDeleteTarget(null),
       onError: () => setDeleteTarget(null),
     });
-  }, [deleteTarget, deleteMedication]);
+  }, [deleteTarget, deleteWorkout]);
 
   return (
-    <SafeAreaView className="flex-1 bg-[#EBF9E6]" edges={["top"]}>
+    <SafeAreaView className="flex-1 bg-[#E6F0FA]" edges={["top"]}>
       <View className="flex-1">
         {/* Header */}
         <View className="px-4 pt-2 flex-row items-center justify-between">
@@ -101,11 +97,11 @@ export default function MedicationsScreen() {
             <Ionicons name="arrow-back" size={24} color="black" />
           </Pressable>
           <View className="mt-4 mb-3">
-            <Text className="text-3xl font-black text-slate-900">
-              {activeTab === "active" ? "Active Medications" : "Medication Calendar"}
+            <Text className="text-3xl font-black text-slate-900 text-right">
+              {activeTab === "active" ? "Active Workouts" : "Workout Calendar"}
             </Text>
             <Text className="text-slate-400 text-sm font-semibold text-right">
-              {activeTab === "active" ? "Your active medications" : "Your medication schedule"}
+              {activeTab === "active" ? "Your upcoming workouts" : "Your workout schedule"}
             </Text>
           </View>
         </View>
@@ -117,10 +113,10 @@ export default function MedicationsScreen() {
               key={t}
               onPress={() => setActiveTab(t)}
               hitSlop={{ top: 8, bottom: 8 }}
-              className={`flex-1 py-4 items-center ${activeTab === t ? "border-b-4 border-emerald-500" : ""}`}
+              className={`flex-1 py-4 items-center ${activeTab === t ? "border-b-4 border-blue-500" : ""}`}
             >
-              <Text className={`text-lg font-black capitalize ${activeTab === t ? "text-emerald-500" : "text-slate-300"}`}>
-                {t === "active" ? "Meds Reminders" : "Calendar"}
+              <Text className={`text-lg font-black capitalize ${activeTab === t ? "text-blue-500" : "text-slate-300"}`}>
+                {t === "active" ? "Workout Reminders" : "Calendar"}
               </Text>
             </Pressable>
           ))}
@@ -131,22 +127,22 @@ export default function MedicationsScreen() {
           {activeTab === "active" ? (
             <View style={{ flex: 1, paddingHorizontal: 16 }}>
               <FlashList
-                data={allMeds}
+                data={allWorkouts}
                 keyExtractor={(item) => item.id}
                 numColumns={isTablet ? 2 : 1}
-                estimatedItemSize={150}
+                estimatedItemSize={160}
                 renderItem={({ item }) => (
-                  <MedicationCard item={item} onMenuPress={handleMenuPress} />
+                  <WorkoutCard item={item} onMenuPress={handleMenuPress} />
                 )}
                 onEndReachedThreshold={0.1}
                 ListEmptyComponent={!isLoading ? <EmptyState /> : null}
                 ListFooterComponent={
                   <View className="py-6">
                     {isFetching ? (
-                      <ActivityIndicator color="#10b981" />
-                    ) : !isFetching && allMeds.length >= limit ? (
+                      <ActivityIndicator color="#3b82f6" />
+                    ) : !isFetching && allWorkouts.length >= limit ? (
                       <TouchableOpacity onPress={() => setPage((p) => p + 1)} className="items-center">
-                        <Text className="text-emerald-600 font-bold text-sm">Load More</Text>
+                        <Text className="text-blue-600 font-bold text-sm">Load More</Text>
                       </TouchableOpacity>
                     ) : null}
                   </View>
@@ -154,15 +150,21 @@ export default function MedicationsScreen() {
               />
             </View>
           ) : (
-            <CalendarView filterType="medication" />
+            <CalendarView filterType="workout" />
           )}
         </View>
       </View>
 
       {/* FAB */}
       {activeTab === "active" && (
-        <View className="absolute -bottom-20 right-0">
-          <MedicationFAB />
+        <View className="absolute bottom-6 right-6">
+          <TouchableOpacity
+            onPress={() => router.push("/Reminders/AddWorkout")}
+            className="bg-blue-600 w-16 h-16 rounded-full items-center justify-center"
+            style={{ elevation: 8, shadowColor: "#2563eb", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8 }}
+          >
+            <Ionicons name="add" size={32} color="white" />
+          </TouchableOpacity>
         </View>
       )}
 
@@ -191,7 +193,7 @@ export default function MedicationsScreen() {
 
               {/* Title */}
               <Text style={{ fontSize: 13, fontWeight: "800", color: "#94a3b8", textTransform: "uppercase", letterSpacing: 1, marginBottom: 16, paddingHorizontal: 4 }}>
-                {actionTarget?.drug_name ?? "Medication"} — options
+                {actionTarget?.workout_type ?? "Workout"} — options
               </Text>
 
               {/* View */}
@@ -262,12 +264,12 @@ export default function MedicationsScreen() {
             </View>
 
             <Text style={{ fontSize: 22, fontWeight: "900", color: "#0f172a", textAlign: "center", marginBottom: 10 }}>
-              Delete Medication?
+              Delete Workout?
             </Text>
             <Text style={{ fontSize: 15, color: "#64748b", textAlign: "center", lineHeight: 22, marginBottom: 28 }}>
-              Are you sure you want to remove{" "}
-              <Text style={{ fontWeight: "700", color: "#1e293b" }}>
-                {deleteTarget?.drug_name}
+              Are you sure you want to delete{" "}
+              <Text style={{ fontWeight: "700", color: "#1e293b", textTransform: "capitalize" }}>
+                {deleteTarget?.workout_type}
               </Text>
               ? This cannot be undone.
             </Text>
@@ -300,7 +302,7 @@ export default function MedicationsScreen() {
       <NotesModal
         isVisible={isNoteVisible}
         onClose={() => setIsNoteVisible(false)}
-        medicationId={noteTarget}
+        workoutId={noteTarget}
       />
     </SafeAreaView>
   );
@@ -335,79 +337,69 @@ function ActionRow({ icon, iconColor, label, labelColor, onPress }: {
 function EmptyState() {
   return (
     <View className="flex-1 items-center justify-center py-12">
-      <Ionicons name="medical" size={48} color="#cbd5e1" />
-      <Text className="text-slate-400 text-lg font-semibold mt-4">No medications found</Text>
+      <Ionicons name="fitness" size={48} color="#cbd5e1" />
+      <Text className="text-slate-400 text-lg font-semibold mt-4">No workouts found</Text>
     </View>
   );
 }
 
-// ─── Drug type styles ─────────────────────────────────────────────────────────
-const getDrugStyles = (type: string = "tablet") => {
+// ─── Workout type styles ──────────────────────────────────────────────────────
+const getWorkoutStyles = (type: string = "cardio") => {
   switch (type.toLowerCase()) {
-    case "tablet":
-    case "pills":    return { bg: "bg-purple-100", indicator: "#a855f7", iconRequest: "pill",         color: "#a855f7" };
-    case "capsule":  return { bg: "bg-orange-100", indicator: "#f97316", iconRequest: "pill-multiple", color: "#f97316" };
-    case "injection":return { bg: "bg-blue-100",   indicator: "#3b82f6", iconRequest: "needle",        color: "#3b82f6" };
-    case "liquid":
-    case "syrup":
-    case "solution": return { bg: "bg-yellow-100", indicator: "#eab308", iconRequest: "bottle-tonic",  color: "#eab308" };
-    case "drops":    return { bg: "bg-cyan-100",   indicator: "#06b6d4", iconRequest: "water-plus",    color: "#06b6d4" };
-    case "herbs":    return { bg: "bg-green-100",  indicator: "#22c55e", iconRequest: "leaf",          color: "#22c55e" };
-    case "spray":    return { bg: "bg-teal-100",   indicator: "#14b8a6", iconRequest: "spray",         color: "#14b8a6" };
-    default:         return { bg: "bg-emerald-100",indicator: "#10b981", iconRequest: "medical-bag",   color: "#10b981" };
+    case "yoga":     return { bg: "bg-purple-100", icon: "yoga",               color: "#a855f7" };
+    case "strength": return { bg: "bg-red-100",    icon: "weight-lifter",       color: "#ef4444" };
+    case "swimming": return { bg: "bg-cyan-100",   icon: "swim",                color: "#06b6d4" };
+    case "cycling":  return { bg: "bg-orange-100", icon: "bike",                color: "#f97316" };
+    case "pilates":  return { bg: "bg-pink-100",   icon: "human-female-dance",  color: "#ec4899" };
+    case "hiit":     return { bg: "bg-yellow-100", icon: "lightning-bolt",      color: "#eab308" };
+    default:         return { bg: "bg-blue-100",   icon: "run",                 color: "#3b82f6" };
   }
 };
 
-// ─── Card — no local menu state, calls parent callback ────────────────────────
-function MedicationCard({ item, onMenuPress }: {
-  item: MedicationItem;
-  onMenuPress: (item: MedicationItem) => void;
+// ─── Card — only renders the card, calls parent callbacks ─────────────────────
+function WorkoutCard({ item, onMenuPress }: {
+  item: WorkoutItem;
+  onMenuPress: (item: WorkoutItem) => void;
 }) {
-  const styles = getDrugStyles(item.drug_type || "tablet");
-
-  const fmtDate = (d?: string) =>
-    d
-      ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-      : "—";
+  const styles = getWorkoutStyles(item.workout_type);
 
   return (
-    <TouchableOpacity
-      onPress={() => router.push(`/Reminders/${item.id}`)}
-      className="m-2 mb-4 bg-white rounded-[32px] flex-row"
+    <View
+      className="m-2 mb-4 bg-white rounded-[32px] shadow-sm flex-row"
       style={{ elevation: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 6 }}
-      activeOpacity={0.9}
     >
       {/* Coloured left bar */}
-      <View style={{ backgroundColor: styles.indicator, width: 8, borderTopLeftRadius: 32, borderBottomLeftRadius: 32 }} />
+      <View style={{ backgroundColor: styles.color, width: 8, borderTopLeftRadius: 32, borderBottomLeftRadius: 32 }} />
 
       <View className="flex-1 p-5 pr-3 flex-row items-start">
         {/* Icon */}
         <View className={`w-14 h-14 rounded-full items-center justify-center mr-4 ${styles.bg}`}>
-          <MaterialCommunityIcons name={styles.iconRequest as any} size={28} color={styles.color} />
+          <MaterialCommunityIcons name={styles.icon as any} size={28} color={styles.color} />
         </View>
 
         {/* Content */}
         <View className="flex-1">
-          <Text className="text-xl font-black text-slate-800 mb-0.5">
-            {item.drug_name}
+          <Text className="text-xl font-black text-slate-800 mb-0.5 capitalize">
+            {item.workout_type || "Workout"}
           </Text>
           <Text className="text-slate-500 font-bold text-sm mb-2">
-            {item.dosage_amount} •{" "}
-            {item.drug_type === "liquid" || item.drug_type === "syrup" ? "2 ml" : "1 tablet"} • 2x daily
+            {item.duration || "30"} min • {item.time || "07:00"}
           </Text>
-          <View className="flex-row items-center mb-1">
-            <Ionicons name="calendar-outline" size={13} color="#94a3b8" />
-            <Text className="text-slate-400 text-xs ml-1 font-bold">Daily</Text>
+          <View className="flex-row flex-wrap">
+            {item.days?.map((day, idx) => (
+              <View key={idx} className="bg-slate-100 px-2 py-1 rounded-md mr-1 mb-1">
+                <Text className="text-slate-500 text-xs font-bold">{day}</Text>
+              </View>
+            ))}
           </View>
-          <View className="flex-row items-center">
-            <Ionicons name="calendar-outline" size={13} color="#94a3b8" />
-            <Text className="text-slate-400 text-xs ml-1 font-bold">
-              {fmtDate(item.start_date)} – {fmtDate(item.end_date)}
+          {item.goals ? (
+            <Text className="text-slate-400 text-xs mt-1 italic" numberOfLines={1}>
+              "{item.goals}"
             </Text>
-          </View>
+          ) : null}
         </View>
 
-        {/* Ellipsis — calls parent, no local state */}
+        {/* Ellipsis — just calls parent, no local menu state */}
         <TouchableOpacity
           onPress={() => onMenuPress(item)}
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
@@ -416,6 +408,6 @@ function MedicationCard({ item, onMenuPress }: {
           <MaterialCommunityIcons name="dots-vertical" size={22} color="#94a3b8" />
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }

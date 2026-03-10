@@ -25,8 +25,8 @@ const TabsLayout = () => {
       screenOptions={{
         tabBarHideOnKeyboard: true,
         tabBarStyle: { 
-          height: Platform.OS === 'ios' ? 60 + insets.bottom - 20 : 70,
-          paddingBottom: Platform.OS === 'ios' ? insets.bottom  : 10,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
           backgroundColor: themeColors.white,
           borderTopWidth: 1,
           borderTopColor: '#f0f0f0',

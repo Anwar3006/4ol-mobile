@@ -223,6 +223,8 @@ const AppContent = () => {
   return <Slot />;
 };
 
+import { SafeAreaProvider } from "react-native-safe-area-context";
+
 const RootLayout = () => {
 
   // Reanimated logger, disable logger
@@ -235,13 +237,15 @@ const RootLayout = () => {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <BiometricProvider>
-        <NotificationProvider>
-          <QueryClientProvider client={queryClient}>
-            <AppContent />
-          </QueryClientProvider>
-        </NotificationProvider>
-      </BiometricProvider>
+      <SafeAreaProvider>
+        <BiometricProvider>
+          <NotificationProvider>
+            <QueryClientProvider client={queryClient}>
+              <AppContent />
+            </QueryClientProvider>
+          </NotificationProvider>
+        </BiometricProvider>
+      </SafeAreaProvider>
     </GestureHandlerRootView>
   );
 };

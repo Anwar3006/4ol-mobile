@@ -146,7 +146,7 @@ const OTPVerificationScreen = () => {
             keyboardShouldPersistTaps="handled">
             <View style={styles.container}>
               <Icon
-                name="email-receive-outline"
+                name="email"
                 size={70}
                 color={themeColors.primary}
                 style={styles.icon}

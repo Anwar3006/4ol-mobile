@@ -150,6 +150,7 @@ export const useGetFacilitiesMapData = ({
     status?: string;
   };
 }) => {
+  console.log("Filters: ", filters);
   return useQuery<any, Error>({
     queryKey: [
       FACILITY_PROFILE_QUERY_KEYS.map,
@@ -176,6 +177,19 @@ export const useGetFacilitiesMapData = ({
       });
 
       if (error) throw error;
+
+      // Normalize features: map 'type' property to 'facility_type' if needed
+      // and ensure 'id' is present. The RPC returns 'type' but mobile expects 'facility_type'
+      if (data?.features) {
+        data.features = data.features.map((f: any) => ({
+          ...f,
+          properties: {
+            ...f.properties,
+            facility_type: f.properties.type || f.properties.facility_type,
+          },
+        }));
+      }
+
       return data; // GeoJSON FeatureCollection
     },
     enabled: enabled,

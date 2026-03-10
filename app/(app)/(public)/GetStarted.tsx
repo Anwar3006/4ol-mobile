@@ -17,9 +17,16 @@ import {
   moderateScale,
   verticalScale,
 } from '../../../src/utils/metrics';
+import useUserStore from '@/store/use-userstore';
 
 const GetStarted = () => {
   const router = useRouter();
+  const {setHasSeenOnboarding} = useUserStore();
+
+  const handleNavigation = (route: string) => {
+    setHasSeenOnboarding(true);
+    router.push(route);
+  };
 
   return (
     <View style={styles.container}>
@@ -41,14 +48,14 @@ const GetStarted = () => {
         <Text style={styles.text}>Login to your existing 4OL account</Text>
         <CustomButton
           text={'Login'}
-          onPress={() => router.push('/(app)/(public)/Login')}
+          onPress={() => handleNavigation('/(app)/(public)/Login')}
           isTransparent
         />
         <Text style={styles.text}>New to 4OL?</Text>
         <CustomButton
           text={'Create new account'}
           onPress={() => {
-            router.push('/(app)/(public)/VerifyPhoneNumber');
+            handleNavigation('/(app)/(public)/VerifyPhoneNumber');
           }}
         />
       </ScrollView>
@@ -57,7 +64,7 @@ const GetStarted = () => {
         <CustomButton
           text={'Login as Business'}
           onPress={() => {
-            router.push('/(app)/(public)/BusinessAuth');
+            handleNavigation('/(app)/(public)/BusinessAuth');
           }}
         />
       </View>

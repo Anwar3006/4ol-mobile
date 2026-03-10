@@ -12,6 +12,7 @@ export default function ModalLayout() {
       <Stack.Screen name="SearchResultModal" />
       <Stack.Screen name="DiseaseDetails" />
       <Stack.Screen name="SymptomDetails" />
+      <Stack.Screen name="HealthyLivingDetails" />
     </Stack>
   );
 }

@@ -1,31 +1,66 @@
-import React, { useMemo } from "react"; 
+import React, { useMemo } from "react";
 import { ScrollView, TouchableOpacity, Text, View } from "react-native";
 import { cn } from "@/lib/utils";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
+
+type IconLibrary = "Ionicons" | "MaterialIcons" | "MaterialCommunityIcons";
 
 export const CATEGORIES = [
-  { id: "all", name: "All", icon: "grid-outline", color: "#64748b" },
-  { id: "near_me", name: "Near Me", icon: "location-outline", color: "#3b82f6" },
-  { id: "hospital_/_clinic", name: "Hospitals", icon: "medical-outline", color: "#ef4444" },
-  { id: "pharmacy", name: "Pharmacies", icon: "flask-outline", color: "#8b5cf6" },
-  { id: "wellness_center", name: "Wellness", icon: "leaf-outline", color: "#10b981" },
-  { id: "herbal_center", name: "Herbal", icon: "flower-outline", color: "#84cc16" },
-  { id: "diagnostic_lab", name: "Labs", icon: "thermometer-outline", color: "#f59e0b" },
-  { id: "dental_clinic", name: "Dental", icon: "happy-outline", color: "#06b6d4" },
-  { id: "eye_clinic", name: "Eye Care", icon: "eye-outline", color: "#6366f1" },
-  { id: "physiotherapy_center", name: "Physio", icon: "body-outline", color: "#f97316" },
-  { id: "psychiatric_center", name: "Mental Health", icon: "pulse-outline", color: "#ec4899" },
-  { id: "home", name: "Home Care", icon: "home-outline", color: "#14b8a6" },
-  { id: "health_school", name: "Schools", icon: "school-outline", color: "#a78bfa" },
-  { id: "osteopathy_center", name: "Osteopathy", icon: "fitness-outline", color: "#fb923c" },
-  { id: "prosthetics_center", name: "Prosthetics", icon: "accessibility-outline", color: "#94a3b8" },
+  { id: "all",                   name: "All",           icon: "apps",              library: "MaterialIcons"          as IconLibrary, color: "#64748b" },
+  { id: "near_me",               name: "Near Me",       icon: "near-me",           library: "MaterialIcons"          as IconLibrary, color: "#3b82f6" },
+  { id: "hospital_/_clinic",     name: "Hospitals",     icon: "local-hospital",    library: "MaterialIcons"          as IconLibrary, color: "#ef4444" },
+  { id: "pharmacy",              name: "Pharmacies",    icon: "local-pharmacy",    library: "MaterialIcons"          as IconLibrary, color: "#8b5cf6" },
+  { id: "wellness",       name: "Wellness",      icon: "spa",               library: "MaterialIcons"          as IconLibrary, color: "#10b981" },
+  { id: "herbal_center",         name: "Herbal",        icon: "leaf",              library: "MaterialCommunityIcons" as IconLibrary, color: "#84cc16" },
+  { id: "diagnostic_lab",        name: "Labs",          icon: "biotech",           library: "MaterialIcons"          as IconLibrary, color: "#f59e0b" },
+  { id: "dental_clinic",         name: "Dental",        icon: "tooth-outline",     library: "MaterialCommunityIcons" as IconLibrary, color: "#06b6d4" },
+  { id: "eye_clinic",            name: "Eye Care",      icon: "visibility",        library: "MaterialIcons"          as IconLibrary, color: "#6366f1" },
+  { id: "physiotherapy_center",  name: "Physio",        icon: "arm-flex-outline",  library: "MaterialCommunityIcons" as IconLibrary, color: "#f97316" },
+  { id: "psychiatric_center",    name: "Mental Health", icon: "psychology",        library: "MaterialIcons"          as IconLibrary, color: "#ec4899" },
+  { id: "home",                  name: "Home Care",     icon: "home-heart",        library: "MaterialCommunityIcons" as IconLibrary, color: "#14b8a6" },
+  { id: "health_school",         name: "Schools",       icon: "school",            library: "MaterialIcons"          as IconLibrary, color: "#a78bfa" },
+  { id: "osteopathy_center",     name: "Osteopathy",    icon: "self-improvement",  library: "MaterialIcons"          as IconLibrary, color: "#fb923c" },
+  { id: "prosthetics_center",    name: "Prosthetics",   icon: "accessible",        library: "MaterialIcons"          as IconLibrary, color: "#94a3b8" },
 ];
 
+/** Renders the correct icon component based on the library field */
+export const CategoryIcon = ({
+  icon,
+  library,
+  size,
+  color,
+}: {
+  icon: string;
+  library: IconLibrary;
+  size: number;
+  color: string;
+}) => {
+  switch (library) {
+    case "MaterialIcons":
+      return <MaterialIcons name={icon as any} size={size} color={color} />;
+    case "MaterialCommunityIcons":
+      return <MaterialCommunityIcons name={icon as any} size={size} color={color} />;
+    case "Ionicons":
+    default:
+      return <Ionicons name={icon as any} size={size} color={color} />;
+  }
+};
+
 /** Look up icon name + colour by facility_type id */
-export const getCategoryMeta = (facilityTypeId: string) => {
+export const getCategoryMeta = (facilityType: string) => {
+  const type = (facilityType || "").toLowerCase();
+  const cat = CATEGORIES.find((c) => 
+    c.id === type || 
+    type.startsWith(c.id) || 
+    c.id.startsWith(type) ||
+    type.includes(c.id)
+  );
   return (
-    CATEGORIES.find((c) => c.id === facilityTypeId) ?? {
-      icon: "medical-outline",
+    cat ?? {
+      id: "hospital_/_clinic",
+      name: "Hospitals",
+      icon: "local-hospital",
+      library: "MaterialIcons" as IconLibrary,
       color: "#10b981",
     }
   );
@@ -49,11 +84,12 @@ export const MapFilters = ({
       label: opt.name,
       value: opt.id,
       icon: opt.icon,
+      library: opt.library,
       color: opt.color,
     })), []);
-  
+
   return (
-    <View className="py-2"> 
+    <View className="py-2">
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -81,8 +117,9 @@ export const MapFilters = ({
               )}
               style={isActive ? { backgroundColor: category.color, borderColor: category.color } : undefined}
             >
-              <Ionicons
-                name={category.icon as any}
+              <CategoryIcon
+                icon={category.icon}
+                library={category.library}
                 size={18}
                 color={isActive ? "white" : category.color}
               />

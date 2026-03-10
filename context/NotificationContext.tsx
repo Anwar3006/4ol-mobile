@@ -42,7 +42,8 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   children,
 }) => {
   const [expoPushToken, setExpoPushToken] = useState<string | null>(null);
-  const [notification, setNotification] = useState<Notifications.Notification | null>(null);
+  const [notification, setNotification] =
+    useState<Notifications.Notification | null>(null);
   const [error, setError] = useState<Error | null>(null);
 
   const notificationListener = useRef<Subscription | null>(null);
@@ -51,58 +52,97 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   const { data: session } = authClient.useSession();
 
   useEffect(() => {
-    registerForPushNotificationAsync().then(
-      (token) => setExpoPushToken(token ?? null),
-      (err) => {
-        setError(err);
-        Sentry.captureException(err, {
-          tags: { section: "notifications", action: "register_push" },
-        });
-      }
-    );
+    // registerForPushNotificationAsync never throws/rejects — it returns null
+    // on emulators and unsupported devices. Use async/await so we have a clean
+    // try/catch with no implicit unhandled-rejection risk.
+    let cancelled = false;
 
-    notificationListener.current = Notifications.addNotificationReceivedListener(
-      (notification) => {
-        setNotification(notification);
-      }
-    );
+    const init = async () => {
+      try {
+        const token = await registerForPushNotificationAsync();
+        if (!cancelled) {
+          setExpoPushToken(token ?? null);
+        }
+      } catch (err: any) {
+        // This should never be reached (registerForPushNotificationAsync catches
+        // internally) but acts as a last-resort safety net so the context never
+        // crashes the app tree.
+        if (!cancelled) {
+          const msg: string = err?.message ?? "";
+          const isEmulatorError =
+            msg.includes("physical device") ||
+            msg.includes("emulator") ||
+            msg.includes("simulator");
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(
-      (response) => {
-        console.log("User interacted with notification:", JSON.stringify(response.notification.request.content.data, null, 2));
+          setError(err);
+
+          // Only capture in Sentry for unexpected, non-emulator errors
+          if (!isEmulatorError) {
+            Sentry.captureException(err, {
+              tags: { section: "notifications", action: "register_push" },
+            });
+          }
+        }
       }
-    );
+    };
+
+    init();
+
+    notificationListener.current =
+      Notifications.addNotificationReceivedListener((n) => {
+        setNotification(n);
+      });
+
+    responseListener.current =
+      Notifications.addNotificationResponseReceivedListener((response) => {
+        console.log(
+          "[Notifications] User tapped notification:",
+          JSON.stringify(
+            response.notification.request.content.data,
+            null,
+            2,
+          ),
+        );
+      });
 
     return () => {
-        notificationListener.current && notificationListener.current.remove();
-      responseListener.current && responseListener.current.remove();
+      cancelled = true;
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
     };
   }, []);
 
+  // Save token to Supabase whenever we have both token and a signed-in user
   useEffect(() => {
-    const saveToken = async () => {
-      if (expoPushToken && session?.user?.id) {
-        try {
-          const { error } = await supabase
-            .from("user_profiles")
-            .update({ expo_push_token: expoPushToken })
-            .eq("user_id", session.user.id);
+    if (!expoPushToken || !session?.user?.id) return;
 
-          if (error) {
-            console.error(`Error saving push token to Supabase for user ${session.user.id}:`, error.message, error);
-            Sentry.captureMessage(`Error saving push token to Supabase: ${error.message}`, {
+    const saveToken = async () => {
+      try {
+        const { error: dbError } = await supabase
+          .from("user_profiles")
+          .update({ expo_push_token: expoPushToken })
+          .eq("user_id", session.user.id);
+
+        if (dbError) {
+          console.error("[Notifications] Failed to save token:", dbError.message);
+          Sentry.captureMessage(
+            `Error saving push token: ${dbError.message}`,
+            {
               level: "error",
               tags: { section: "notifications", action: "save_token_supabase" },
-            });
-          } else {
-            console.log("Push token saved successfully for user:", session.user.id);
-          }
-        } catch (err) {
-          console.error("Unexpected error saving push token:", err);
-          Sentry.captureException(err, {
-            tags: { section: "notifications", action: "save_token_catch" },
-          });
+            },
+          );
+        } else {
+          console.log(
+            "[Notifications] Token saved for user:",
+            session.user.id,
+          );
         }
+      } catch (err) {
+        console.error("[Notifications] Unexpected error saving token:", err);
+        Sentry.captureException(err, {
+          tags: { section: "notifications", action: "save_token_catch" },
+        });
       }
     };
 
@@ -110,9 +150,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({
   }, [expoPushToken, session?.user?.id]);
 
   return (
-    <NotificationContext.Provider
-      value={{ expoPushToken, notification, error }}
-    >
+    <NotificationContext.Provider value={{ expoPushToken, notification, error }}>
       {children}
     </NotificationContext.Provider>
   );

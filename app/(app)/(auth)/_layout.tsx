@@ -1,56 +1,67 @@
 import React, { useEffect, useState } from "react";
 import { Stack } from "expo-router";
+import { Platform } from "react-native";
 import { requestTrackingPermissionsAsync } from "expo-tracking-transparency";
 import useUserStore from "@/store/use-userstore";
 import { MedicalDisclaimerModal } from "@/components/auth/MedicalDisclaimerModal";
 
+// ATT is iOS-only. Calling it on Android blocks the UI thread.
+// Fire-and-forget — we never await this in a button handler.
+const requestATT = () => {
+  if (Platform.OS === "ios") {
+    requestTrackingPermissionsAsync().catch(() => {
+      // ATT errors are non-fatal — ignore silently
+    });
+  }
+};
 
 const AuthScreensLayout = () => {
-  const { hasAcknowledgedDisclaimer, setHasAcknowledgedDisclaimer } =
-    useUserStore();
+  // 1. Destructure _hasHydrated from the store
+  const { 
+    hasAcknowledgedDisclaimer, 
+    setHasAcknowledgedDisclaimer, 
+    _hasHydrated 
+  } = useUserStore();
+  
   const [showDisclaimer, setShowDisclaimer] = useState(false);
 
-  useEffect(() => {
-    const initCompliance = async () => {
-      if (!hasAcknowledgedDisclaimer) {
-        setShowDisclaimer(true);
-      } else {
-        // If already acknowledged, check/request ATT
-        await requestTrackingPermissionsAsync();
-      }
-    };
-    initCompliance();
-  }, [hasAcknowledgedDisclaimer]);
+  // useEffect(() => {
+  //   // 2. Use the correctly destructured variable
+  //   if (_hasHydrated && !hasAcknowledgedDisclaimer) {
+  //     setShowDisclaimer(true);
+  //   }
+  // }, [_hasHydrated, hasAcknowledgedDisclaimer]);
 
-  const handleDisclaimerAck = async () => {
+  // 3. Prevent rendering the Stack until hydration is complete
+  if (!_hasHydrated) {
+    return null; 
+  }
+
+  const handleDisclaimerAck = () => {
     setHasAcknowledgedDisclaimer(true);
     setShowDisclaimer(false);
-    // Request ATT immediately after acknowledgment
-    await requestTrackingPermissionsAsync();
+    requestATT();
   };
-
 
   return (
     <>
-      <MedicalDisclaimerModal
+      {/* <MedicalDisclaimerModal
         visible={showDisclaimer}
         onAcknowledge={handleDisclaimerAck}
-      />
+      /> */}
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(ibpTabs)" options={{ headerShown: false }} />
 
-        {/* Full-Screen Routes */}
         <Stack.Screen
           name="Facility/[id]"
           options={{
             headerShown: false,
-            presentation: "card", // Standard push navigation
+            presentation: "card",
             animation: "slide_from_right",
           }}
         />
 
-        {/* Modal Routes */}
         <Stack.Screen
           name="(modal)"
           options={{
@@ -64,6 +75,3 @@ const AuthScreensLayout = () => {
 };
 
 export default AuthScreensLayout;
-
-// We can handle switching between IBPs and Personal account.
-// We wil look at the security side: App must be fully secure and robust. What

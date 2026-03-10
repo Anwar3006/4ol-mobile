@@ -103,9 +103,9 @@ const VerifyPhoneNumber = () => {
                     value={value}
                     onchangeState={onChange} // Pass the RHF onChange directly
                     setCountryCode={setCountryCode}
-                    phoneInput={phoneInput}
+                    // phoneInput={phoneInput}
                     countrycode={countryCode}
-                    error={errors.phoneNumber?.message || error}
+                    // error={errors.phoneNumber?.message || error}
                     editable={!loading}
                     touched={!!errors.phoneNumber}
                   />

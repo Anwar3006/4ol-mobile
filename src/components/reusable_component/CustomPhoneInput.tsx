@@ -1,25 +1,24 @@
-import React, {useState} from 'react';
-import {View, Text, StyleSheet, Platform} from 'react-native';
-import PhoneInput from 'react-native-phone-number-input';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import PhoneInput, { ITheme } from 'react-native-international-phone-number';
 import {
   verticalScale,
   moderateScale,
   horizontalScale,
 } from '../../utils/metrics';
-import {themeColors} from '../../theme/colors';
-import {fonts} from '../../theme/fonts';
+import { themeColors } from '../../theme/colors';
+import { fonts } from '../../theme/fonts';
 
 interface Props {
-  value: string | undefined;
+  value: string;
   onchangeState: (val: string) => void;
-  setCountryCode: (code: any) => void;
-  phoneInput: React.MutableRefObject<any>;
-  countrycode: any;
+  setCountryCode: (code: string) => void;
+  countrycode: string; 
   error?: string;
   touched?: boolean;
   editable?: boolean;
   placeHolder?: string;
-  label?: string; // Consistent with CustomInput
+  label?: string;
 }
 
 const CustomPhoneNumber = ({
@@ -27,7 +26,6 @@ const CustomPhoneNumber = ({
   onchangeState,
   setCountryCode,
   countrycode,
-  phoneInput,
   error,
   touched,
   editable = true,
@@ -35,13 +33,25 @@ const CustomPhoneNumber = ({
   label,
 }: Props) => {
   const [isFocused, setIsFocused] = useState(false);
+  
+  // FIX: Provide the required ref
+  const phoneInputRef = useRef(null);
 
-  // Determine border color based on state to match CustomInput
   const getBorderColor = () => {
     if (error && touched) return 'red';
     if (isFocused) return themeColors.primary;
     return '#E0E0E0';
   };
+
+  // Ensure theme matches ITheme exactly
+  const theme = {
+    primaryColor: themeColors.primary,
+    secondaryColor: '#FFFFFF',
+    tertiaryColor: '#F5F5F5',
+    textColor: themeColors.black,
+    backgroundColor: 'transparent',
+    outlineColor: 'transparent',
+  } as unknown as ITheme;
 
   return (
     <View style={styles.outerContainer}>
@@ -56,32 +66,34 @@ const CustomPhoneNumber = ({
           },
         ]}>
         <PhoneInput
-          ref={phoneInput}
-          defaultValue={value}
-          onChangeFormattedText={onchangeState}
-          defaultCode={countrycode}
-          layout="first"
+          // Mandatory ref to satisfy PhoneInputPropsWithRef
+          ref={phoneInputRef}
+          value={value}
+          onChangeText={onchangeState}
+          selectedCountry={countrycode as any}
+          onChangeSelectedCountry={(country) => setCountryCode(country.cca2)}
           placeholder={placeHolder}
-          disableArrowIcon={!editable}
-          // Disable internal shadows/borders to use our wrapper
-          withShadow={false}
-          withDarkTheme={false}
-          autoFocus={false}
-          containerStyle={styles.phoneContainer}
-          textContainerStyle={styles.textContainer}
-          codeTextStyle={styles.codeText}
-          textInputStyle={styles.textInput}
-          onChangeCountry={val => setCountryCode(val.cca2)}
-          textInputProps={{
-            onFocus: () => setIsFocused(true),
-            onBlur: () => setIsFocused(false),
-            editable: editable,
-            placeholderTextColor: '#BDBDBD',
+          disabled={!editable}
+          theme={theme}
+          // The component expects a function for customCaret
+          customCaret={() => <View />} 
+          modalStyles={{
+            container: { backgroundColor: '#FFFFFF' },
+            searchInput: { fontFamily: fonts.OpenSansRegular },
+            countryItem: { backgroundColor: '#FFFFFF' }
           }}
+          phoneInputStyles={{
+            container: styles.phoneContainer,
+            flagContainer: styles.flagContainer,
+            input: styles.textInput,
+            caret: { display: 'none' } 
+          }}
+          // Handle focus states for the border animation
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
         />
       </View>
 
-      {/* Consistent Error Message Placement */}
       {error && touched ? (
         <Text style={styles.errorText}>{error}</Text>
       ) : (
@@ -93,7 +105,7 @@ const CustomPhoneNumber = ({
 
 const styles = StyleSheet.create({
   outerContainer: {
-    width: '100%', // Responsive width
+    width: '100%',
     marginBottom: verticalScale(5),
   },
   label: {
@@ -105,34 +117,28 @@ const styles = StyleSheet.create({
   },
   borderWrapper: {
     borderWidth: 1.5,
-    borderRadius: moderateScale(10), // Matching CustomInput geometry
+    borderRadius: moderateScale(10),
     overflow: 'hidden',
     height: verticalScale(55),
     justifyContent: 'center',
   },
   phoneContainer: {
-    width: horizontalScale(300),
-    backgroundColor: 'transparent', // Uses wrapper background
+    borderWidth: 0, 
+    backgroundColor: 'transparent',
     height: '100%',
   },
-  textContainer: {
+  flagContainer: {
+    borderWidth: 0,
     backgroundColor: 'transparent',
-    paddingVertical: 0,
-    paddingHorizontal: 10,
-    borderLeftWidth: 1,
-    borderLeftColor: '#E0E0E0', // Subtle separator between code and number
-  },
-  codeText: {
-    fontSize: 16,
-    fontFamily: fonts.OpenSansRegular,
-    color: themeColors.black,
+    justifyContent: 'center',
+    width: horizontalScale(50),
   },
   textInput: {
     fontSize: 16,
     fontFamily: fonts.OpenSansRegular,
     color: themeColors.black,
-    height: '100%',
     paddingLeft: horizontalScale(10),
+    height: '100%',
   },
   errorText: {
     color: 'red',
