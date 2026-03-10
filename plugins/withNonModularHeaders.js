@@ -39,7 +39,13 @@ const withNonModularHeaders = config => {
       target.build_configurations.each do |config|
         config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
         config.build_settings['GCC_WARN_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'NO'
-        config.build_settings['DEFINES_MODULE'] = 'YES'
+
+        # This is often needed for React Native 0.70+ with static frameworks
+        if target.name.include?('react-native-google-maps') || target.name.include?('react-native-maps')
+          config.build_settings['DEFINES_MODULE'] = 'NO'
+        else
+          config.build_settings['DEFINES_MODULE'] = 'YES'
+        end
         
         cflags = config.build_settings['OTHER_CFLAGS'] || ['$(inherited)']
         if cflags.is_a?(String)

@@ -21,7 +21,8 @@ const AuthScreensLayout = () => {
   const { 
     hasAcknowledgedDisclaimer, 
     setHasAcknowledgedDisclaimer, 
-    _hasHydrated 
+    _hasHydrated,
+    user // Check if user is authenticated
   } = useUserStore();
   
   const [showDisclaimer, setShowDisclaimer] = useState(false);
