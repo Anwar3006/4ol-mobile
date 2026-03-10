@@ -79,21 +79,21 @@ export default {
         'expo-build-properties',
         {
           ios: {
-      // Change 'static' to 'dynamic' if you don't have a specific reason for static
-      // This often resolves the modular header issue instantly
-      useFrameworks: 'dynamic', 
-      deploymentTarget: '15.1', // Ensure a modern target
-      otherSwiftFlags: [
-        '-Xfrontend',
-        '-enable-experimental-feature',
-        '-Xfrontend',
-        'AccessLevelOnImport',
-      ],
-    },
-    android: {
-      enableProguardInReleaseBuilds: true,
-      enableShrinkResourcesInReleaseBuilds: true,
-    }
+            // Google Maps in Expo/RN usually requires static linkage when using use_frameworks!
+            // Changing from 'dynamic' to 'static' often resolves linker errors for Google Maps.
+            useFrameworks: 'static',
+            deploymentTarget: '15.1',
+            otherSwiftFlags: [
+              '-Xfrontend',
+              '-enable-experimental-feature',
+              '-Xfrontend',
+              'AccessLevelOnImport',
+            ],
+          },
+          android: {
+            enableProguardInReleaseBuilds: true,
+            enableShrinkResourcesInReleaseBuilds: true,
+          }
         },
       ],
       [
