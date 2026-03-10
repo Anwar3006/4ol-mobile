@@ -6,7 +6,8 @@ import useUserStore from "@/store/use-userstore";
 import { MedicalDisclaimerModal } from "@/components/auth/MedicalDisclaimerModal";
 
 /**
- * ATT is iOS-only.
+ * ATT is iOS-only. Calling it on Android can sometimes cause issues if called too early.
+ * We wrap it in a platform check and handle it as a fire-and-forget task.
  */
 const requestATT = () => {
   if (Platform.OS === "ios") {
@@ -28,25 +29,29 @@ const AuthScreensLayout = () => {
 
   // 1. Robust Hydration & Disclaimer Guard
   useEffect(() => {
-    // Only proceed if hydration is complete AND user is authenticated
-    // The disclaimer should only show once per account registration.
-    if (_hasHydrated && user && !hasAcknowledgedDisclaimer) {
-      const timer = setTimeout(() => {
-        setShowDisclaimer(true);
-      }, 800);
-      return () => clearTimeout(timer);
+    // Only proceed if hydration is complete
+    if (_hasHydrated) {
+      if (!hasAcknowledgedDisclaimer) {
+        // Small delay to ensure the UI thread is not bogged down by the initial hydration/render
+        const timer = setTimeout(() => {
+          setShowDisclaimer(true);
+        }, 500);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [_hasHydrated, hasAcknowledgedDisclaimer, !!user]);
+  }, [_hasHydrated, hasAcknowledgedDisclaimer]);
 
-  // 2. Prevent rendering the Stack until hydration is complete
+  // 2. Prevent rendering the Stack until hydration is complete to avoid partial state renders
   if (!_hasHydrated) {
     return null; 
   }
 
   const handleDisclaimerAck = () => {
+    // Fire-and-forget updates
     setHasAcknowledgedDisclaimer(true);
     setShowDisclaimer(false);
 
+    // Request ATT after a short delay to ensure modal dismissal doesn't conflict
     setTimeout(() => {
       requestATT();
     }, 1000);
