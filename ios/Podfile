@@ -5,10 +5,7 @@ require 'json'
 podfile_properties = JSON.parse(File.read(File.join(__dir__, 'Podfile.properties.json'))) rescue {}
 
 def ccache_enabled?(podfile_properties)
-  # Environment variable takes precedence
   return ENV['USE_CCACHE'] == '1' if ENV['USE_CCACHE']
-  
-  # Fall back to Podfile properties
   podfile_properties['apple.ccacheEnabled'] == 'true'
 end
 
@@ -39,15 +36,8 @@ target '4OurLife' do
     ]
   end
 
-  # react-native-maps fix: use modular_headers => true (not false) so that
-  # RCTViewManager, RCTBubblingEventBlock etc. are resolved through the module
-  # system rather than as non-modular textual includes. Without this, RN 0.81's
-  # stricter Clang enforcement causes "must be imported from module X before it
-  # is required" errors across all AIRGoogleMap*.h headers.
-  # NOTE: If you run `expo prebuild` this line will be regenerated as `false`.
-  # After any prebuild, change false → true here and re-run `pod install`.
 # @generated begin react-native-maps - expo prebuild (DO NOT MODIFY) sync-e9cc66c360abe50bc66d89fffb3c55b034d7d369
-  pod 'react-native-google-maps', path: File.dirname(`node --print "require.resolve('react-native-maps/package.json')"`), :modular_headers => true
+  pod 'react-native-google-maps', path: File.dirname(`node --print "require.resolve('react-native-maps/package.json')"`)
 # @generated end react-native-maps
   config = use_native_modules!(config_command)
 
@@ -57,69 +47,54 @@ target '4OurLife' do
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',
-    # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/..",
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
 
   post_install do |installer|
-    # NON_MODULAR_HEADERS_FIX_START
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
-        config.build_settings['GCC_WARN_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'NO'
-
-        # This is often needed for React Native 0.70+ with static frameworks
-        if target.name.include?('react-native-google-maps') || target.name.include?('react-native-maps')
-          config.build_settings['DEFINES_MODULE'] = 'NO'
-        else
-          config.build_settings['DEFINES_MODULE'] = 'YES'
-        end
-        
-        cflags = config.build_settings['OTHER_CFLAGS'] || ['$(inherited)']
-        if cflags.is_a?(String)
-          cflags = [cflags]
-        end
-        unless cflags.include?('-Wno-non-modular-include-in-framework-module')
-          cflags << '-Wno-non-modular-include-in-framework-module'
-        end
-        config.build_settings['OTHER_CFLAGS'] = cflags
-      end
-    end
-    # NON_MODULAR_HEADERS_FIX_END
-
-    installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        # Allow non-modular includes globally — needed for react-native-maps + use_frameworks!
-        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
-        config.build_settings['GCC_WARN_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'NO'
-        config.build_settings['DEFINES_MODULE'] = 'YES'
-
-        cflags = config.build_settings['OTHER_CFLAGS'] || ['$(inherited)']
-        cflags = [cflags] if cflags.is_a?(String)
-        unless cflags.include?('-Wno-non-modular-include-in-framework-module')
-          cflags << '-Wno-non-modular-include-in-framework-module'
-        end
-        config.build_settings['OTHER_CFLAGS'] = cflags
-      end
-
-      # react-native-maps specific: force modular headers on the Google Maps pod
-      # targets so every AIR*.h file is visible as a proper module member.
-      if target.name == 'react-native-google-maps'
-        target.build_configurations.each do |config|
-          config.build_settings['DEFINES_MODULE'] = 'YES'
-          config.build_settings['MODULEMAP_FILE'] = ''
-          config.build_settings['CLANG_ENABLE_MODULES'] = 'YES'
-          config.build_settings['SWIFT_INSTALL_OBJC_HEADER'] = 'NO'
-        end
-      end
-    end
-
+    # ─────────────────────────────────────────────────────────────────────────
+    # IMPORTANT: react_native_post_install MUST run first.
+    #
+    # It regenerates header symlinks in Pods/Headers/. Any patch applied
+    # before this call would be silently overwritten, which was the original
+    # cause of the react-native-maps compilation failure.
+    # ─────────────────────────────────────────────────────────────────────────
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,
       :ccache_enabled => ccache_enabled?(podfile_properties),
     )
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Fix: react-native-maps + React Native 0.73+ (includes 0.81.x)
+    #
+    # In RN 0.73, RCTEventDispatcherProtocol was extracted from
+    # RCTEventDispatcher.h into its own header RCTEventDispatcherProtocol.h.
+    # react-native-maps 1.20.x still pulls in the old RCTEventDispatcher.h,
+    # which now declares the protocol in its @interface without #import-ing it,
+    # producing:
+    #   "no type or protocol named 'RCTEventDispatcherProtocol'"
+    #
+    # Solution: prepend the missing #import to the public header AFTER
+    # react_native_post_install has finished regenerating symlinks.
+    # The idempotency guard (`unless contents.include?`) means re-running
+    # pod install is safe.
+    # ─────────────────────────────────────────────────────────────────────────
+    rct_event_dispatcher_h = File.join(
+      Pod::Config.instance.installation_root,
+      'Pods', 'Headers', 'Public', 'React-Core', 'React', 'RCTEventDispatcher.h'
+    )
+
+    if File.exist?(rct_event_dispatcher_h)
+      contents = File.read(rct_event_dispatcher_h)
+      missing_import = '#import <React/RCTEventDispatcherProtocol.h>'
+      unless contents.include?(missing_import)
+        File.write(rct_event_dispatcher_h, "#{missing_import}\n#{contents}")
+        puts "✅  Patched RCTEventDispatcher.h — added missing RCTEventDispatcherProtocol import"
+      end
+    else
+      puts "⚠️  RCTEventDispatcher.h not found at expected path — skipping patch"
+    end
   end
 end

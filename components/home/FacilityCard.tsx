@@ -13,10 +13,17 @@ interface FacilityCardProps {
 
 const FacilityCard = ({ facility, onPress }: FacilityCardProps) => {
   const { user } = useUserStore();
-  const { isFavorite } = useFavoritesStore();
   const toggleFavoriteMutation = useToggleFavorite();
 
-  const favorite = isFavorite(facility.id);
+  // Subscribe to the `favorites` array directly (not the `isFavorite` function).
+  // Zustand re-renders a component only when the subscribed slice changes by
+  // reference. `isFavorite` is a stable function created once in `create()` —
+  // subscribing to it means the component never re-renders when favorites are
+  // added/removed, so the heart icon stays stale. Selecting `favorites` and
+  // computing the check inline ensures a re-render on every mutation.
+  const favorite = useFavoritesStore(
+    (state) => state.favorites.some((f) => f.id === facility.id)
+  );
 
   const handleToggleFavorite = () => {
     if (!user) return; // Maybe show a login prompt?

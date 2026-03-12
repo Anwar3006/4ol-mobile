@@ -3069,8 +3069,8 @@ SPEC CHECKSUMS:
   React-Mapbuffer: 0164bc6ba0866e6314d86851620e6f1f95a1b4fb
   React-microtasksnativemodule: f5972fb404f7c363ff34b2292e72a716956c590c
   react-native-compressor: 7d5556f7fda07fb7ead1ff5f80d25fb7a43b20a0
-  react-native-google-maps: c4f5c5b2dda17e7cb2cb2b37a81f140b039b3e7e
-  react-native-maps: 9febd31278b35cd21e4fad2cf6fa708993be5dab
+  react-native-google-maps: 14b35af20506ef159e5e9029d5f123be5750c99d
+  react-native-maps: 364510ec69e60c32dc4a2959af0a6cb7f277eb96
   react-native-pager-view: 2722f7d8a8e8d54fac8c6a8160f821aed9150dfa
   react-native-render-html: 5afc4751f1a98621b3009432ef84c47019dcb2bd
   react-native-safe-area-context: c5d42c4294aa175415947e23c2ac956253abfc7d
@@ -3125,6 +3125,6 @@ SPEC CHECKSUMS:
   Yoga: 65431d43277b661ebc7289c6c5d82f64ce42cfe0
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: dd03096dd5a83e91a9d190f7be9342c27c2dc055
+PODFILE CHECKSUM: 53e3d2f1940ee51f322b35fcc056e618b78a40de
 
 COCOAPODS: 1.16.2

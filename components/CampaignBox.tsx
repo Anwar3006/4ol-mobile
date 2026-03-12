@@ -18,12 +18,19 @@ interface CampaignBoxProps {
   campaign: MarketingCampaign;
 }
 
-const CARD_HEIGHT = 180;
-
 const CampaignBox = ({ campaign }: CampaignBoxProps) => {
   const { width } = useWindowDimensions();
-  const isLargeScreen = width > 600;
+  
+  // Responsive Scaling Logic
+  const isLargeScreen = width > 768; // Tablet breakpoint
   const isNarrow = width < 340;
+  
+  // Base scale is 1 for mobile, increases slightly for tablets (up to ~1.3)
+  const scale = isLargeScreen ? Math.min(width / 600, 1.35) : 1;
+  
+  // Scale dimensions based on the screen width
+  const CARD_HEIGHT = 180 * scale;
+  const MAX_WIDTH = isLargeScreen ? 650 : "100%";
 
   const handlePress = async () => {
     if (campaign.links && campaign.links.length > 0) {
@@ -58,87 +65,101 @@ const CampaignBox = ({ campaign }: CampaignBoxProps) => {
     return `${supabaseUrl}/storage/v1/object/public/${supabaseBucketName}/${img}`;
   };
 
-  const headlineSize = isNarrow ? "text-lg" : "text-xl";
-  const descSize = isNarrow ? "text-[10px]" : "text-xs";
-  const paddingY = isNarrow ? "py-4" : "py-6";
-  const paddingLeft = isNarrow ? "pl-4" : "pl-6";
-
   const imageUri = campaign.imageUrl
     ? getImageUrl(campaign.imageUrl)
     : "https://cdn-icons-png.flaticon.com/512/3063/3063176.png";
 
-    console.log("Imageurl: ", imageUri)
-
   return (
-    <View className="mb-4 w-full items-center">
+    <View className="mb-4 w-full items-center px-4 md:px-0">
       <LinearGradient
         colors={["#10b981", "#059669"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{
-          borderRadius: 32,
-          width: isLargeScreen ? 550 : "100%",
+          borderRadius: 32 * scale,
+          width: MAX_WIDTH,
           height: CARD_HEIGHT,
           overflow: "hidden",
         }}
       >
-        <View style={styles.row}>
+        <View style={[styles.row, { height: CARD_HEIGHT }]}>
           {/* Left Content */}
           <View
-            className={cn("pr-4 gap-y-2 justify-center", paddingY, paddingLeft)}
-            style={{ flex: isNarrow ? 7 : 5 }}
+            style={{ 
+              flex: isNarrow ? 7 : 6, 
+              paddingLeft: (isNarrow ? 16 : 24) * scale,
+              paddingVertical: (isNarrow ? 16 : 24) * scale,
+              paddingRight: 16
+            }}
+            className="justify-center"
           >
-            <View className="bg-black/20 self-start px-3 py-1 rounded-full mb-1">
-              <Text className="text-white text-[9px] font-black uppercase tracking-[1.5px]">
+            {/* Organization Tag */}
+            <View 
+              style={{ paddingVertical: 4 * scale, paddingHorizontal: 12 * scale }}
+              className="bg-black/20 self-start rounded-full mb-2"
+            >
+              <Text 
+                style={{ fontSize: 7 * scale }}
+                className="text-white font-black uppercase tracking-[1.5px]"
+              >
                 {campaign.organization || "Campaign"}
               </Text>
             </View>
 
+            {/* Headline */}
             <Text
-              className={cn(
-                "font-black text-white leading-7 tracking-tight",
-                headlineSize,
-              )}
+              style={{ 
+                fontSize: (isNarrow ? 18 : 22) * scale,
+                lineHeight: (isNarrow ? 22 : 28) * scale,
+              }}
+              className="font-black text-white tracking-tight"
             >
-              {campaign.headline.length > (isNarrow ? 12 : 15)
-                ? campaign.headline.slice(0, isNarrow ? 12 : 15) + "..."
+              {campaign.headline.length > (isLargeScreen ? 20 : 10)
+                ? campaign.headline.slice(0, isLargeScreen ? 20 : 10) + "..."
                 : campaign.headline}
             </Text>
 
+            {/* Description */}
             <Text
-              className={cn(
-                "text-emerald-50/80 max-w-[14rem] font-medium leading-5 mb-2",
-                descSize,
-              )}
+              style={{ 
+                fontSize: (isNarrow ? 10 : 11) * scale,
+                lineHeight: (isNarrow ? 14 : 16) * scale,
+                marginTop: 4 * scale,
+                marginBottom: 8 * scale,
+                maxWidth: 240 * scale
+              }}
+              className="text-emerald-50/80 font-medium"
             >
-              {campaign.description.length > (isNarrow ? 40 : 50)
-                ? campaign.description.slice(0, isNarrow ? 40 : 50) + "..."
+              {campaign.description.length > (isLargeScreen ? 80 : 45)
+                ? campaign.description.slice(0, isLargeScreen ? 80 : 45) + "..."
                 : campaign.description}
             </Text>
 
+            {/* CTA Button */}
             <TouchableOpacity
               onPress={handlePress}
               activeOpacity={0.8}
-              className={cn(
-                "bg-white px-6 rounded-2xl flex-row items-center justify-center self-start shadow-sm",
-                isNarrow ? "h-10" : "h-12",
-              )}
+              style={{ 
+                height: (isNarrow ? 36 : 40) * scale,
+                paddingHorizontal: 24 * scale,
+                borderRadius: 16 * scale 
+              }}
+              className="bg-white flex-row items-center justify-center self-start shadow-sm"
             >
-              <Text className="text-emerald-700 font-bold mr-2 text-[10px]">
+              <Text style={{ fontSize: 11 * scale }} className="text-emerald-700 font-bold mr-2">
                 {formatCTA(campaign.cta || "Learn_More")}
               </Text>
               <Ionicons
                 name="arrow-forward"
-                size={isNarrow ? 14 : 18}
+                size={(isNarrow ? 14 : 18) * scale}
                 color="#047857"
               />
             </TouchableOpacity>
           </View>
 
-          {/* Right Image — explicit height so the image resolves dimensions */}
-          <View style={[styles.imageWrapper, { flex: isNarrow ? 4 : 5 }]}>
-            {/* Decorative circle behind image */}
-            <View style={styles.decorCircle} />
+          {/* Right Image */}
+          <View style={[styles.imageWrapper, { flex: isNarrow ? 4 : 6, height: CARD_HEIGHT }]}>
+            <View style={[styles.decorCircle, { width: 180 * scale, height: 180 * scale }]} />
             <Image
               source={{ uri: imageUri }}
               style={StyleSheet.absoluteFillObject}
@@ -154,10 +175,8 @@ const CampaignBox = ({ campaign }: CampaignBoxProps) => {
 const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
-    height: CARD_HEIGHT,
   },
   imageWrapper: {
-    height: CARD_HEIGHT,
     overflow: "hidden",
     position: "relative",
   },
@@ -165,9 +184,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: -10,
     bottom: -20,
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.1)",
   },
 });

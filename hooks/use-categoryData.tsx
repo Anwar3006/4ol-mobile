@@ -3,7 +3,6 @@ import {
   FontAwesome6,
   Ionicons,
   MaterialCommunityIcons,
-  MaterialIcons,
 } from "@expo/vector-icons";
 
 type CategoryItem = {
@@ -13,18 +12,20 @@ type CategoryItem = {
   value: string;
   screen: string;
 };
+
 export const useCategoryData = () => {
   const { width } = useWindowDimensions();
 
-  // Base scale calculation: Adjust these numbers to fit your design
-  // This grows the icons slightly on larger screens without over-scaling
-  const scale = width > 600 ? 1.2 : 1;
-  const getSize = (base: number) => base * scale;
+  // Scale icons proportionally to the screen width.
+  // Baseline is a 390px phone (scale = 1). On a 800px tablet this gives ~2.05,
+  // clamped at 2.4 so icons don't become enormous on very large displays.
+  const scale = Math.min(width / 390, 2.4);
+  const s = (base: number) => Math.round(base * scale);
 
   const categories: CategoryItem[] = [
     {
       id: "0",
-      icon: <FontAwesome6 name="dumbbell" size={30} color="#DE3163" />,
+      icon: <FontAwesome6 name="dumbbell" size={s(30)} color="#DE3163" />,
       title: "Wellness",
       value: "wellness_facilities",
       screen: "WellnessFacilities",
@@ -35,11 +36,7 @@ export const useCategoryData = () => {
         <Image
           source={require("@/assets/images/diseaseIcon.png")}
           resizeMode="contain"
-          style={{
-            width: getSize(40),
-            height: getSize(33),
-            tintColor: "#DE3163",
-          }}
+          style={{ width: s(40), height: s(33), tintColor: "#DE3163" }}
         />
       ),
       title: "Diseases",
@@ -48,23 +45,21 @@ export const useCategoryData = () => {
     },
     {
       id: "7",
-      icon: (
-        <Ionicons name="fitness-outline" size={getSize(30)} color={"#DE3163"} />
-      ),
+      icon: <Ionicons name="fitness-outline" size={s(30)} color="#DE3163" />,
       title: "Healthy Living",
       value: "healthy_living",
       screen: "TopRated",
     },
     {
       id: "6",
-      icon: <FontAwesome6 name="ribbon" size={getSize(26)} color={"#DE3163"} />,
+      icon: <FontAwesome6 name="ribbon" size={s(26)} color="#DE3163" />,
       title: "Symptoms",
       value: "symptoms",
       screen: "Symptoms",
     },
     {
       id: "1",
-      icon: <FontAwesome6 name="hospital" size={30} color="#DE3163" />,
+      icon: <FontAwesome6 name="hospital" size={s(30)} color="#DE3163" />,
       title: "Hospitals",
       value: "hospitals_&_clinics",
       screen: "TopRated",
@@ -75,11 +70,7 @@ export const useCategoryData = () => {
         <Image
           source={require("@/assets/images/pharmacyIcon.png")}
           resizeMode="contain"
-          style={{
-            width: getSize(40),
-            height: getSize(33),
-            tintColor: "#DE3163",
-          }}
+          style={{ width: s(40), height: s(33), tintColor: "#DE3163" }}
         />
       ),
       title: "Pharmacies",
@@ -92,11 +83,7 @@ export const useCategoryData = () => {
         <Image
           source={require("@/assets/images/bloodIcon.png")}
           resizeMode="contain"
-          style={{
-            width: getSize(40),
-            height: getSize(33),
-            tintColor: "#DE3163",
-          }}
+          style={{ width: s(40), height: s(33), tintColor: "#DE3163" }}
         />
       ),
       title: "Plasence",
@@ -105,7 +92,7 @@ export const useCategoryData = () => {
     },
     {
       id: "5",
-      icon: <FontAwesome6 name="flask" size={getSize(22)} color={"#DE3163"} />,
+      icon: <FontAwesome6 name="flask" size={s(22)} color="#DE3163" />,
       title: "Diagnostic Lab",
       value: "diagnostic_labs",
       screen: "TopRated",
@@ -116,11 +103,7 @@ export const useCategoryData = () => {
         <Image
           source={require("@/assets/images/herbalIcon.png")}
           resizeMode="contain"
-          style={{
-            width: getSize(43),
-            height: getSize(26),
-            tintColor: "#DE3163",
-          }}
+          style={{ width: s(43), height: s(26), tintColor: "#DE3163" }}
         />
       ),
       title: "Herbal Hospital",
@@ -129,13 +112,7 @@ export const useCategoryData = () => {
     },
     {
       id: "9",
-      icon: (
-        <FontAwesome6
-          name="truck-medical"
-          size={getSize(24)}
-          color={"#DE3163"}
-        />
-      ),
+      icon: <FontAwesome6 name="truck-medical" size={s(24)} color="#DE3163" />,
       title: "Ambulance",
       value: "ambulance",
       screen: "TopRated",
@@ -145,8 +122,8 @@ export const useCategoryData = () => {
       icon: (
         <MaterialCommunityIcons
           name="shield-home-outline"
-          size={getSize(30)}
-          color={"#DE3163"}
+          size={s(30)}
+          color="#DE3163"
         />
       ),
       title: "Homes",
@@ -158,11 +135,7 @@ export const useCategoryData = () => {
       icon: (
         <Image
           source={require("@/assets/images/PhysiotherapyIcon.png")}
-          style={{
-            width: getSize(30),
-            height: getSize(30),
-            tintColor: "#DE3163",
-          }}
+          style={{ width: s(30), height: s(30), tintColor: "#DE3163" }}
         />
       ),
       title: "Physiotherapy",
@@ -174,11 +147,7 @@ export const useCategoryData = () => {
       icon: (
         <Image
           source={require("@/assets/images/eyeCareIcon.png")}
-          style={{
-            width: getSize(30),
-            height: getSize(30),
-            tintColor: "#DE3163",
-          }}
+          style={{ width: s(30), height: s(30), tintColor: "#DE3163" }}
         />
       ),
       title: "Eye Care",
@@ -190,7 +159,7 @@ export const useCategoryData = () => {
       icon: (
         <Image
           source={require("@/assets/images/dentalIcon.png")}
-          style={{ width: 30, height: 31, tintColor: "#DE3163" }}
+          style={{ width: s(30), height: s(31), tintColor: "#DE3163" }}
         />
       ),
       title: "Dental",
@@ -202,8 +171,8 @@ export const useCategoryData = () => {
       icon: (
         <FontAwesome6
           name="bone"
-          size={getSize(24)}
-          color={"#DE3163"}
+          size={s(24)}
+          color="#DE3163"
           style={{ transform: [{ rotate: "45deg" }] }}
         />
       ),
@@ -216,7 +185,7 @@ export const useCategoryData = () => {
       icon: (
         <Image
           source={require("@/assets/images/artificialIcon.png")}
-          style={{ width: 50, height: 40, tintColor: "#DE3163" }}
+          style={{ width: s(50), height: s(40), tintColor: "#DE3163" }}
         />
       ),
       title: "Prosthetics",
@@ -225,7 +194,7 @@ export const useCategoryData = () => {
     },
     {
       id: "16",
-      icon: <Ionicons name="school-outline" size={40} color={"#DE3163"} />,
+      icon: <Ionicons name="school-outline" size={s(40)} color="#DE3163" />,
       title: "Health Schools",
       value: "health_schools",
       screen: "TopRated",
@@ -235,7 +204,7 @@ export const useCategoryData = () => {
       icon: (
         <Image
           source={require("@/assets/images/mentalHealthIcon.png")}
-          style={{ width: 40, height: 40, tintColor: "#DE3163" }}
+          style={{ width: s(40), height: s(40), tintColor: "#DE3163" }}
         />
       ),
       title: "Psychiatric",

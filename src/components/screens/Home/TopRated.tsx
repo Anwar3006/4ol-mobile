@@ -1,142 +1,202 @@
-import React, {useEffect, useState} from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  FlatList,
-  Image,
-  StyleSheet,
+  View,
   Text,
   TouchableOpacity,
-  View,
-} from 'react-native';
-import Icon from 'react-native-vector-icons/FontAwesome5';
-import {themeColors} from '../../../theme/colors';
-import {size} from '../../../theme/fontStyle';
-import {fonts} from '../../../theme/fonts';
-import {NavigationStackParams, TopRatedItem} from '../../../interfaces';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {SCREENS} from '../../../constants/screens';
-import {getTopRatedFacility} from '../../../services/facility';
-import {truncateString} from '../../../utils/helpers';
-// import useLocation from '../../../hooks/useLocation';
-import {NavigationProp, useNavigation} from '@react-navigation/native';
-import {useWindowDimensions} from 'react-native';
-interface TopRatednavigationParams {
-  FacilityDetails: {
-    id: number;
-  };
-  TopRated: {
-    category: string | undefined;
-  };
-}
+  FlatList,
+  useWindowDimensions,
+  StyleSheet,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { useTopRatedFacilities } from "@/hooks/use-facilities";
+import { TFacilityProfileOutput } from "@/schemas/facility-profile.schema";
+import FacilityCard from "@/components/FacilityCard";
+import { size } from "@/src/theme/fontStyle";
+import { themeColors } from "@/src/theme/colors";
+import { fonts } from "@/src/theme/fonts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Layout constants
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// This component is rendered inside HomeScreen's container which already has
+// paddingHorizontal: 20. That means the FlatList's scrollable viewport is
+// exactly (screenWidth - 40) wide.
+//
+// We must NOT add extra horizontal padding in contentContainerStyle — that
+// would push slides beyond the viewport and cause cards to bleed off-screen.
+// The parent's padding already provides the visual gap from screen edges.
+//
+const CARD_GAP = 12;            // gap between the two cards in 2-column mode
+const TABLET_BREAKPOINT = 600;  // px — wider devices get 2 cards per row
 
 const TopRated = () => {
-  const {width, height} = useWindowDimensions();
-  const [loading, setLoading] = useState(false);
-  const [facilities, setFacilities] = useState<any>([]);
-  // const {location, locationError, retryLocation} = useLocation();
-  const [itemWidth, setItemWidth] = useState(177);
-  const navigation = useNavigation<NavigationProp<TopRatednavigationParams>>();
-  const itemHeight = width >= 600 ? 200 : 200;
-  useEffect(() => {
-    if (width > 1200) {
-      setItemWidth(300);
-    } else if (width > 800) {
-      setItemWidth(255);
-    } else if (width > 600) {
-      setItemWidth(300);
-    } else {
-      setItemWidth(177);
-    }
-  }, [width]);
+  const { width } = useWindowDimensions();
+  const router = useRouter();
+  const flatListRef = useRef<FlatList>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
 
-  useEffect(() => {
-    if (location) {
-      getTopRatedFacility(
-        'hospital',
-        location,
-        () => setLoading(true),
-        (successData: any) => {
-          setFacilities((prev: any) => [...prev, ...successData]);
-          setLoading(false);
-        },
-        (error: any) => {
-          console.log('Error while fetching top facilities', error);
-          setLoading(false);
-        },
-      );
-    }
-  }, [location]);
+  // The FlatList viewport = screenWidth - 40 (HomeScreen paddingHorizontal: 20 * 2)
+  const slideWidth = width - 40;
 
-  const renderItem = ({item}: {item: any}) => (
-    <TouchableOpacity
-      key={item.id}
-      onPress={() => {
-        navigation.navigate('FacilityDetails', {id: item?.id});
-      }}>
-      <View style={[styles.item, {width: itemWidth, height: itemHeight}]}>
-        <Image
-          style={styles.image}
-          source={
-            item?.mediaUrls
-              ? {uri: item?.mediaUrls[0]}
-              : require('../../../../assets/healthCareCenter.jpeg')
-          }
-        />
-        <Text style={styles.title}>{truncateString(item.facility_name)}</Text>
-        <View style={styles.metaInfo}>
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <Icon
-              name={'star'}
-              size={12}
-              color={themeColors.primary}
-              style={{marginRight: 5}}
-            />
-            <Text style={{fontSize: size.sl}}>{item?.rating || 'N/A'}</Text>
-          </View>
-          <View style={{flexDirection: 'row', alignItems: 'center'}}>
-            <Icon
-              name={'road'}
-              size={12}
-              color={themeColors.primary}
-              style={{marginRight: 5}}
-            />
-            <Text style={{fontSize: size.sl}}>{item?.distance || 'N/A'}</Text>
+  // 1 column on phones, 2 on tablets / landscape
+  const columns = width >= TABLET_BREAKPOINT ? 2 : 1;
+
+  // Each card fills the slide — in 2-column mode they split it minus the gap
+  const cardWidth =
+    columns === 2
+      ? Math.floor((slideWidth - CARD_GAP) / 2)
+      : slideWidth;
+
+  const { data, isLoading, isError } = useTopRatedFacilities({ limit: 20 });
+  const facilities: TFacilityProfileOutput[] =
+    data?.pages.flatMap((p) => p.facilities ?? []) ?? [];
+
+  // Group facilities into chunks of `columns` — each chunk is one carousel slide
+  const slides = useMemo(() => {
+    const chunks: TFacilityProfileOutput[][] = [];
+    for (let i = 0; i < facilities.length; i += columns) {
+      chunks.push(facilities.slice(i, i + columns));
+    }
+    return chunks;
+  }, [facilities, columns]);
+
+  // Auto-rotate every 6 s
+  useEffect(() => {
+    if (slides.length <= 1) return;
+    const t = setInterval(() => {
+      setActiveIndex((prev) => {
+        const next = (prev + 1) % slides.length;
+        flatListRef.current?.scrollToIndex({ index: next, animated: true });
+        return next;
+      });
+    }, 6000);
+    return () => clearInterval(t);
+  }, [slides.length]);
+
+  // ── Slide renderer ─────────────────────────────────────────────────────────
+  const renderSlide = useCallback(
+    ({ item: pair }: { item: TFacilityProfileOutput[] }) => (
+      <View
+        style={{
+          width: slideWidth,
+          flexDirection: "row",
+          gap: columns === 2 ? CARD_GAP : 0,
+        }}
+      >
+        {pair.map((facility) => (
+          <FacilityCard
+            key={facility.id}
+            facility={facility}
+            cardWidth={cardWidth}
+          />
+        ))}
+        {/* Trailing spacer so the last odd card doesn't stretch */}
+        {columns === 2 && pair.length === 1 && (
+          <View style={{ width: cardWidth }} />
+        )}
+      </View>
+    ),
+    [cardWidth, slideWidth, columns],
+  );
+
+  // ── Loading skeleton ───────────────────────────────────────────────────────
+  const renderSkeleton = () => (
+    <View
+      style={{
+        width: slideWidth,
+        flexDirection: "row",
+        gap: columns === 2 ? CARD_GAP : 0,
+      }}
+    >
+      {Array.from({ length: columns }).map((_, i) => (
+        <View key={i} style={[styles.skeleton, { width: cardWidth }]}>
+          <View
+            style={[
+              styles.skeletonImage,
+              { height: Math.round(cardWidth * 0.7) },
+            ]}
+          />
+          <View style={styles.skeletonBody}>
+            <View style={styles.skeletonLine} />
+            <View style={[styles.skeletonLine, { width: "60%" }]} />
+            <View style={[styles.skeletonLine, { width: "40%", marginTop: 4 }]} />
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      ))}
+    </View>
   );
+
+  if (!isLoading && (isError || facilities.length === 0)) return null;
 
   return (
     <View style={styles.container}>
+      {/* Header — no extra paddingHorizontal; parent container provides the 20px gap */}
       <View style={styles.header}>
-        <Text style={styles.headingLabel}>Top Rated</Text>
+        <Text className="text-xl font-medium text-slate-200">Top Rated</Text>
         <TouchableOpacity
           onPress={() =>
-            navigation.navigate('TopRated', {category: 'hospital'})
-          }>
-          <Text style={styles.seeAll}>See all</Text>
+            router.push("/(app)/(auth)/(tabs)/Home/top-rated" as any)
+          }
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.seeAllBtn}
+        >
+          <Text style={styles.seeAllText}>See All</Text>
+          <Ionicons name="chevron-forward" size={13} color="#16a34a" />
         </TouchableOpacity>
       </View>
-      <View style={styles.itemsContainer}>
-        {loading ? (
-          <View style={styles.loaderContainer}>
-            <ActivityIndicator color={themeColors.primary} size={'small'} />
-          </View>
-        ) : facilities.length === 0 ? ( // Show no data message if there are no facilities
-          <View style={styles.noDataContainer}>
-            <Text style={styles.noDataText}>No record found</Text>
-          </View>
-        ) : (
-          <FlatList
-            horizontal
-            data={facilities}
-            renderItem={renderItem}
-            keyExtractor={item => item.id}
-            showsHorizontalScrollIndicator={false}
-          />
-        )}
-      </View>
+
+      {isLoading ? (
+        renderSkeleton()
+      ) : (
+        <FlatList
+          ref={flatListRef}
+          data={slides}
+          renderItem={renderSlide}
+          keyExtractor={(_, i) => `tr-slide-${i}`}
+          horizontal
+          // ⚠️ No contentContainerStyle paddingHorizontal.
+          // The parent (HomeScreen) already has paddingHorizontal: 20 which
+          // constrains this FlatList's viewport to (screenWidth - 40).
+          // Adding padding here would make slides wider than the viewport,
+          // causing the right edge of each card to bleed off-screen.
+          showsHorizontalScrollIndicator={false}
+          snapToInterval={slideWidth}
+          snapToAlignment="start"
+          decelerationRate="fast"
+          disableIntervalMomentum
+          getItemLayout={(_, index) => ({
+            length: slideWidth,
+            offset: slideWidth * index,
+            index,
+          })}
+          onMomentumScrollEnd={(e) => {
+            const idx = Math.round(
+              e.nativeEvent.contentOffset.x / slideWidth,
+            );
+            setActiveIndex(idx);
+          }}
+          initialNumToRender={2}
+          maxToRenderPerBatch={2}
+          removeClippedSubviews={false}
+        />
+      )}
+
+      {/* Page dots */}
+      {slides.length > 1 && (
+        <View style={styles.dotsRow}>
+          {slides.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                i === activeIndex ? styles.dotActive : styles.dotInactive,
+              ]}
+            />
+          ))}
+        </View>
+      )}
     </View>
   );
 };
@@ -144,72 +204,46 @@ const TopRated = () => {
 export default TopRated;
 
 const styles = StyleSheet.create({
-  container: {},
-  loaderContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  noDataContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  noDataText: {
-    fontSize: size.lg,
-    fontFamily: fonts.OpenSansRegular,
-    color: themeColors.darkGray,
-  },
+  container: { marginTop: 14 },
   header: {
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
-  headingLabel: {
+    headingLabel: {
     fontSize: size.md,
     color: themeColors.darkGray,
     fontFamily: fonts.OpenSansBold,
     textTransform: 'uppercase',
+    marginBottom: 8,
   },
-  seeAll: {
-    fontSize: size.s,
-    color: themeColors.primary,
-    fontFamily: fonts.OpenSansBold,
-    textTransform: 'uppercase',
+  title: { fontSize: 20, fontWeight: "500", color: "#0f172a" },
+  seeAllBtn: { flexDirection: "row", alignItems: "center", gap: 2 },
+  seeAllText: { fontSize: 13, fontWeight: "700", color: "#16a34a" },
+  dotsRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 12,
   },
-  itemsContainer: {
-    marginVertical: 10,
+  dot: { height: 5, borderRadius: 3 },
+  dotActive: { width: 18, backgroundColor: "#10b981" },
+  dotInactive: { width: 5, backgroundColor: "#e2e8f0" },
+  skeleton: {
+    backgroundColor: "#fff",
+    borderRadius: 20,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "#f1f5f9",
   },
-  item: {
-    display: 'flex',
-    // justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: themeColors.white,
-    marginRight: 15,
-    padding: 10,
-    borderRadius: 10,
-    // width: 280,
-    // height: 200,
-    // height: 200,
-  },
-  image: {
-    width: '100%',
-    height: '70%',
-    borderRadius: 10,
-  },
-  title: {
-    marginTop: 5,
-    color: themeColors.black,
-    fontSize: size.sl,
-    fontFamily: fonts.OpenSansMedium,
-    // fontWeight: '600',
-  },
-  metaInfo: {
-    width: '100%',
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
+  skeletonImage: { backgroundColor: "#f1f5f9" },
+  skeletonBody: { padding: 10, gap: 6 },
+  skeletonLine: {
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#f1f5f9",
+    width: "80%",
   },
 });

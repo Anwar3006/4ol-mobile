@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function IBPTabsLayout() {
   const insets = useSafeAreaInsets();
-  
+
   return (
     <Tabs
       screenOptions={{
@@ -15,22 +15,22 @@ export default function IBPTabsLayout() {
           height: 60 + insets.bottom,
           paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
           borderTopWidth: 1,
-          borderTopColor: '#f1f5f9',
-          backgroundColor: 'white',
+          borderTopColor: "#f1f5f9",
+          backgroundColor: "white",
         },
         tabBarLabelStyle: {
           fontSize: 10,
-          fontWeight: 700,
+          fontWeight: "700",
           marginBottom: 4,
         },
         headerShown: false,
         tabBarHideOnKeyboard: true,
       }}
     >
+      {/* ── Tab 1: Dashboard ─────────────────────────────────────── */}
       <Tabs.Screen
         name="index"
         options={{
-          headerShown: false,
           title: "Dashboard",
           tabBarIcon: ({ size, focused, color }) => (
             <Ionicons
@@ -41,56 +41,56 @@ export default function IBPTabsLayout() {
           ),
         }}
       />
+
+      {/* ── Tab 2: My Business (facilities) ──────────────────────── */}
       <Tabs.Screen
         name="facilities"
         options={{
-          headerShown: false,
-          title: "My Facilities",
-          tabBarIcon: ({ size, color }) => (
+          title: "My Business",
+          tabBarIcon: ({ size, focused, color }) => (
             <MaterialCommunityIcons
-              name={"hospital-building"}
+              name={focused ? "office-building" : "office-building-outline"}
               size={size}
               color={color}
             />
           ),
         }}
       />
+
+      {/* ── Tab 3: Chat ───────────────────────────────────────────── */}
       <Tabs.Screen
-        name="analytics"
+        name="chat"
         options={{
-          headerShown: false,
-          title: "Analytics",
+          title: "Chat",
           tabBarIcon: ({ size, focused, color }) => (
             <Ionicons
-              name={focused ? "stats-chart" : "stats-chart-outline"}
+              name={focused ? "chatbubble-ellipses" : "chatbubble-ellipses-outline"}
               size={size}
               color={color}
             />
           ),
         }}
       />
+
+      {/* ── Tab 4: More ───────────────────────────────────────────── */}
       <Tabs.Screen
         name="profile"
         options={{
-          headerShown: false,
           title: "Profile",
-          tabBarIcon: ({ size, color }) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ size, focused, color }) => (
+            <Ionicons
+              name={focused ? "ellipsis-horizontal-circle" : "ellipsis-horizontal-circle-outline"}
+              size={size}
+              color={color}
+            />
           ),
         }}
       />
-      {/* <Tabs.Screen
-        name="Business"
-        options={{
-          href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="ManageFacility"
-        options={{
-          href: null,
-        }}
-      /> */}
+
+      {/* ── Hidden routes (file-system siblings, not shown in tab bar) ─ */}
+      <Tabs.Screen name="marketing" options={{ href: null }} />
+      <Tabs.Screen name="analytics" options={{ href: null }} />
+      {/* <Tabs.Screen name="profile" options={{ href: null }} /> */}
     </Tabs>
   );
 }

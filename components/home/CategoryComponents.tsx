@@ -1,9 +1,7 @@
 import React from "react";
-import { Text, TouchableOpacity, View } from "react-native";
-import { Link, useRouter } from "expo-router";
+import { Text, TouchableOpacity, View, useWindowDimensions } from "react-native";
+import { useRouter } from "expo-router";
 import { cn } from "@/lib/utils";
-import { Ionicons } from "@expo/vector-icons";
-import { useWindowDimensions } from "react-native";
 
 interface CategorySmallProps {
   title: string;
@@ -23,12 +21,17 @@ export const CategorySmall = ({
   const router = useRouter();
   const { width } = useWindowDimensions();
 
-  // Scale factors for narrow screens (like Galaxy Z Fold folded)
-  // Usually folded screen width is around 280-320px
-  const isNarrow = width < 340;
-  const iconSize = isNarrow ? 36 : 48;
-  const textSize = isNarrow ? "text-[9px]" : "text-xs";
-  const padding = isNarrow ? "p-1" : "p-2";
+  // Each card is 23% of the available container width (container has 40px total
+  // horizontal padding on the Home screen). Scale icon + text relative to that
+  // card size so it looks correct on phones, foldables AND tablets/iPads.
+  const containerPadding = 40;
+  const cardWidth = (width - containerPadding) * 0.23;
+
+  // Icon box is 55% of the card, clamped between 36 and 96
+  const iconBoxSize = Math.round(Math.min(Math.max(cardWidth * 0.55, 36), 96));
+
+  // Text scales with card width, clamped to readable range
+  const fontSize = Math.round(Math.min(Math.max(cardWidth * 0.06, 9), 16));
 
   const handlePress = () => {
     if (value === "diseases") {
@@ -45,20 +48,14 @@ export const CategorySmall = ({
   return (
     <TouchableOpacity
       activeOpacity={0.7}
-      onPress={() => router.push(
-        value === "wellness_facilities" ? "/(app)/(auth)/(tabs)/Home/Categories/Wellness" : 
-        value === "diseases" ? "/(app)/(auth)/(tabs)/Home/Categories/Diseases" : 
-        value === "healthy_living" ? "/(app)/(auth)/(tabs)/Home/Categories/HealthyLiving" : 
-        "/(app)/(auth)/(tabs)/Home/Categories/Symptoms"
-      )}
+      onPress={handlePress}
       className={cn(
         "aspect-square bg-white rounded-[2rem] items-center justify-center shadow-sm border border-gray-100",
-        padding,
         containerClassName,
       )}
     >
       <View
-        style={{ height: iconSize, width: iconSize }}
+        style={{ height: iconBoxSize, width: iconBoxSize }}
         className="items-center justify-center mb-1"
       >
         {icon}
@@ -66,10 +63,8 @@ export const CategorySmall = ({
 
       <Text
         numberOfLines={2}
-        className={cn(
-          "font-black text-gray-700 text-center leading-3 px-1 tracking-tighter uppercase",
-          textSize,
-        )}
+        style={{ fontSize }}
+        className="font-black text-gray-700 text-center leading-3 px-1 tracking-tighter uppercase"
       >
         {title}
       </Text>

@@ -15,11 +15,16 @@ interface UserState extends UserStore {
 const useUserStore = create<UserState>()(
   persist(
     set => ({
-      _hasHydrated: false, // Add this
+      _hasHydrated: false,
       setHasHydrated: (val: boolean) => set({ _hasHydrated: val }),
       user: null,
       setUser: user => set({user}),
-      logoutUser: () => set({user: null, hasSeenOnboarding: false}),
+      // NOTE: logoutUser intentionally does NOT reset hasSeenOnboarding.
+      // hasSeenOnboarding is a one-way "first-launch" flag — once the user has
+      // seen GetStarted they should never be redirected there again, even after
+      // logout. Resetting it here caused the AuthProvider guard to redirect
+      // back to GetStarted immediately after every login.
+      logoutUser: () => set({user: null}),
       hasAcknowledgedDisclaimer: false,
       setHasAcknowledgedDisclaimer: val =>
         set({hasAcknowledgedDisclaimer: val}),
@@ -30,7 +35,7 @@ const useUserStore = create<UserState>()(
       name: 'user-storage',
       storage: createJSONStorage(() => zustandMMKVStorage),
       onRehydrateStorage: () => (state) => {
-        state?.setHasHydrated(true); // Set to true when disk read is done
+        state?.setHasHydrated(true);
       },
     },
   ),

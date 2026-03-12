@@ -18,7 +18,9 @@ const MapScreen = () => {
   const insets = useSafeAreaInsets();
   return (
     <View className="flex-1 bg-white">
-      <View style={{ paddingTop: insets.top }}>
+      {/* flex:1 here is critical — without it the inner View has no height
+          and the MapContainer's flex:1 collapses to zero. */}
+      <View style={{ flex: 1, paddingTop: insets.top }}>
         <GoogleMapContainer />
       </View>
     </View>

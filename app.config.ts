@@ -113,7 +113,6 @@ export default {
       'react-native-permissions',
       'react-native-navigation-mode',
       '@react-native-community/datetimepicker',
-      './plugins/withNonModularHeaders.js',
     ],
     experiments: {
       typedRoutes: true,

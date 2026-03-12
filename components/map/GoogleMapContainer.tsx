@@ -8,6 +8,7 @@ import {
   Image,
   Linking,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import MapView, { Callout, Marker, PROVIDER_GOOGLE } from "react-native-maps";
 import { useGetFacilitiesMapData } from "@/hooks/use-facilities";
 import { Ionicons } from "@expo/vector-icons";
@@ -92,14 +93,51 @@ const MapToast = ({ message, visible }: ToastProps) => {
 // ---------------------------------------------------------------------------
 // Main Map Container
 // ---------------------------------------------------------------------------
+const CustomMarker = React.memo(({ feature, meta, onPress }: any) => {
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+
+  // Turn off tracking after a short delay to allow the vector icon to render
+  // This is required for custom markers on Android
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setTracksViewChanges(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <Marker
+      coordinate={{
+        latitude: feature.geometry.coordinates[1],
+        longitude: feature.geometry.coordinates[0],
+      }}
+      tracksViewChanges={tracksViewChanges}
+      flat={false}
+      onPress={(e) => {
+        // Prevent default native callout behavior
+        e.stopPropagation();
+        onPress(feature);
+      }}
+    >
+      <View style={{ alignItems: "center", width: 45, height: 50 }}>
+        <View style={[styles.markerContainer, { backgroundColor: meta.color }]}>
+          <CategoryIcon icon={meta.icon} library={(meta as any).library ?? "MaterialIcons"} size={17} color="white" />
+        </View>
+        <View style={[styles.markerStem, { borderTopColor: meta.color }]} />
+      </View>
+    </Marker>
+  );
+});
 const MapContainer = () => {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
   const router = useRouter();
 
   // Ref to suppress the MapView onPress that fires immediately after a Marker press
   const markerJustTapped = useRef(false);
 
+  const [selectedFacility, setSelectedFacility] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isNearMeActive, setIsNearMeActive] = useState(false);
@@ -162,6 +200,24 @@ const MapContainer = () => {
       facilityType: selectedCategory !== "all" && selectedCategory !== "near_me" ? selectedCategory : undefined,
     },
   });
+
+// 1. Directions Handler
+  const handleDirections = (feature: any) => {
+    const { coordinates } = feature.geometry;
+    const name = feature.properties?.name || "Facility";
+    openInMaps(coordinates[1], coordinates[0], name);
+  };
+
+  const handleMarkerPress = (feature: any) => {
+    setSelectedFacility(feature);
+    // Animate map to center on the pin slightly offset for the bottom card
+    mapRef.current?.animateToRegion({
+      latitude: feature.geometry.coordinates[1] - 0.005, // Offset so the card doesn't cover the pin
+      longitude: feature.geometry.coordinates[0],
+      latitudeDelta: 0.02,
+      longitudeDelta: 0.02,
+    }, 600);
+  };
 
   // ---------------------------------------------------------------------------
   // "Near Me" handler
@@ -255,165 +311,12 @@ const MapContainer = () => {
       const id: string = feature.properties?.id ?? "";
 
       return (
-        <Marker
+        <CustomMarker
           key={id || `${feature.geometry.coordinates[0]}-${feature.geometry.coordinates[1]}`}
-          coordinate={{
-            latitude: feature.geometry.coordinates[1],
-            longitude: feature.geometry.coordinates[0],
-          }}
-          tracksViewChanges={false}
-          flat={false}
-          onPress={(e) => {
-             // markerJustTapped is still used to suppress general MapView.onPress
-             markerJustTapped.current = true;
-          }}
-        >
-          {/* Callout renders the rich popup bubble directly above the marker */}
-          <Callout 
-            tooltip 
-            onPress={() => id && router.push(`/Facility/${id}` as any)}
-          >
-            <View
-              style={{
-                backgroundColor: "white",
-                borderRadius: 16,
-                padding: 12,
-                width: 240,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 10,
-                elevation: 8,
-                borderWidth: 1,
-                borderColor: "#f1f5f9",
-              }}
-            >
-              {/* Image Preview or Icon */}
-              {feature.properties?.featured_image_url ? (
-                <Image
-                  source={{ uri: feature.properties.featured_image_url }}
-                  style={{ width: "100%", height: 80, borderRadius: 10, marginBottom: 8 }}
-                  resizeMode="cover"
-                />
-              ) : (
-                <View 
-                  style={{ 
-                    width: "100%", 
-                    height: 40, 
-                    backgroundColor: meta.color + "1a", 
-                    borderRadius: 8, 
-                    justifyContent: "center", 
-                    alignItems: "center",
-                    marginBottom: 8
-                  }}
-                >
-                  <CategoryIcon icon={meta.icon} library={(meta as any).library ?? "MaterialIcons"} size={20} color={meta.color} />
-                </View>
-              )}
-
-              {/* Type badge */}
-              <View
-                style={{
-                  alignSelf: "flex-start",
-                  backgroundColor: meta.color + "1a",
-                  borderRadius: 6,
-                  paddingHorizontal: 7,
-                  paddingVertical: 2,
-                  marginBottom: 5,
-                }}
-              >
-                <Text style={{ fontSize: 9, fontWeight: "700", color: meta.color, textTransform: "capitalize" }}>
-                  {feature.properties?.facility_type?.replace(/_/g, " ") ?? ""}
-                </Text>
-              </View>
-
-              {/* Name */}
-              <Text 
-                style={{ fontSize: 14, fontWeight: "800", color: "#0f172a", marginBottom: 3 }} 
-                numberOfLines={1}
-              >
-                {feature.properties?.name ?? "Unknown"}
-              </Text>
-
-              {/* Address */}
-              {(feature.properties?.district || feature.properties?.post_code) && (
-                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 8 }}>
-                  <Ionicons name="location-outline" size={11} color="#94a3b8" />
-                  <Text style={{ fontSize: 11, color: "#64748b", marginLeft: 3 }}>
-                    {[feature.properties?.district, feature.properties?.post_code].filter(Boolean).join(" · ")}
-                  </Text>
-                </View>
-              )}
-
-              {/* Tap hint */}
-              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderTopWidth: 1, borderTopColor: "#f1f5f9", paddingTop: 8 }}>
-                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                   <Ionicons name="eye-outline" size={12} color="#10b981" />
-                   <Text style={{ fontSize: 11, color: "#10b981", fontWeight: "700" }}>Details</Text>
-                 </View>
-                 <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
-                   <Ionicons name="navigate-outline" size={12} color="#3b82f6" />
-                   <Text style={{ fontSize: 11, color: "#3b82f6", fontWeight: "700" }}>Directions</Text>
-                 </View>
-              </View>
-            </View>
-
-            {/* Callout arrow */}
-            <View
-              style={{
-                alignSelf: "center",
-                width: 0,
-                height: 0,
-                borderLeftWidth: 10,
-                borderRightWidth: 10,
-                borderTopWidth: 12,
-                borderLeftColor: "transparent",
-                borderRightColor: "transparent",
-                borderTopColor: "white",
-                marginTop: -1,
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
-                shadowRadius: 2,
-              }}
-            />
-          </Callout>
-          <View style={{ alignItems: "center" }}>
-            <View
-              style={{
-                width: 38,
-                height: 38,
-                borderRadius: 19,
-                backgroundColor: meta.color,
-                justifyContent: "center",
-                alignItems: "center",
-                borderWidth: 2.5,
-                borderColor: "white",
-                shadowColor: "#000",
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.25,
-                shadowRadius: 4,
-                elevation: 5,
-              }}
-            >
-              <CategoryIcon icon={meta.icon} library={(meta as any).library ?? "MaterialIcons"} size={17} color="white" />
-            </View>
-            {/* Pin stem */}
-            <View
-              style={{
-                width: 0,
-                height: 0,
-                borderLeftWidth: 5,
-                borderRightWidth: 5,
-                borderTopWidth: 7,
-                borderLeftColor: "transparent",
-                borderRightColor: "transparent",
-                borderTopColor: meta.color,
-                marginTop: -1,
-              }}
-            />
-          </View>
-        </Marker>
+          feature={feature}
+          meta={meta}
+          onPress={handleMarkerPress}
+        />
       );
     });
   }, [filteredFeatures]);
@@ -422,7 +325,11 @@ const MapContainer = () => {
   // Render
   // ---------------------------------------------------------------------------
   return (
-    <View style={{ width, height }} className="bg-slate-100">
+    // flex:1 fills only the space the parent (Map.tsx) allocates — i.e. the
+    // area between the status bar and the tab bar. The previous fixed `height`
+    // from useWindowDimensions() extended behind the tab bar, so the floating
+    // card at bottom:40 was clipped under it.
+    <View style={{ flex: 1, width }} className="bg-slate-100">
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -433,13 +340,7 @@ const MapContainer = () => {
         rotateEnabled={false}
         pitchEnabled={false}
         customMapStyle={mapOptions.styles}
-        onPress={() => {
-          // Only dismiss the callout if the tap was NOT on a marker
-          if (markerJustTapped.current) {
-            markerJustTapped.current = false;
-            return;
-          }
-        }}
+        onPress={() => setSelectedFacility(null)}
       >
         {renderedMarkers}
       </MapView>
@@ -503,9 +404,160 @@ const MapContainer = () => {
         </View>
       </View>
 
-      {/* Facility Popup removed */}
+      {/* FLOATING DETAIL CARD
+           zIndex: 100 + elevation: 20 ensures this renders above the absolute
+           header overlay (top-3) on both iOS and Android. */}
+      {selectedFacility && (
+        <Animated.View
+          entering={FadeInDown.springify()}
+          exiting={FadeOutDown.duration(200)}
+          style={styles.floatingCard}
+        >
+          <View style={styles.cardContent}>
+            {/* Close button */}
+            <TouchableOpacity
+              onPress={() => setSelectedFacility(null)}
+              style={styles.closeBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="close" size={18} color="#64748b" />
+            </TouchableOpacity>
+
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Image
+                source={
+                  selectedFacility.properties?.featured_image_url
+                    ? { uri: selectedFacility.properties.featured_image_url }
+                    : require("@/assets/images/logo.png")
+                }
+                style={styles.cardImage}
+                resizeMode="cover"
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.cardName} numberOfLines={1}>
+                  {selectedFacility.properties.name}
+                </Text>
+                <Text style={styles.cardType}>
+                  {selectedFacility.properties.facility_type?.replace(/_/g, " ") ?? ""}
+                </Text>
+                {(selectedFacility.properties?.district || selectedFacility.properties?.post_code) && (
+                  <View style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}>
+                    <Ionicons name="location-outline" size={11} color="#94a3b8" />
+                    <Text style={styles.cardAddress}>
+                      {[selectedFacility.properties?.district, selectedFacility.properties?.post_code]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
+              <TouchableOpacity
+                onPress={() => router.push(`/Facility/${selectedFacility.properties.id}` as any)}
+                style={[styles.actionBtn, { backgroundColor: "#10b981" }]}
+              >
+                <Ionicons name="eye-outline" size={18} color="white" />
+                <Text style={styles.actionBtnText}>Details</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => handleDirections(selectedFacility)}
+                style={[styles.actionBtn, { backgroundColor: "#3b82f6" }]}
+              >
+                <Ionicons name="navigate-outline" size={18} color="white" />
+                <Text style={styles.actionBtnText}>Directions</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 };
 
 export default React.memo(MapContainer);
+
+
+const styles = StyleSheet.create({
+  markerContainer: {
+    width: 38, height: 38, borderRadius: 19,
+    justifyContent: "center", alignItems: "center",
+    borderWidth: 2.5, borderColor: "white", elevation: 5,
+  },
+  markerStem: {
+    width: 0, height: 0,
+    borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 7,
+    borderLeftColor: "transparent", borderRightColor: "transparent",
+    marginTop: -1,
+  },
+  floatingCard: {
+    position: 'absolute',
+    bottom: 20,  // relative to the container bottom edge, which is now the tab bar top
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    // elevation must be paired with zIndex on Android — elevation alone does
+    // not guarantee the view renders above other absolute-positioned siblings
+    // that appear earlier in the JSX tree (e.g. the top header overlay).
+    elevation: 20,
+    zIndex: 100,
+  },
+  cardContent: {
+    padding: 16, // This was the missing property
+  },
+  cardImage: { 
+    width: 65, 
+    height: 65, 
+    borderRadius: 14,
+    backgroundColor: '#f8fafc' // Placeholder color while loading
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#f1f5f9',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  cardName: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#0f172a',
+    marginBottom: 2,
+  },
+  cardType: {
+    fontSize: 12,
+    color: '#64748b',
+    textTransform: 'capitalize',
+  },
+  cardAddress: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginLeft: 3,
+  },
+  actionBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  actionBtnText: {
+    color: 'white',
+    fontWeight: '700',
+    fontSize: 14,
+  }
+});

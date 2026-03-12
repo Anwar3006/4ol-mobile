@@ -123,7 +123,7 @@ const HealthyLiving = () => {
         {/* Search */}
         <View className="relative z-50 mb-6">
           <SearchBar
-            placeholder="Search for a topic, e.g. Mental Health"
+            placeholder="Search for a health topics"
             showBtn
             value={searchText}
             onChangeText={setSearchText}

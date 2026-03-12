@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from "react";
+import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { AppState, AppStateStatus } from "react-native";
 import * as SecureStore from "expo-secure-store";
 import { useBiometrics } from "@/hooks/use-biometrics";
@@ -181,8 +181,18 @@ export const BiometricProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     };
   }, [isEnabled, isAvailable, isLoading]);
 
+  // Memoize the context value so that consumers (e.g. AppContent) don't
+  // re-render on every BiometricProvider render caused by useBiometrics state
+  // churn (setIsAvailable, setIsEnabled, etc.). Without this, each of those
+  // intermediate state updates creates a new object reference → all consumers
+  // re-render → AppContent re-renders → Slot re-renders → navigation loop.
+  const contextValue = useMemo(
+    () => ({ isLocked, isLoading, unlock: performAuth }),
+    [isLocked, isLoading],
+  );
+
   return (
-    <BiometricContext.Provider value={{ isLocked, isLoading, unlock: performAuth }}>
+    <BiometricContext.Provider value={contextValue}>
       {children}
     </BiometricContext.Provider>
   );

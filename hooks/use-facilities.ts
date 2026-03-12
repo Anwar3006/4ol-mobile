@@ -258,19 +258,29 @@ export const useUserFacilities = (userId: string | undefined) => {
 
 export const useToggleFavorite = () => {
   const queryClient = useQueryClient();
-  const { addFavorite, removeFavorite, isFavorite } = useFavoritesStore();
+  const { addFavorite, removeFavorite } = useFavoritesStore();
 
   return useMutation({
+    // ─────────────────────────────────────────────────────────────────────
+    // IMPORTANT: `wasAlreadyFavorite` must be computed by the caller BEFORE
+    // calling mutate(), and passed as a variable here.
+    //
+    // Why: TanStack Query calls onMutate first (optimistic update), which
+    // flips the Zustand store. mutationFn runs AFTER onMutate, so calling
+    // isFavorite() inside mutationFn would read the already-flipped state
+    // and perform the WRONG database operation (DELETE instead of INSERT
+    // and vice-versa), causing favorites to be cleared from the DB.
+    // ─────────────────────────────────────────────────────────────────────
     mutationFn: async ({
       userId,
       facility,
+      wasAlreadyFavorite,
     }: {
       userId: string;
       facility: TFacilityProfileOutput;
+      wasAlreadyFavorite: boolean;
     }) => {
-      const currentlyFavorite = isFavorite(facility.id);
-
-      if (currentlyFavorite) {
+      if (wasAlreadyFavorite) {
         const { error } = await supabase
           .from("facility_favorites")
           .delete()
@@ -289,25 +299,32 @@ export const useToggleFavorite = () => {
         return { action: "added", facility };
       }
     },
-    onMutate: async ({ facility }) => {
-      // Optimistic update for local store
-      if (isFavorite(facility.id)) {
+    onMutate: async ({ facility, wasAlreadyFavorite }) => {
+      // Optimistic local update — use the pre-toggle snapshot so the
+      // UI flips instantly without waiting for the network.
+      if (wasAlreadyFavorite) {
         removeFavorite(facility.id);
       } else {
         addFavorite(facility);
       }
+      // Return context so onError can roll back correctly
+      return { wasAlreadyFavorite, facility };
     },
-    onError: (err, { facility }) => {
-      // Rollback on error
-      if (isFavorite(facility.id)) {
-        removeFavorite(facility.id);
-      } else {
-        addFavorite(facility);
+    onError: (err, _vars, context) => {
+      // Roll back the optimistic update using the saved context
+      if (context) {
+        if (context.wasAlreadyFavorite) {
+          // We optimistically removed it — restore it
+          addFavorite(context.facility);
+        } else {
+          // We optimistically added it — remove it
+          removeFavorite(context.facility.id);
+        }
       }
       console.error("Error toggling favorite:", err);
       Sentry.captureException(err, {
         tags: { section: "facilities", action: "toggle_favorite" },
-        extra: { facilityId: facility.id },
+        extra: { facilityId: _vars.facility.id },
       });
     },
     onSettled: () => {

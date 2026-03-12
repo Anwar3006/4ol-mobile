@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import React, { useEffect } from "react";
+import React, { useEffect, useMemo } from "react";
 import { Slot } from "expo-router";
 import * as Notifications from "expo-notifications";
 import * as Sentry from "@sentry/react-native";
@@ -10,7 +10,7 @@ import {
 } from "react-native-reanimated";
 import { NotificationProvider } from "@/context/NotificationContext";
 import { BiometricProvider, useBiometricLock } from "@/context/BiometricContext";
-import { View, Text, TouchableOpacity } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useSyncFavorites } from "@/hooks/use-facilities";
 import useUserStore from "@/store/use-userstore";
@@ -46,7 +46,6 @@ Notifications.setNotificationHandler({
 
 const LockScreen = () => {
   const { unlock } = useBiometricLock();
-
   return (
     <View className="flex-1 bg-white items-center justify-center p-6">
       <View className="bg-emerald-100 p-6 rounded-full mb-6">
@@ -68,25 +67,37 @@ const LockScreen = () => {
 };
 
 const AppContent = () => {
-  const { isLocked, isLoading } = useBiometricLock();
+  const { isLocked } = useBiometricLock();
   const { user } = useUserStore();
 
   useSyncFavorites(user?.user_id);
 
-  // Previously returned `null` here which blocked the entire navigation tree
-  // (including AuthProvider) from mounting, causing the loader to freeze.
-  // Rendering <Slot /> while biometrics init allows AuthProvider to run in
-  // parallel. The LockScreen will overlay once isLoading finishes.
-  if (isLoading) {
-    return <Slot />;
-  }
-
-  if (isLocked) {
-    return <LockScreen />;
-  }
-
-  return <Slot />;
+  // ALWAYS render <Slot /> — never conditionally replace it with another component.
+  //
+  // Expo Router processes navigation events (from AuthProvider's router.replace
+  // calls) when <Slot /> is in the tree. If we conditionally return a different
+  // component instead of <Slot />, Expo Router tries to process a navigation
+  // action against an unmounted/changing tree, creating a synchronous
+  // render→navigate→render loop that exceeds React's update limit and throws
+  // "Maximum update depth exceeded".
+  //
+  // The correct pattern: always render <Slot /> and overlay any blocking UI
+  // (LockScreen, etc.) on top via absolute positioning.
+  return (
+    <View style={styles.container}>
+      <Slot />
+      {isLocked && (
+        <View style={StyleSheet.absoluteFillObject}>
+          <LockScreen />
+        </View>
+      )}
+    </View>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+});
 
 const RootLayout = () => {
   useEffect(() => {

@@ -29,12 +29,21 @@ import { FlashList } from "@shopify/flash-list";
 import CategoryList from "@/components/home/CategoryList";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { HomeHeader } from "@/components/home/HomeHeader";
+import HomeFavorites from "@/components/home/HomeFavorites";
 
 const tableNameMapping: Record<string, string> = {
-  illness_and_conditions: "Illness and Conditions",
-  symptoms: "Symptoms",
-  healthy_living: "Healthy Living",
-  facilities: "Facilities",
+  illness_and_conditions: "Diseases and Conditions:",
+  symptoms: "Symptoms:",
+  healthy_living: "Healthy Living:",
+  facility_profile: "Health Facilities:",
+};
+
+// UI Map for the label text below each search item
+const tableSubTextMapping: Record<string, string> = {
+  illness_and_conditions: "Learn about the condition",
+  symptoms: "Learn about symptoms",
+  healthy_living: "Learn about health tips",
+  facility_profile: "Explore Facilities and specialists related",
 };
 
 const HomeScreen = () => {
@@ -180,7 +189,7 @@ const HomeScreen = () => {
                   flexDirection: "row",
                   position: "absolute",
                   width: Dimensions.get("window").width - 40,
-                  height: Dimensions.get("window").height / 2.5,
+                  maxHeight: Dimensions.get("window").height / 1.8,
                   top: 40,
                   marginTop: 10,
                   zIndex: 1000,
@@ -189,12 +198,18 @@ const HomeScreen = () => {
                 <View
                   style={{
                     borderRadius: 10,
-                    padding: 10,
+                    padding: 15,
                     borderTopLeftRadius: 0,
                     borderTopRightRadius: 0,
                     flex: 1,
                     backgroundColor: themeColors.white,
-                    elevation: 2,
+                    elevation: 5,
+                    shadowColor: "#000",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                    borderWidth: 1,
+                    borderColor: '#9ca3af',
                   }}
                 >
                   {keywordLoading ? (
@@ -203,39 +218,66 @@ const HomeScreen = () => {
                       color={themeColors.primary}
                     />
                   ) : (
-                    <>
-                      <Text style={{ color: "gray", marginBottom: 8 }}>Results</Text>
-                      <ScrollView showsVerticalScrollIndicator={false}>
-                        {results.map((item, index) => (
-                          <TouchableOpacity
-                            key={index.toString()}
-                            onPress={() => {
-                              setShowDropdown(false);
-                              setSearchData(searchQuery, results);
-                              router.push({
-                                pathname: "/(app)/(auth)/(modal)/SearchResultModal",
-                                params: { category: item.table }
-                              });
-                            }}
-                            style={{ paddingVertical: 10 }}
-                          >
-                            <Text style={{ color: "black", padding: 10, fontSize: 16 }}>
-                              {searchQuery} in{" "}
-                              <Text
-                                style={{
-                                  color: "gray",
-                                  textDecorationStyle: "dashed",
-                                  textDecorationLine: "underline",
-                                  fontWeight: "600",
+                    <ScrollView showsVerticalScrollIndicator={false}>
+                      {results.map((categoryGroup, index) => (
+                        <View key={index.toString()} style={{ marginBottom: 12 }}>
+                          {/* Section Header */}
+                          <Text style={{ 
+                            color: "#3f3fc6", 
+                            fontSize: 16, 
+                            fontFamily: fonts.OpenSansRegular,
+                            marginBottom: 4 
+                          }}>
+                            {tableNameMapping[categoryGroup.table] || categoryGroup.table}
+                          </Text>
+                          
+                          {/* Section Items */}
+                          {categoryGroup.results.map((item: any, itemIdx: number) => {
+                            // Extract the main name regardless of what column it's in
+                            const itemName = item.condition_name || item.symptom_name || item.topic_name || item.facility_name;
+                            
+                            return (
+                              <TouchableOpacity
+                                key={itemIdx.toString()}
+                                onPress={() => {
+                                  setShowDropdown(false);
+                                  // Navigate to specific detail pages instead of generic modal
+                                  if (categoryGroup.table === 'illness_and_conditions' || categoryGroup.table === 'conditions') {
+                                    router.push({ pathname: "/(app)/(auth)/(modal)/DiseaseDetails", params: { id: item.id } });
+                                  } else if (categoryGroup.table === 'symptoms') {
+                                    router.push({ pathname: "/(app)/(auth)/(modal)/SymptomDetails", params: { id: item.id } });
+                                  } else if (categoryGroup.table === 'healthy_living') {
+                                    // Make sure you have a HealthyLivingDetails or use a default
+                                    router.push({ pathname: "/(app)/(auth)/(modal)/SearchResultModal", params: { category: categoryGroup.table } });
+                                  } else if (categoryGroup.table === 'facility_profile') {
+                                    router.push({ pathname: "/(app)/(auth)/Facility/[id]", params: { id: item.id } });
+                                  }
                                 }}
+                                style={{ paddingVertical: 4 }}
                               >
-                                {tableNameMapping[item.table]}
-                              </Text>
-                            </Text>
-                          </TouchableOpacity>
-                        ))}
-                      </ScrollView>
-                    </>
+                                <Text style={{ color: "#3f3fc6", fontSize: 16, fontFamily: fonts.OpenSansRegular }}>
+                                  {`> ${itemName}`}
+                                </Text>
+                                <Text style={{ color: "gray", fontSize: 12, fontFamily: fonts.OpenSansRegular, marginLeft: 16, marginTop: 2 }}>
+                                  {`(${tableSubTextMapping[categoryGroup.table] || 'Learn more'})`}
+                                </Text>
+                              </TouchableOpacity>
+                            )
+                          })}
+                          
+                          {/* Divider line except for last item */}
+                          {index < results.length - 1 && (
+                            <View style={{ 
+                              height: 1, 
+                              borderStyle: 'dashed', 
+                              borderWidth: 1, 
+                              borderColor: '#d1d5db', 
+                              marginTop: 10 
+                            }} />
+                          )}
+                        </View>
+                      ))}
+                    </ScrollView>
                   )}
                 </View>
               </View>
@@ -269,6 +311,7 @@ const HomeScreen = () => {
             ) : null}
           </View>
           <TopRated />
+          <HomeFavorites />
         </ScrollView>
       </View>
       {searching && <LoadingModal />}
