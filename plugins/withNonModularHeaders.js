@@ -40,12 +40,8 @@ const withNonModularHeaders = config => {
         config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
         config.build_settings['GCC_WARN_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'NO'
 
-        # This is often needed for React Native 0.70+ with static frameworks
-        if target.name.include?('react-native-google-maps') || target.name.include?('react-native-maps')
-          config.build_settings['DEFINES_MODULE'] = 'NO'
-        else
-          config.build_settings['DEFINES_MODULE'] = 'YES'
-        end
+        # For React Native 0.81+, DEFINES_MODULE should generally be YES
+        config.build_settings['DEFINES_MODULE'] = 'YES'
         
         cflags = config.build_settings['OTHER_CFLAGS'] || ['$(inherited)']
         if cflags.is_a?(String)
@@ -76,7 +72,7 @@ const withNonModularHeaders = config => {
       );
     }
 
-    // B. Force modular_headers => false for specific problematic pods
+    // B. Force modular_headers => true for specific problematic pods if they are present
     const problematicPods = [
       'react-native-maps', 
       'react-native-google-maps', 
@@ -90,14 +86,24 @@ const withNonModularHeaders = config => {
       if (podfileContent.match(podRegex)) {
         podfileContent = podfileContent.replace(podRegex, (match) => {
           if (match.includes('modular_headers')) {
-            return match; // Already has it
+             // Change false to true if it was set to false
+             return match.replace(/:modular_headers\s*=>\s*false/, ':modular_headers => true');
           }
           // Remove any trailing whitespace/newline from match
           const trimmed = match.trim();
-          return `${trimmed}, :modular_headers => false`;
+          return `${trimmed}, :modular_headers => true`;
         });
       }
     });
+
+    // C. Special case for autolinked pods that don't appear directly in Podfile
+    // We can use use_modular_headers! or specifically target them in post_install
+    if (!podfileContent.includes("use_modular_headers!(['react-native-google-maps', 'react-native-maps'])")) {
+        podfileContent = podfileContent.replace(
+            'prepare_react_native_project!',
+            "prepare_react_native_project!\n  use_modular_headers!(['react-native-google-maps', 'react-native-maps', 'GoogleMaps', 'Google-Maps-iOS-Utils'])"
+        );
+    }
 
     config.modResults.contents = podfileContent;
     return config;
